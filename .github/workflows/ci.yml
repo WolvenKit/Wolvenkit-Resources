@@ -1,0 +1,31 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    tags: 
+    - '*'
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # zip
+      - run: Compress-Archive -Path ./red.kark -DestinationPath ./resources-${{github.ref_name}}.zip
+      
+      # RELEASE
+      - name: Release tag
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: "./resources-${{github.ref_name}}.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
