@@ -1,0 +1,52 @@
+{
+    "plugins" : [
+      {
+        "name":"CyberEngineTweaks",
+        "url":"yamashi/cyberenginetweaks",
+        "file":"cet.*\\.zip",
+        "description":"Cyberpunk 2077 tweaks, hacks and scripting framework."
+      },
+      {
+        "name":"Redscript",
+        "url":"jac3km4/redscript",
+        "file":"redscript-.*\\.zip",
+        "description":"Compiler/decompiler toolkit for redscript."
+      },
+      {
+        "name":"MlsetupBuilder",
+        "url":"neurolinked/mlsetupbuilder",
+        "file":"MlsetupBuilder-.*\\.zip",
+        "description":"Cyberpunk 2077 modding tool to build json version of .mlsetup files."
+      },
+      {
+        "name":"Wolvenkit Resources",
+        "url":"WolvenKit/Wolvenkit-Resources",
+        "file":"resources-.*\\.zip",
+        "description":"Resource database used for certain Wolvenkit functions in the Asset Browser."
+      },
+      {
+        "name":"RedMod",
+        "url":"",
+        "file":"redmod.zip",
+        "description":"RedMod tools."
+      },
+      {
+        "name":"Red4Ext",
+        "url":"WopsS/RED4ext",
+        "file":"red4ext.*\\.zip",
+        "description":"A script extender for REDengine 4 (Cyberpunk 2077)."
+      },
+      {
+        "name":"TweakXL",
+        "url":"psiberx/cp2077-tweak-xl",
+        "file":"TweakXL-.*\\.zip",
+        "description":"Cyberpunk 2077 mod that allows you to modify TweakDB."
+      },
+      {
+        "name":"RedHotTools",
+        "url":"psiberx/cp2077-red-hot-tools",
+        "file":"RedHotTools-.*\\.zip",
+        "description":"Hot reload archives, scripts and tweaks."
+      }
+    ]
+}
