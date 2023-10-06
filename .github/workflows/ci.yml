@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@v3
 
       # zip
-      - run: Compress-Archive -Path ./red.kark -DestinationPath ./resources-${{github.ref_name}}.zip
+      - run: Compress-Archive -Path ./red.kark -DestinationPath ./resourcesV2-${{github.ref_name}}.zip
       
       # RELEASE
       - name: Release tag
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          files: "./resources-${{github.ref_name}}.zip"
+          files: "./resourcesV2-${{github.ref_name}}.zip"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
