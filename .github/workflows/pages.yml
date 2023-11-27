@@ -37,7 +37,6 @@ jobs:
 
       - name: generate artifact
         run: |
-          New-Item -ItemType Directory -Path docs
           Compress-Archive -Path Scripts/* -DestinationPath docs/scripts.zip
           $fileHash = Get-FileHash docs/scripts.zip
           $fileHash.Hash | Out-File -FilePath docs/hash.txt
