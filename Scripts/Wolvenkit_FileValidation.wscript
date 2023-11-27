@@ -1335,7 +1335,10 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
             }
             break;
     }
-
+    if ((materialValue.Flags || '').includes('Embedded')) {
+        Logger.Warning(`${info} is set to Embedded. This might not work as you expect it.`);        
+    }
+        
     // Once we've made sure that the file extension is correct, check if the file exists.
     checkDepotPath(materialDepotPath, info);
 }
