@@ -89,10 +89,11 @@ globalThis.onSave = function (ext, file) {
     // either we have nothing to write or we aren't supposed to write => abort
     if (!FileValidation.isDataChangedForWriting || Settings.DisableAutofix) return retSuccess;
 
+    const filePath = wkit.GetActiveDocument().FilePath;
+    
     // unless it's a workspot, automatically close and re-open it
     if (!fileName.endsWith('workspot') || Settings.Workspot.autoReopenFile) {
         try {
-            const filePath = wkit.GetActiveDocument().FilePath;
             Logger.Info(`Filevalidation: Reopening ${filePath} for you…`);
             wkit.GetActiveDocument().Close();
             wkit.OpenDocument(filePath);
