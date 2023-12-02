@@ -466,13 +466,6 @@ let componentIds = [];
  */
 let usedAppearanceTags = []
 
-// We're ignoring tags that the game uses, or psi's extra tags for annotating stuff 
-const ignoredTags = [ 
-    'PlayerBodyPart', 'Tight', 'Normal', 'Large', 'XLarge',  // clothing
-    'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound    
-];
-
-
 let appFileSettings = {};
 
 function component_collectAppearancesFromMesh(componentMeshPath) {
@@ -604,6 +597,23 @@ function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearance
     pathToCurrentFile = appFilePath;
 }
 
+
+// We're ignoring tags that the game uses, or psi's extra tags for annotating stuff 
+const ignoredTags = [
+    'PlayerBodyPart', 'Tight', 'Normal', 'Large', 'XLarge',  // clothing
+    'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound    
+    'AMM_prop', 'AMM_Prop',
+];
+
+const hidingTags = [
+    "H1", "F1", "T1", "T2", "L1", "S1", "T1part", "Hair", "Genitals",
+    "Head", "Torso", "LowerAbdomen", "UpperAbdomen", "CollarBone", "Arms", "Thighs", "Calves", "Ankles", "Ankles",
+    "Feet" , "Legs"
+];
+const forcingTags = [
+    "Hair", "FlatFeet"
+]
+
 function appFile_validateTags(appearance, appearanceName) {
     const tags = appearance.Data.visualTags?.tags;
     if (!tags) return;
@@ -611,15 +621,23 @@ function appFile_validateTags(appearance, appearanceName) {
     const duplicateTags = [];
     tags.forEach((_tag) => {
         const tag = stringifyPotentialCName(_tag);
-        if (usedAppearanceTags.includes(tag) && !ignoredTags.includes(tag)) {
+        if (!tag || tag.toLowerCase().startsWith('amm')) return;
+        if (tag.startsWith("hide_") && !hidingTags.includes(tag.replace("hide_", ""))) {
+            // verify correct hiding tags
+            appearanceErrorMessages[appearanceName].push(`unknown hiding tag: ${tag}`);            
+        } else if (tag.startsWith("force_") && !forcingTags.includes(tag.replace("force_", ""))) {
+            // verify correct anti-hiding tags
+            appearanceErrorMessages[appearanceName].push(`unknown enforcing tag: ${tag}`);            
+        } else if (usedAppearanceTags.includes(tag) && !ignoredTags.includes(tag)) {
+            // verify tag uniqueness
             duplicateTags.push(tag);
         } else {
             usedAppearanceTags.push(tag);
         }
     });
-    if (duplicateTags.length > 0) {
+    if (isWeaponAppFile && duplicateTags.length > 0) {
         appearanceErrorMessages[appearanceName].push(`non-unique tags: [${duplicateTags.join(', ')}]`)
-    }    
+    }
 }
 function appFile_validateAppearance(appearance, index, validateRecursively, validateComponentCollision) {
     // Don't validate if uppercase file names are present
@@ -644,9 +662,8 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         alreadyDefinedAppearanceNames.push(appearanceName);
     }
     
-    if (isWeaponAppFile) {
-        appFile_validateTags(appearance, appearanceName);        
-    }
+    appFile_validateTags(appearance, appearanceName);        
+   
 
     // we'll collect all mesh paths that are linked in entity paths
     meshPathsFromComponents.length = 0;
