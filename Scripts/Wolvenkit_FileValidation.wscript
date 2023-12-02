@@ -205,6 +205,9 @@ export let isDataChangedForWriting = false;
 /** Is the root entity using a dynamic appearance? */
 let isDynamicAppearance = false;
 
+/** Is the .app file for a weapon? */
+let isWeaponAppFile = false;
+
 /** Allow spaces in root entity names */
 let isRootEntity = false;
 
@@ -239,6 +242,7 @@ function resetInternalFlagsAndCaches() {
 
     alreadyVerifiedAppFiles.length = 0;
     invalidFiles.length = 0;
+    usedAppearanceTags.length = 0;
 
     // ent file
     hasEmptyAppearanceName = false;
@@ -370,13 +374,13 @@ function printInvalidAppearanceWarningIfFound() {
 
     const appearanceErrors = Object.keys(appearanceErrorMessages) || [];
     if (appearanceErrors.length) {
-        Logger.Warning('Mesh appearances have errors. Here\'s a list:');
+        Logger.Warning('Appearances have errors. Here\'s a list:');
         appearanceErrors.forEach((key) => {
             const allErrors = (appearanceErrorMessages[key] || []);
             const foundErrors = allErrors.filter(function (item, pos, self) {
                 return self.indexOf(item) === pos;
             });
-            foundErrors.forEach((err) => Logger.Warning(err));
+            foundErrors.forEach((err) => Logger.Warning(`${key}: ${err}`));
         })
     }
 
@@ -457,6 +461,18 @@ const alreadyVerifiedAppFiles = [];
  */
 let componentIds = [];
 
+/**
+ * For .app files: We're logging duplicate tags
+ */
+let usedAppearanceTags = []
+
+// We're ignoring tags that the game uses, or psi's extra tags for annotating stuff 
+const ignoredTags = [ 
+    'PlayerBodyPart', 'Tight', 'Normal', 'Large', 'XLarge',  // clothing
+    'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound    
+];
+
+
 let appFileSettings = {};
 
 function component_collectAppearancesFromMesh(componentMeshPath) {
@@ -530,6 +546,10 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 
     let info = `${appearanceName}.partsOverride[${index}]`;
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
+    
+    if (isDynamicAppearance && !!depotPath) {
+        appearanceErrorMessages[appearanceName].push('PartsOverride for dynamic variants should be empty!');
+    }
 
     if (!checkDepotPath(depotPath, info, true)) {
         return;
@@ -556,8 +576,8 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
         if (meshPath && !checkDepotPath(meshPath, info)) {
             const appearanceNames = component_collectAppearancesFromMesh(meshPath);
             const meshAppearanceName = stringifyPotentialCName(componentOverride.meshAppearance);
-            if (meshAppearanceName.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-                Logger.Info(`skipping dynamic appearance ${info} - not implemented yet`);
+            if (isDynamicAppearance) {
+                // No implemented yet
             } else if ((appearanceNames || []).length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName)
             ) {
                 appearanceNotFound(meshPath, meshAppearanceName, info);
@@ -584,6 +604,23 @@ function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearance
     pathToCurrentFile = appFilePath;
 }
 
+function appFile_validateTags(appearance, appearanceName) {
+    const tags = appearance.Data.visualTags?.tags;
+    if (!tags) return;
+
+    const duplicateTags = [];
+    tags.forEach((_tag) => {
+        const tag = stringifyPotentialCName(_tag);
+        if (usedAppearanceTags.includes(tag) && !ignoredTags.includes(tag)) {
+            duplicateTags.push(tag);
+        } else {
+            usedAppearanceTags.push(tag);
+        }
+    });
+    if (duplicateTags.length > 0) {
+        appearanceErrorMessages[appearanceName].push(`non-unique tags: [${duplicateTags.join(', ')}]`)
+    }    
+}
 function appFile_validateAppearance(appearance, index, validateRecursively, validateComponentCollision) {
     // Don't validate if uppercase file names are present
     if (hasUppercasePaths) {
@@ -605,6 +642,10 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         appearanceErrorMessages[appearanceName].push(`An appearance with the name ${appearanceName} is already defined in .app file`);
     } else {
         alreadyDefinedAppearanceNames.push(appearanceName);
+    }
+    
+    if (isWeaponAppFile) {
+        appFile_validateTags(appearance, appearanceName);        
     }
 
     // we'll collect all mesh paths that are linked in entity paths
@@ -734,6 +775,8 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
     meshAppearancesNotFoundByComponent = {};
 
     appearanceErrorMessages = {};
+
+    isWeaponAppFile = !!app.baseEntityType || !!app.preset || app.baseEntity;
 
     for (let i = 0; i < app.appearances.length; i++) {
         const appearance = app.appearances[i];
