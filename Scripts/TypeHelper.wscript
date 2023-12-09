@@ -92,7 +92,7 @@ export class TweakDBID extends HashValue {
 
 function reviver(key, value) {
     if (value !== null && value.hasOwnProperty('$type')) {
-        if (['CName', 'ResourcePath', 'TweakDBID', 'NodeRef'].includes(value['$type'])) {
+        if (['CName', 'ResourcePath', 'TweakDBID', 'NodeRef'].includes(value['$type']) && value.hasOwnProperty('$storage') && value.hasOwnProperty('$value')) {
             var propValue;
             switch (value['$storage']) {
                 case 'string':
