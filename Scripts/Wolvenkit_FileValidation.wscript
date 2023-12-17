@@ -462,7 +462,7 @@ const alreadyVerifiedAppFiles = [];
 /**
  * For ent files: Make sure that there's no duplication of component IDs
  */
-let componentIds = [];
+let componentIds = {};
 
 /**
  * For .app files: We're logging duplicate tags
@@ -967,17 +967,21 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     // TODO: This will potentially be resolved on Wolvenkit side. One day. Hopefully.
     // Check if component IDs are even numbers and unique within the scope of the entity.
     // They should probably be globally unique, but we're not checking this, oh no, sir.
+    // We're considering only the base component here, without checking for variants, hence the cut at the &
     if (hasMesh && entSettings.checkComponentIdsForGarmentSupport && !!component.id && !info?.startsWith('app')) {
-        if (componentIds.includes(component.id) && !componentName.startsWith("amm")) {
-            componentIdErrors.push(`${component.id}: not unique`);
+        const savedComponentName = componentIds[component.id];
+        const currentName = componentName.split('&')[0];        
+        if (!!savedComponentName && currentName !== savedComponentName && !savedComponentName.startsWith("amm")) {
+            componentIdErrors.push(`${component.id}: not unique`);  
         }
-        componentIds.push(component.id);
+        componentIds[component.id] = currentName;
         // parseInt or parseFloat will lead to weird side effects here. Give it an ID of 1638580377071202307, 
         // and it'll arrive at the numeric value of 1638580377071202300. 
         if (!/^[02468]$/.test((component.id.match(/\d$/) || ["0"])[0])) {
             componentIdErrors.push(`${component.id}: not an even number`);
         }
     }
+    
     if (componentName.includes('gender=f')) {
         Logger.Warning(`${info} name: invalid substitution, it's 'gender=w'!`);
     }
