@@ -430,6 +430,9 @@ let meshesByComponentName = {};
 // map: { 'base/mana/mesh_entity.ent': ['path/to/file.mesh', 'path_to_other_file.mesh'] };
 let meshesByEntityPath = {};
 
+// map: { 'base/mana/mesh_entity.ent': ['component123', 'component354'] };
+let componentsByEntityPath = {};
+
 let isInvalidVariantComponent = false;
 
 
@@ -499,9 +502,11 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     }
 
     const meshesInEntityFile = [];
+    const componentsInEntityFile = [];
     if (validateRecursively) {
         try {
             const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
+            
 
             // fileExists has been checked in validatePartsOverride
             const entity = TypeHelper.JsonParse(fileContent);
@@ -516,6 +521,10 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
                 if (meshPath && !meshesInEntityFile.includes(meshPath)) {
                     meshesInEntityFile.push(meshPath);
                 }
+                const componentName = stringifyPotentialCName(component.name);
+                if (componentName && !componentsInEntityFile.includes(componentName)) {
+                    componentsInEntityFile.push(componentName);
+                }
             }
             componentIds = _componentIds;
         } catch (err) {
@@ -524,6 +533,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
         }
     }
 
+    componentsByEntityPath[entityDepotPath] = componentsInEntityFile;
     meshesByEntityPath[entityDepotPath] = meshesInEntityFile;
 
 }
@@ -614,14 +624,22 @@ const forcingTags = [
     "Hair", "FlatFeet"
 ]
 
-function appFile_validateTags(appearance, appearanceName) {
+/**
+ * 
+ * @param appearance
+ * @param appearanceName Name of appearance (for debug output)
+ * @param partsValuePaths If we have certain hiding tags, we need to warn the user about potentially hiding their own components.
+ */
+function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) {
     const tags = appearance.Data.visualTags?.tags;
     if (!tags) return;
 
+    const tagNames = [];
     const duplicateTags = [];
     tags.forEach((_tag) => {
         const tag = stringifyPotentialCName(_tag);
         if (!tag || tag.toLowerCase().startsWith('amm')) return;
+        tagNames.push(tag);
         if (tag.startsWith("hide_") && !hidingTags.includes(tag.replace("hide_", ""))) {
             // verify correct hiding tags
             appearanceErrorMessages[appearanceName].push(`unknown hiding tag: ${tag}`);            
@@ -636,8 +654,17 @@ function appFile_validateTags(appearance, appearanceName) {
         }
     });
     if (isWeaponAppFile && duplicateTags.length > 0) {
-        appearanceErrorMessages[appearanceName].push(`non-unique tags: [${duplicateTags.join(', ')}]`)
+        appearanceErrorMessages[appearanceName].push(`non-unique tags: [${duplicateTags.join(', ')}]`);
     }
+    
+    
+    if (!tagNames.find((tag) => tag === "hide_Ankles" || tag === "hide_Legs")) return;
+    partsValuePaths.forEach((path) => {
+        const hiddenComponentNames = (componentsByEntityPath[path] || []).filter((componentName) => /^\w0_.+/.test(componentName));        
+        if (!hiddenComponentNames.length) return;
+
+        appearanceErrorMessages[appearanceName].push(`has components hidden by your .app file: [${hiddenComponentNames.join(', ')}]`)
+    })
 }
 function appFile_validateAppearance(appearance, index, validateRecursively, validateComponentCollision) {
     // Don't validate if uppercase file names are present
@@ -661,8 +688,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     } else {
         alreadyDefinedAppearanceNames.push(appearanceName);
     }
-    
-    appFile_validateTags(appearance, appearanceName);        
+     
    
 
     // we'll collect all mesh paths that are linked in entity paths
@@ -692,18 +718,24 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     componentIds = _componentIds;
 
     const meshPathsFromEntityFiles = [];
-
+    
+    const partsValuePaths = [];
+    
     // check these before the overrides, because we're parsing the linked files
     for (let i = 0; i < appearance.Data.partsValues.length; i++) {
         const partsValue = appearance.Data.partsValues[i];
         const depotPath = stringifyPotentialCName(partsValue.resource.DepotPath);
+        partsValuePaths.push(depotPath);
         appFile_validatePartsValue(depotPath, i, appearanceName, validateRecursively);
         (meshesByEntityPath[depotPath] || []).forEach((path) => meshPathsFromEntityFiles.push(path));
         if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
             Logger.Warning(`${appearanceName}.partsValues[${i}]: Substitution in depot path not supported.`);
-        }
+        }        
     }
 
+
+    appFile_validateTags(appearance, appearanceName, partsValuePaths);
+    
     if (validateComponentCollision) {
         Object.values(componentNameCollisions)
             .filter((name) => overriddenComponents.includes(name))
@@ -784,7 +816,6 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
     const validateCollisions = calledFromEntFileValidation
         ? entSettings.checkComponentNameDuplication
         : appFileSettings.checkComponentNameDuplication;
-
 
     invalidVariantAndSubstitutions = {};
 
@@ -940,13 +971,13 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (componentIds.includes(component.id) && !componentName.startsWith("amm")) {
             componentIdErrors.push(`${component.id}: not unique`);
         }
+        componentIds.push(component.id);
         // parseInt or parseFloat will lead to weird side effects here. Give it an ID of 1638580377071202307, 
         // and it'll arrive at the numeric value of 1638580377071202300. 
         if (!/^[02468]$/.test((component.id.match(/\d$/) || ["0"])[0])) {
             componentIdErrors.push(`${component.id}: not an even number`);
         }
     }
-
     if (componentName.includes('gender=f')) {
         Logger.Warning(`${info} name: invalid substitution, it's 'gender=w'!`);
     }
@@ -1112,7 +1143,7 @@ function entFile_validateAppearance(appearance) {
 
     // if we're being dynamic here, also check for appearance names with suffixes. 
     if (!namesInAppFile.includes(appearanceNameInAppFile)
-        && !isDynamicAppearance && !namesInAppFile.includes(appearanceNameInAppFile.split('&').pop() || '')
+        && (!isDynamicAppearance || !namesInAppFile.includes(appearanceNameInAppFile.split('&').pop() || ''))
     ) {
         entAppearancesNotFoundByFile[appFilePath] ||= {};
         entAppearancesNotFoundByFile[appFilePath][appearanceName] = appearanceNameInAppFile;
@@ -1334,8 +1365,9 @@ let morphtargetSettings = {};
 let materialNames = {};
 let localIndexList = [];
 
-// if checkDuplicateMlSetupFilePaths is used: warn user if duplicates exist in list
-let listOfUsedMaterialSetups = {};
+// if checkDuplicateMaterialDefinitions is used: warn user if duplicates exist in list
+let listOfMaterialProperties = {};
+
 
 /**
  * Shared for .mesh and .mi files: will validate an entry of the values array of a material definition
@@ -1366,16 +1398,6 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
             if (!materialDepotPath.endsWith(".mlsetup")) {
                 Logger.Error(`${info}${materialDepotPath} doesn't end in .mlsetup. This will cause crashes.`);
                 return;
-            }
-            if (meshSettings.checkDuplicateMlSetupFilePaths) {
-                listOfUsedMaterialSetups[materialDepotPath] ||= [];
-
-                if (listOfUsedMaterialSetups[materialDepotPath].length > 0) {
-                    Logger.Warning(`${info} uses the same .mlsetup as (a) previous material(s): [ ${
-                        listOfUsedMaterialSetups[materialDepotPath].join(", ")
-                    } ]`)
-                }
-                listOfUsedMaterialSetups[materialDepotPath].push(info);
             }
             break;
         case "MultilayerMask":
@@ -1416,24 +1438,45 @@ function meshFile_validatePlaceholderMaterial(material, info) {
         Logger.Warning(`Placeholder ${info}: invalid base material. Consider deleting it.`);
     }
 }
-function meshFile_CheckMaterialProperties(material, materialName) {
+
+function material_getMaterialPropertyValue(key, materialValue) {
+    if (materialValue.DepotPath) return stringifyPotentialCName(materialValue.DepotPath);
+    if (materialValue[key]) return stringifyPotentialCName(materialValue["key"]);
+    switch (key) {
+        case "DiffuseColor":
+            return `RGBA: ${materialValue.Red}, ${materialValue.Green}, ${materialValue.Blue}, ${materialValue.Alpha}`
+        default:
+            return `${materialValue}`;
+    }    
+}
+function meshFile_CheckMaterialProperties(material, materialName, materialIndex) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
     if (checkDepotPath(baseMaterial, materialName)) {
         validateShaderTemplate(baseMaterial, materialName);
     }
 
+    // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
+    listOfMaterialProperties[materialIndex] = {
+        'materialName': materialName,
+    }
+    
     for (let i = 0; i < material.values.length; i++) {
         let tmp = material.values[i];
+        
+        const type = tmp["$type"] || tmp["type"] || '';
 
-        const type = tmp["$type"] || tmp["type"];
-
-        if (!type.startsWith("rRef:")) {
+        if (!type.startsWith("rRef:") && !meshSettings.checkDuplicateMaterialDefinitions) {
             continue;
         }
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
-            validateMaterialKeyValuePair(key, definedMaterial, `${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);
+            if (type.startsWith("rRef:")) {
+                validateMaterialKeyValuePair(key, definedMaterial, `${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);                
+            }
+            if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
+                listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
+            }
         });
     }
 }
@@ -1524,6 +1567,47 @@ export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
     }
 }
 
+function printDuplicateMaterialWarnings() {
+    // If we want to check material for duplication
+    if (!meshSettings.checkDuplicateMaterialDefinitions) return;
+    
+    // Collect and filter entries
+    const identicalMaterials = {};
+    const foundDuplicates = [];
+
+    for (const key1 in listOfMaterialProperties) {
+        for (const key2 in listOfMaterialProperties) {
+            if (key1 !== key2 && !foundDuplicates.includes(key1)) {
+                const entry1 = listOfMaterialProperties[key1];
+                const entry2 = listOfMaterialProperties[key2];
+
+                // Check if entries have identical properties (excluding materialName)
+                const isIdentical = Object.keys(entry1).every(property => property === "materialName" || entry1[property] === entry2[property]);
+                if (isIdentical) {
+
+                    const buffer1 = entry1.materialName.split('.')[0];
+                    const buffer2 = entry2.materialName.split('.')[0];
+
+                    if (!identicalMaterials[key1]) {
+                        identicalMaterials[key1] = [];
+                        identicalMaterials[key1].push(`${buffer1}[${key1}]`);
+                    }
+                    identicalMaterials[key1].push(`${buffer2}[${key2}]`);
+                    foundDuplicates.push(key2);
+                }
+            }
+        }
+    }
+
+    // Print warnings
+    const warningEntries = Object.keys(identicalMaterials);
+    if (warningEntries.length > 0) {
+        Logger.Info("The following materials seem to be identical:");
+        warningEntries.forEach(key => {
+            Logger.Info(`\t${(identicalMaterials[key] || []).join(', ')}`);
+        });
+    }
+}
 export function validateMeshFile(mesh, _meshSettings) {
     // check if settings are enabled
     if (!_meshSettings?.Enabled) return;
@@ -1554,7 +1638,7 @@ export function validateMeshFile(mesh, _meshSettings) {
                 if (!/^[a-z\d]+/.test(materialName)) {
                     Logger.Info(`materials[${i}]: ${materialName} does not begin with a lower case letter or number. It might not load.`);
                 }
-                meshFile_CheckMaterialProperties(material, `localMaterialBuffer.${materialName}`);
+                meshFile_CheckMaterialProperties(material, `localMaterialBuffer.${materialName}`, i);
             }
         }
     }
@@ -1586,7 +1670,7 @@ export function validateMeshFile(mesh, _meshSettings) {
 
     let numSubMeshes = 0;
 
-    // Create RenderResourceBlob if it doesn't exists?
+    // Create RenderResourceBlob if it doesn't exist?
     if (mesh.renderResourceBlob !== "undefined") {
         numSubMeshes = mesh.renderResourceBlob?.Data?.header?.renderChunkInfos?.length;
     }
@@ -1610,6 +1694,8 @@ export function validateMeshFile(mesh, _meshSettings) {
             Logger.Warning(`\t${invisibleSubmeshes.join('\n\t')}`);
         }
     }
+
+    printDuplicateMaterialWarnings();
 
     return true;
 }
