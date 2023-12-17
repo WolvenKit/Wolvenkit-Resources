@@ -1472,7 +1472,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
             if (type.startsWith("rRef:")) {
-                validateMaterialKeyValuePair(key, definedMaterial, `${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);                
+                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);                
             }
             if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
                 listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
