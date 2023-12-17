@@ -1316,8 +1316,8 @@ export function validateEntFile(ent, _entSettings) {
         validateAppearanceNameSuffixes(stringifyPotentialCName(appearance.name, `ent.appearances[${i}].name`) || '', entAppearanceNames);
     }
 
-    // validate default appearance
-    if (isRootEntity && entAppearanceNames.length) {
+    // validate default appearance - not for dynamic appearances, because those will never be props.
+    if (isRootEntity && entAppearanceNames.length && !isDynamicAppearance) {
         const defaultAppearance = stringifyPotentialCName(ent.defaultAppearance);
         if (!!defaultAppearance && !('random' === defaultAppearance || entAppearanceNames.includes(defaultAppearance))) {
             Logger.Info(`Root entity: defaultAppearance ${defaultAppearance} not found. If this is a prop, then it will spawn invisible.`)
@@ -1689,8 +1689,8 @@ export function validateMeshFile(mesh, _meshSettings) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
         }
-        if (invisibleSubmeshes.length) {
-            Logger.Warning(`Appearance ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
+        if (invisibleSubmeshes.length && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+            Logger.Warning(`Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
             Logger.Warning(`\t${invisibleSubmeshes.join('\n\t')}`);
         }
     }
