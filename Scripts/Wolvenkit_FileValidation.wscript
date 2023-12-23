@@ -970,15 +970,15 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     // We're considering only the base component here, without checking for variants, hence the cut at the &
     if (hasMesh && entSettings.checkComponentIdsForGarmentSupport && !!component.id && !info?.startsWith('app')) {
         const savedComponentName = componentIds[component.id];
-        const currentName = componentName.split('&')[0];        
+        const currentName = componentName.split('&')[0];
         if (!!savedComponentName && currentName !== savedComponentName && !savedComponentName.startsWith("amm")) {
-            componentIdErrors.push(`${component.id}: not unique`);  
+            componentIdErrors.push(`${component.id}: not unique (${componentName})`);  
         }
         componentIds[component.id] = currentName;
         // parseInt or parseFloat will lead to weird side effects here. Give it an ID of 1638580377071202307, 
         // and it'll arrive at the numeric value of 1638580377071202300. 
         if (!/^[02468]$/.test((component.id.match(/\d$/) || ["0"])[0])) {
-            componentIdErrors.push(`${component.id}: not an even number`);
+            componentIdErrors.push(`${component.id}: not an even number (${componentName})`);
         }
     }
     
