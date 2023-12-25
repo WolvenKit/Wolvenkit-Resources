@@ -1463,6 +1463,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
     // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
     listOfMaterialProperties[materialIndex] = {
         'materialName': materialName,
+        'baseMaterial': baseMaterial,
     }
     
     for (let i = 0; i < material.values.length; i++) {
