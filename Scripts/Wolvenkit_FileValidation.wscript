@@ -862,25 +862,46 @@ const archiveXLVarsAndValues = {
     '{legs_state}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
 }
 
+function resolveSubstitution(paths) {
+
+    if (!paths || !paths.length) return [];
+    
+    // if no replacements can be made, we're done here
+    if (!paths.find((path) => path.includes('{') || path.includes('}'))) {
+        return paths;
+    }
+
+    let ret = [];
+    paths.forEach((path) => {
+        if(!shouldHaveSubstitution(path)) {
+            ret.push(path);
+        }
+        Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
+            if (path.includes(variantFlag)) {
+                archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
+                    ret.push(path.replace(variantFlag, variantReplacement));
+                });
+            }
+        });
+    });
+        
+    return resolveSubstitution(ret);
+}
 
 function getArchiveXlMeshPaths(depotPath) {
+    
     if (!depotPath || typeof depotPath === "bigint") {
         return [];
     }
     if (!depotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
         return [depotPath];
     }
+    
     let paths = [];
-    if (!shouldHaveSubstitution(depotPath) || !checkCurlyBraces(depotPath)) {
+    if (!(shouldHaveSubstitution(depotPath) && checkCurlyBraces(depotPath))) {
         paths.push(depotPath);
     } else {
-        Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
-            if (depotPath.includes(variantFlag)) {
-                archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
-                    paths.push(depotPath.replace(variantFlag, variantReplacement));
-                });
-            }
-        });
+        paths = resolveSubstitution([ depotPath ]);
     }
 
     // If nothing was substituted: We're done here
@@ -888,20 +909,8 @@ function getArchiveXlMeshPaths(depotPath) {
         paths.push(depotPath.replace('*', ''));
     }
 
-    let ret = [];
-    paths.forEach((path) => {
-        const resolvedPaths = getArchiveXlMeshPaths(path).map((paths) => {
-            if (depotPath.indexOf(path) && !path.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && depotPath.replace(path, "") === "*") {
-                return `*${path}`;
-            }
-            return shouldHaveSubstitution(path, true) ? path : path.replaceAll('*', '');
-        });
-
-        ret = [...ret, ...resolvedPaths];
-    })
-
     // If nothing was substituted: We're done here
-    return ret;
+    return paths;
 }
 
 //#region entFile
@@ -995,6 +1004,10 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath)) {
         Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} does not end with .mesh! This will crash your game!`);
+    }
+
+    if (meshDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !meshDepotPath.includes('{')) {
+        Logger.Error(`${info}: ${componentPropertyKeyWithDepotPath} starts with ${ARCHIVE_XL_VARIANT_INDICATOR}, but does not contain substitution! This will crash your game!`);
     }
 
     const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
@@ -1449,6 +1462,8 @@ function material_getMaterialPropertyValue(key, materialValue) {
     switch (key) {
         case "DiffuseColor":
             return `RGBA: ${materialValue.Red}, ${materialValue.Green}, ${materialValue.Blue}, ${materialValue.Alpha}`
+        case "BaseColorScale":
+            return `RGBA: ${materialValue.W}, ${materialValue.X}, ${materialValue.Y}, ${materialValue.Z}`
         default:
             return `${materialValue}`;
     }    
@@ -1464,6 +1479,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
     listOfMaterialProperties[materialIndex] = {
         'materialName': materialName,
         'baseMaterial': baseMaterial,
+        'numProperties': material.values.length,
     }
     
     for (let i = 0; i < material.values.length; i++) {
