@@ -613,6 +613,7 @@ const ignoredTags = [
     'PlayerBodyPart', 'Tight', 'Normal', 'Large', 'XLarge',  // clothing
     'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound    
     'AMM_prop', 'AMM_Prop',
+    'Male', 'Female',
 ];
 
 const hidingTags = [
@@ -824,7 +825,13 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
 
     appearanceErrorMessages = {};
 
-    isWeaponAppFile = !!app.baseEntityType || !!app.preset || app.baseEntity;
+    const baseEntityType = stringifyPotentialCName(app.baseEntityType?.DepotPath);
+    const preset = stringifyPotentialCName(app.preset?.DepotPath);
+    const depotPath = stringifyPotentialCName(app.baseEntity?.DepotPath);
+    
+    isWeaponAppFile = (!!baseEntityType && 'None' !== baseEntityType) 
+        || (!!preset && 'None' !== preset) 
+        || (!!depotPath && '0' !== depotPath);
 
     for (let i = 0; i < app.appearances.length; i++) {
         const appearance = app.appearances[i];
