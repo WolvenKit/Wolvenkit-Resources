@@ -164,3 +164,14 @@ function replacer(key, value) {
 export function JsonStringify(value, space) {
     return JSON.stringify(value, replacer, space);
 }
+
+export function StringifyPotentialCName(cnameOrString) {
+    if (!cnameOrString) return undefined;
+    if (typeof cnameOrString === 'string') {
+        return cnameOrString;
+    }
+    if (typeof cnameOrString === 'bigint') {
+        return `${cnameOrString}`;
+    }
+    return !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
+}

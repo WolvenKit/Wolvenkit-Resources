@@ -1,5 +1,5 @@
-import * as Logger from 'Logger.wscript';
-import * as TypeHelper from 'TypeHelper.wscript';
+import * as Logger from 'Internal/Logger.wscript';
+import * as TypeHelper from 'Internal/TypeHelper.wscript';
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -690,8 +690,6 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         alreadyDefinedAppearanceNames.push(appearanceName);
     }
      
-   
-
     // we'll collect all mesh paths that are linked in entity paths
     meshPathsFromComponents.length = 0;
 
@@ -1499,7 +1497,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
         }
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
-            if (type.startsWith("rRef:")) {
+            if (type.startsWith("rRef:") || type.includes("ResourcePath")) {
                 validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);                
             }
             if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
