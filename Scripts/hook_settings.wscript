@@ -156,9 +156,9 @@ const Settings = {
          */
         validatePlaceholderMaterialPaths: true,
         /*
-         * Should file validation warn you if two of your materials seem to be identical?
+         * Should file validation warn you if two of your materials use the same mlsetup?
          */
-        checkDuplicateMaterialDefinitions: true,
+        checkDuplicateMlSetupFilePaths: true,
         /*
          * Should file validation verify paths to external materials in your mesh?
          */

@@ -2,8 +2,8 @@
 // Can be used to get the embedded files from an object into the project
 // @author Simarilius, DZK & Seberoth
 // @version 1.0
-import * as Logger from 'Internal/Logger.wscript';
-import * as TypeHelper from 'Internal/TypeHelper.wscript';
+import * as Logger from 'Logger.wscript';
+import * as TypeHelper from 'TypeHelper.wscript';
 
 //list of ent files (paths need double slashes)
 let meshes = [

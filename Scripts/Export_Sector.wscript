@@ -1,8 +1,8 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
 // @version 1.2
-import * as Logger from 'Internal/Logger.wscript';
-import * as TypeHelper from 'Internal/TypeHelper.wscript';
+import * as Logger from 'Logger.wscript';
+import * as TypeHelper from 'TypeHelper.wscript';
 import * as Export_Mesh from 'Export_Mesh.wscript';
 
 // Export all sectors in project? (set to false to only use sectors list below)
