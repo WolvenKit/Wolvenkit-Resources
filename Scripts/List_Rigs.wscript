@@ -1,8 +1,8 @@
 // List all the Rigs called up by an ent file
 // @author Simarilius
 // @version 1.0
-import * as Logger from 'Logger.wscript';
-import * as TypeHelper from 'TypeHelper.wscript';
+import * as Logger from 'Internal/Logger.wscript';
+import * as TypeHelper from 'Internal/TypeHelper.wscript';
 
 function* GetPaths(jsonData) {
     for (let [key, value] of Object.entries(jsonData || {})) {

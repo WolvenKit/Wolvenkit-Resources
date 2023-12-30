@@ -1,7 +1,9 @@
 // @version 1.0
 
-import * as Logger from 'Logger.wscript';
+import * as Logger from 'Internal/Logger.wscript';
 import * as FileValidation from 'Wolvenkit_FileValidation.wscript';
+import * as CopyMaterials from 'copy_materials_from_mesh.wscript';
+import * as PrintAppearanceNames from 'print_appearance_names.wscript';
 import Settings from 'hook_settings.wscript';
 
 function onCatFactClick(target) {
@@ -70,8 +72,12 @@ function onValidateClick() {
 }
 
 var scriptedMenu = ui.AddMenuItem('MenuBarMain', 'Scripts');
-ui.AddMenuItem(scriptedMenu, 'Reload', onReloadClick);
-ui.AddMenuItem(scriptedMenu, 'Validate', onValidateClick);
+ui.AddMenuItem(scriptedMenu, 'Reload active document', onReloadClick);
+ui.AddMenuItem(scriptedMenu, 'Run file validation', onValidateClick);
+
+ui.AddMenuItem(scriptedMenu, 'Copy materials from other mesh', CopyMaterials.run);
+ui.AddMenuItem(scriptedMenu, 'Print appearance names', PrintAppearanceNames.run);
+
 
 var secretMenu = ui.AddMenuItem('MenuBarMain', '');
 ui.AddMenuItem(secretMenu, 'Cat Facts!', onCatFactClick, 'cat');

@@ -1,8 +1,8 @@
 // Exports file and all referenced files (recursively)
 // @author Simarilius, Dzk & Seberoth
 // @version 1.2
-import * as Logger from 'Logger.wscript';
-import * as TypeHelper from 'TypeHelper.wscript';
+import * as Logger from 'Internal/Logger.wscript';
+import * as TypeHelper from 'Internal/TypeHelper.wscript';
 
 const fileTemplate = '{"Header":{"WKitJsonVersion":"0.0.7","DataType":"CR2W"},"Data":{"Version":195,"BuildVersion":0,"RootChunk":{},"EmbeddedFiles":[]}}';
 const jsonExtensions = [".app", ".ent"];
