@@ -1,8 +1,8 @@
 // @version 1.0
 
-import * as Logger from 'Logger.wscript';
+import * as Logger from 'Internal/Logger.wscript';
 import * as FileValidation from 'Wolvenkit_FileValidation.wscript';
-import * as TypeHelper from 'TypeHelper.wscript';
+import * as TypeHelper from 'Internal/TypeHelper.wscript';
 import Settings from 'hook_settings.wscript';
 import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidation.wscript";
 
