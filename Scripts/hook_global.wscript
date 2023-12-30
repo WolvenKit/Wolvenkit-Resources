@@ -1,4 +1,6 @@
 // @version 1.0
+// @type hook
+// @hook_extension global
 
 import * as Logger from 'Logger.wscript';
 import * as FileValidation from 'Wolvenkit_FileValidation.wscript';

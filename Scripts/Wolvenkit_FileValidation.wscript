@@ -1,3 +1,5 @@
+// @type lib
+
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 

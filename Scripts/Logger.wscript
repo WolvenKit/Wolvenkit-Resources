@@ -1,4 +1,5 @@
 // @version 1.0
+// @type lib
 // Logger.wscript
 
 import * as TypeHelper from 'TypeHelper.wscript';

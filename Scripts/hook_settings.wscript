@@ -1,4 +1,7 @@
 // @version 1.0
+// @type hook
+// @hook_extension settings
+// ^^^ Just so it's in the hooks tab
 
 /* 
  * See the documentation for more info:
