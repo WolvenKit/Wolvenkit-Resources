@@ -552,8 +552,8 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     let info = `${appearanceName}.partsOverride[${index}]`;
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
     
-    if (isDynamicAppearance && !!depotPath) {
-        appearanceErrorMessages[appearanceName].push('PartsOverride for dynamic variants should be empty!');
+    if (!depotPath) {
+        appearanceErrorMessages[appearanceName].push('PartsOverride: depot path empty, override will be handled by engine instead of ArchiveXL');
     }
 
     if (!checkDepotPath(depotPath, info, true)) {
