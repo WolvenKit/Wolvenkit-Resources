@@ -1,5 +1,6 @@
 // @author Seberoth
 // @version 1.0
+// @type lib
 
 class HashValue {
     constructor(value) {
