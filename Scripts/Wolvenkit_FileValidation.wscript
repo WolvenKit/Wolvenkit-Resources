@@ -523,7 +523,8 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
                 if (meshPath && !meshesInEntityFile.includes(meshPath)) {
                     meshesInEntityFile.push(meshPath);
                 }
-                const componentName = stringifyPotentialCName(component.name);
+                const isDebugComponent = (component.$type || '').toLowerCase().includes('debug');
+                const componentName = stringifyPotentialCName(component.name, `${info}.components[${i}]`, isDebugComponent);
                 if (componentName && !componentsInEntityFile.includes(componentName)) {
                     componentsInEntityFile.push(componentName);
                 }
@@ -690,9 +691,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         appearanceErrorMessages[appearanceName].push(`An appearance with the name ${appearanceName} is already defined in .app file`);
     } else {
         alreadyDefinedAppearanceNames.push(appearanceName);
-    }
-     
-   
+    }   
 
     // we'll collect all mesh paths that are linked in entity paths
     meshPathsFromComponents.length = 0;
@@ -947,7 +946,6 @@ const WITH_MESH = 'withMesh';
 function entFile_appFile_validateComponent(component, _index, validateRecursively, info) {
     let type = component.$type || '';
     const isDebugComponent = type.toLowerCase().includes('debug');
-
     const componentName = stringifyPotentialCName(component.name, info, (isRootEntity || isDebugComponent)) ?? '';
 
     // allow empty paths for debug components
@@ -986,7 +984,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     // Check if component IDs are even numbers and unique within the scope of the entity.
     // They should probably be globally unique, but we're not checking this, oh no, sir.
     // We're considering only the base component here, without checking for variants, hence the cut at the &
-    if (hasMesh && entSettings.checkComponentIdsForGarmentSupport && !!component.id && !info?.startsWith('app')) {
+    if (hasMesh && !isDebugComponent && entSettings.checkComponentIdsForGarmentSupport && !!component.id && !info?.startsWith('app')) {
         const savedComponentName = componentIds[component.id];
         const currentName = componentName.split('&')[0];
         if (!!savedComponentName && currentName !== savedComponentName && !savedComponentName.startsWith("amm")) {
@@ -1085,7 +1083,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         } else if (meshAppearances && meshAppearances.length > 0 && !meshAppearances.includes(meshAppearanceName)) {
             appearanceNotFound(componentMeshPath, meshAppearanceName, `${info} (${componentName})`);
         }
-    })
+    });
 }
 
 // Map: app file depot path name to defined appearances
@@ -1259,7 +1257,7 @@ export function validateEntFile(ent, _entSettings) {
     for (let i = 0; i < (ent.components.length || 0); i++) {
         const component = ent.components[i];
         const isDebugComponent = (component?.$type || '').toLowerCase().includes('debug');
-        const componentName = stringifyPotentialCName(component.name, `ent.components[${i}]`, isRootEntity || isDebugComponent) || `${i}`;
+        const componentName = stringifyPotentialCName(component.name, `ent.components[${i}]`, (isRootEntity || isDebugComponent)) || `${i}`;
         entFile_appFile_validateComponent(component, i, _entSettings.validateRecursively, `ent.components.${componentName}`);
         // put its name into the correct map
         (allComponentNames.includes(componentName) ? duplicateComponentNames : allComponentNames).push(componentName);
