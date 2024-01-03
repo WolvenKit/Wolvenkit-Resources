@@ -32,7 +32,7 @@ function stringifyPotentialCName(cnameOrString, _info = '', suppressSpaceCheck =
 
     if (ret && ret.trim && ret.trim() !== ret) {
         Logger.Error(`${info}has trailing or leading spaces! Make sure to remove them, or the component might not work!`);
-    } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0) {
+    } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0 && !PLACEHOLDER_NAME_REGEX.test(ret || '')) {
         Logger.Warning(`${info}includes spaces. Please use _ instead.`);
     }
     return ret;
@@ -227,7 +227,7 @@ function shouldHaveSubstitution(str, ignoreAsterisk = false) {
  * ----------------
  * ================
  */
-const PLACEHOLDER_NAME_REGEX = /^[^A-Za-z0-9]*$/;
+const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
 let pathToCurrentFile = '';
@@ -507,8 +507,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     const componentsInEntityFile = [];
     if (validateRecursively) {
         try {
-            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
-            
+            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');            
 
             // fileExists has been checked in validatePartsOverride
             const entity = TypeHelper.JsonParse(fileContent);
@@ -678,7 +677,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     let appearanceName = stringifyPotentialCName(appearance.Data ? appearance.Data.name : '');
 
-    if (appearanceName.length === 0 || /^[^A-Za-z0-9]+$/.test(appearanceName)) return;
+    if (appearanceName.length === 0 || PLACEHOLDER_NAME_REGEX.test(appearanceName)) return;
 
     if (!appearanceName) {
         appearanceName = `appearances[${index}]`;
@@ -1121,17 +1120,18 @@ const invalidFiles = [];
  */
 function entFile_validateAppearance(appearance) {
     const appearanceName = (stringifyPotentialCName(appearance.name) || '');
-    let appearanceNameInAppFile = (stringifyPotentialCName(appearance.appearanceName) || '').trim()
-    if (!appearanceNameInAppFile || appearanceNameInAppFile === 'None') {
-        appearanceNameInAppFile = appearanceName;
-        hasEmptyAppearanceName = true;
-    }
-
+    
     // ignore separator appearances such as
     // =============================
     // -----------------------------
     if (appearanceName.length === 0 || PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
         return;
+    }
+    
+    let appearanceNameInAppFile = (stringifyPotentialCName(appearance.appearanceName) || '').trim()
+    if (!appearanceNameInAppFile || appearanceNameInAppFile === 'None') {
+        appearanceNameInAppFile = appearanceName;
+        hasEmptyAppearanceName = true;
     }
 
     const info = `.ent appearances.${appearanceName}`;
@@ -1320,9 +1320,9 @@ export function validateEntFile(ent, _entSettings) {
         const appearance = ent.appearances[i];
         entFile_validateAppearance(appearance, i);
         const name = (stringifyPotentialCName(appearance.name) || '');
-        entAppearanceNames.push(name);
-        isUsingSuffixesOnDynamicEnt ||= (stringifyPotentialCName(appearance.appearanceName) || '').includes('&');
-        isUsingSuffixesOnDynamicEnt ||= name.includes('&');
+        entAppearanceNames.push(name);        
+        isUsingSuffixesOnDynamicEnt ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');        
+        isUsingSuffixesOnDynamicEnt ||= name.includes('&');            
         pathToCurrentFile = _pathToCurrentFile;
     }
 
