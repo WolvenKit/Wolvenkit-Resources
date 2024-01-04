@@ -1017,7 +1017,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     }
 
     const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
-
+    
     componentMeshPaths.forEach((componentMeshPath) => {
         // check for component name uniqueness
         if (meshesByComponentName[componentName] && meshesByComponentName[componentName] !== meshDepotPath) {
@@ -1062,6 +1062,12 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             localErrors.push(`path: ${MISSING_PREFIX_WARNING}`);
         }
+        
+        // if we're resolving paths: check if the files exists
+        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))) {
+            localErrors.push(`${componentMeshPath} not found in game or project files`);
+        }
+        
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
             localErrors.push(`path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
