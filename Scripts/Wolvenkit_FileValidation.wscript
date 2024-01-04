@@ -566,7 +566,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     }
 
     if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
-        Logger.Warning(`${info}: Substitution in depot path not supported.`);
+        Logger.Warning(`${info}: Substitution for depot path not supported in .app files, use mesh_entity.`);
     }
 
     const appFilePath = pathToCurrentFile;
@@ -1163,11 +1163,12 @@ function entFile_validateAppearance(appearance) {
     const entFilePath = pathToCurrentFile;
     pathToCurrentFile = appFilePath;
 
-    const namesInAppFile = getAppearanceNamesInAppFile(appFilePath, appearanceName) || [];
-
     // if we're being dynamic here, also check for appearance names with suffixes. 
-    if (!namesInAppFile.includes(appearanceNameInAppFile)
-        && (!isDynamicAppearance || !namesInAppFile.includes(appearanceNameInAppFile.split('&').pop() || ''))
+    const namesInAppFile = getAppearanceNamesInAppFile(appFilePath, appearanceName) || []
+    
+    const dynamicNamesInAppFile = namesInAppFile.map((name) => name.split('&')[0]);
+    if (!namesInAppFile.includes(appearanceNameInAppFile) && 
+        (!isDynamicAppearance || !dynamicNamesInAppFile.includes(appearanceNameInAppFile))
     ) {
         entAppearancesNotFoundByFile[appFilePath] ||= {};
         entAppearancesNotFoundByFile[appFilePath][appearanceName] = appearanceNameInAppFile;
