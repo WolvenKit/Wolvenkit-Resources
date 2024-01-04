@@ -1020,12 +1020,11 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     componentMeshPaths.forEach((componentMeshPath) => {
         // check for component name uniqueness
-        if (meshesByComponentName[componentName] && meshesByComponentName[componentName] !== componentMeshPath) {
-            componentNameCollisions[componentMeshPath] = componentName;
+        if (meshesByComponentName[componentName] && meshesByComponentName[componentName] !== meshDepotPath) {
+            componentNameCollisions[meshDepotPath] = componentName;
             componentNameCollisions[meshesByComponentName[componentName]] = componentName;
         }
-
-        meshesByComponentName[componentName] = componentMeshPath;
+        meshesByComponentName[componentName] = meshDepotPath;
 
         if (/^\d+$/.test(componentMeshPath)) {
             return;
