@@ -1320,19 +1320,19 @@ export function validateEntFile(ent, _entSettings) {
 
     const _pathToCurrentFile = pathToCurrentFile;
 
-    let isUsingSuffixesOnDynamicEnt = false;
+    let isUsingSuffixesOnRootEntityNames = false;
 
     for (let i = 0; i < ent.appearances.length; i++) {
         const appearance = ent.appearances[i];
         entFile_validateAppearance(appearance, i);
         const name = (stringifyPotentialCName(appearance.name) || '');
         entAppearanceNames.push(name);        
-        isUsingSuffixesOnDynamicEnt ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');        
-        isUsingSuffixesOnDynamicEnt ||= name.includes('&');            
+        isUsingSuffixesOnRootEntityNames ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');        
+        isUsingSuffixesOnRootEntityNames ||= name.includes('&');            
         pathToCurrentFile = _pathToCurrentFile;
     }
 
-    if (isUsingSuffixesOnDynamicEnt) {
+    if (isUsingSuffixesOnRootEntityNames && isDynamicAppearance && isRootEntity) {
         Logger.Warning('Dynamic appearances: You\'re not supposed to use suffixes (&something) in names or appearance names in your root entity!');
     }
     if (isRootEntity && isDynamicAppearance && visualTagList.includes('EmptyAppearance:FPP')) {
