@@ -947,8 +947,13 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     const isDebugComponent = type.toLowerCase().includes('debug');
     const componentName = stringifyPotentialCName(component.name, info, (isRootEntity || isDebugComponent)) ?? '';
 
+    // Those components only exist for ArchiveXL's internal logic, like for body type flags
+    if (componentName?.includes(":")) {
+        return;
+    }
+        
     // allow empty paths for debug components
-    let depotPathCanBeEmpty = isDebugComponent;
+    let depotPathCanBeEmpty = isDebugComponent; 
     let componentPropertyKeyWithDepotPath = '';
 
     // entGarmentSkinnedMeshComponent - entSkinnedMeshComponent - entMeshComponent
