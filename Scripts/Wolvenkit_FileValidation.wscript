@@ -944,8 +944,6 @@ function getArchiveXlMeshPaths(depotPath) {
         paths.push(depotPath);
     } else {
         paths = resolveSubstitution([ depotPath ]);
-        Logger.Success(`resolved substitution: ${depotPath}`);
-        Logger.Success(paths);
     }
 
     // If nothing was substituted: We're done here
