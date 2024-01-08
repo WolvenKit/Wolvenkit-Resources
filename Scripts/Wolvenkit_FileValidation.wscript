@@ -2,6 +2,7 @@
 
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
+import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -156,6 +157,8 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
         return false;
     }
 
+    
+    
     // ArchiveXL 1.5 variant magic requires checking this in a loop
     const componentMeshPaths = getArchiveXlMeshPaths(stringifyPotentialCName(depotPath));
     let ret = true;
@@ -864,10 +867,20 @@ function getArchiveXLVariantComponentNames() {
 }
 
 const archiveXLVarsAndValues = {
-    '{gender}': ['m', 'w'],
     '{camera}': ['fpp', 'tpp'],
     '{legs_state}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
+    '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
+    '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
 }
+
+// For archive XL dynamic substitution: We need to make sure that we only check for valid gender/body combinations
+const genderToBodyMap = ArchiveXLConstants.genderToBodyMap;
+
+// something like \p{gender}a\ or just \{gender}\
+const genderMatchRegex =  /\\[^\\]*{gender}[^\\]*\\/
+
+// This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
+let genderPartialMatch = '';
 
 function resolveSubstitution(paths) {
 
@@ -877,22 +890,40 @@ function resolveSubstitution(paths) {
     if (!paths.find((path) => path.includes('{') || path.includes('}'))) {
         return paths;
     }
-
-    let ret = [];
+     
+    let ret = []
     paths.forEach((path) => {
         if(!shouldHaveSubstitution(path)) {
             ret.push(path);
         }
         Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
             if (path.includes(variantFlag)) {
+                // For dynamic substitution and bodies: We need to check whether or not those are gendered
+                
+                // if there is body/gender substitution in the path and body was already resolved, skip this one, because 
+                // a version of it exists where gender was substituted first. We need this to check body validity.    
+                if (!!genderPartialMatch && variantFlag === '{gender}' && !path.includes('{body}')) {
+                    return;
+                }
+                
+                // This is either falsy, or can be used to find the body gender in a map
+                let bodyGender = '';
+                if (!!genderPartialMatch && variantFlag === '{body}' && !path.includes('{gender}')) {
+                    const femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');
+                    bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';                    
+                }
+                
                 archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
-                    ret.push(path.replace(variantFlag, variantReplacement));
+                    // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
+                    const isValid = !bodyGender || !!genderToBodyMap[bodyGender] && genderToBodyMap[bodyGender].includes(variantReplacement)
+                    ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));                    
                 });
-            }
+            }         
         });
     });
         
-    return resolveSubstitution(ret);
+    // remove invalid substitutions and duplicates (via set)
+    return resolveSubstitution(Array.from(new Set(ret)).filter((path) => !path.includes("{INVALID}")));
 }
 
 function getArchiveXlMeshPaths(depotPath) {
@@ -903,12 +934,18 @@ function getArchiveXlMeshPaths(depotPath) {
     if (!depotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
         return [depotPath];
     }
+
+    if (depotPath.includes('{gender}') && depotPath.includes('{body}') && depotPath.match(genderMatchRegex)) {
+        genderPartialMatch = depotPath.match(genderMatchRegex).pop() || '';
+    }
     
     let paths = [];
     if (!(shouldHaveSubstitution(depotPath) && checkCurlyBraces(depotPath))) {
         paths.push(depotPath);
     } else {
         paths = resolveSubstitution([ depotPath ]);
+        Logger.Success(`resolved substitution: ${depotPath}`);
+        Logger.Success(paths);
     }
 
     // If nothing was substituted: We're done here
