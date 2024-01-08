@@ -152,7 +152,7 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
 
     // Check if the file is a numeric hash
     if (isNumericHash(depotPath)) {
-        Logger.Warning(`${info}No depot path set, only hash given`);
+        Logger.Info(`${info}No depot path set, only hash given`);
         return false;
     }
 
@@ -1001,15 +1001,15 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         Logger.Warning(`${info} name: invalid substitution, it's 'gender=w'!`);
     }
 
-    const meshDepotPath = `${hasMesh ? stringifyPotentialCName(component[componentPropertyKeyWithDepotPath]?.DepotPath) : '' || ''}`;
+    const meshDepotPath = `${hasMesh ? stringifyPotentialCName(component[componentPropertyKeyWithDepotPath]?.DepotPath) : '' || ''}`.trim();
 
     if (!validateRecursively || !hasMesh || hasUppercasePaths || meshDepotPath.endsWith('.morphtarget')) {
         // Logger.Error(`${componentMeshPath}: not validating mesh`);
         return;
     }
 
-    if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath)) {
-        Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} does not end with .mesh! This will crash your game!`);
+    if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath) && !meshDepotPath.endsWith('.w2mesh')) {
+        Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
     }
 
     if (meshDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !meshDepotPath.includes('{')) {
@@ -1245,6 +1245,8 @@ export function validateEntFile(ent, _entSettings) {
     meshAppearancesNotFound = {};
     meshAppearancesNotFoundByComponent = {};
 
+    const currentFileName = pathToCurrentFile.replace(/^.*[\\/]/, '');
+
     // Collect tags
     const visualTagList = (ent.visualTagsSchema?.Data?.visualTags?.tags || []).map((tag) => stringifyPotentialCName(tag));
 
@@ -1254,6 +1256,18 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     isRootEntity = isDynamicAppearance || (ent.appearances?.length || 0) > 0;
+
+    // check entity type  
+    const entityType = ent.entity?.Data?.$type;
+    if (isRootEntity) {
+        if (entityType === "entEntity") {
+            Logger.Warning(`${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
+        } else if ((ent.components || []).length === 0) {
+            Logger.Info(`${currentFileName} seems to be a root entity, but you don't have any components.`);
+        }
+    } else if (entityType === "gameGarmentItemObject") {
+        Logger.Info(`${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
+    }       
 
     if (visualTagList.some((tag) => tag.startsWith('hide'))) {
         Logger.Warning('Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
@@ -1269,8 +1283,7 @@ export function validateEntFile(ent, _entSettings) {
         (allComponentNames.includes(componentName) ? duplicateComponentNames : allComponentNames).push(componentName);
     }
 
-    if (componentIdErrors.length > 0) {
-        const currentFileName = pathToCurrentFile.replace(/^.*[\\/]/, '');
+    if (componentIdErrors.length > 0) {       
         Logger.Warning(`${currentFileName}: Component ID(s) may cause errors with garment support: ${formatArrayForPrint(componentIdErrors)}`);
     }
 
