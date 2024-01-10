@@ -1242,25 +1242,25 @@ function entFile_validateAppearance(appearance) {
 
 const emptyAppearanceString = "base\\characters\\appearances\\player\\items\\empty_appearance.app / default";
 
-function validateAppearanceNameSuffixes(appearanceName, entAppearanceNames) {
+function validateAppearanceNameSuffixes(appearanceName, entAppearanceNames, tags) {
     if (!appearanceName || !appearanceName.includes('&')) {
         return;
     }
-    if (appearanceName.includes('FPP') && !entAppearanceNames.includes(appearanceName.replace('FPP', 'TPP'))) {
+    if (appearanceName.includes('FPP') && !entAppearanceNames.includes(appearanceName.replace('FPP', 'TPP')) && !tags.includes('EmptyAppearance:TPP')) {
         Logger.Warning(`${appearanceName}: You have not defined a third person appearance.`)
         Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:TPP" or define "${appearanceName.replace('FPP', 'TPP')}" and point it to ${emptyAppearanceString}.`);
     }
-    if (appearanceName.includes('TPP') && !entAppearanceNames.includes(appearanceName.replace('TPP', 'FPP'))) {
+    if (appearanceName.includes('TPP') && !entAppearanceNames.includes(appearanceName.replace('TPP', 'FPP')) && !tags.includes('EmptyAppearance:FFP')) {
         Logger.Warning(`${appearanceName}: You have not defined a first person appearance.`);
         Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:FPP" or define "${appearanceName.replace('TPP', 'FPP')}" and point it to ${emptyAppearanceString}.`);
     }
-    if (appearanceName.includes('Male') && !entAppearanceNames.includes(appearanceName.replace('Male', 'Female'))) {
+    if (appearanceName.includes('Male') && !entAppearanceNames.includes(appearanceName.replace('Male', 'Female')) && !tags.includes('EmptyAppearance:Female')) {
         Logger.Warning(`${appearanceName}: You have not defined a female variant.`);
         Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:Female" or define "${appearanceName.replace('Male', 'Female')}" and point it to ${emptyAppearanceString}.`);
     }
-    if (appearanceName.includes('Female') && !entAppearanceNames.includes(appearanceName.replace('Female', 'Male'))) {
+    if (appearanceName.includes('Female') && !entAppearanceNames.includes(appearanceName.replace('Female', 'Male')) && !tags.includes('EmptyAppearance:Male')) {
         Logger.Warning(`${appearanceName}: You have not defined a male variant.`);
-        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:Female" or define "${appearanceName.replace('Female', 'Male')}" and point it to ${emptyAppearanceString}.`);
+        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:Male" or define "${appearanceName.replace('Female', 'Male')}" and point it to ${emptyAppearanceString}.`);
     }
 }
 
@@ -1393,10 +1393,11 @@ export function validateEntFile(ent, _entSettings) {
         Logger.Warning(`Dynamic appearances: EmptyAppearance:FPP might be flaky. Rename your appearance(s) in the .app file like ${exampleAppearanceName}&camera:tpp instead.`);
     }
 
+    
     // now validate names
     for (let i = 0; i < ent.appearances.length; i++) {
         const appearance = ent.appearances[i];
-        validateAppearanceNameSuffixes(stringifyPotentialCName(appearance.name, `ent.appearances[${i}].name`) || '', entAppearanceNames);
+        validateAppearanceNameSuffixes(stringifyPotentialCName(appearance.name, `ent.appearances[${i}].name`) || '', entAppearanceNames, visualTagList);
     }
 
     // validate default appearance - not for dynamic appearances, because those will never be props.
@@ -1414,9 +1415,8 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     if (entSettings.checkDynamicAppearanceTag && (hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length) {
-        const visualTagList = ent.visualTagsSchema?.Data?.visualTags?.tags || [];
         // Do we have a visual tag 'DynamicAppearance'?
-        if (!visualTagList.map((tag) => stringifyPotentialCName(tag)).includes('DynamicAppearance')) {
+        if (!visualTagList.includes('DynamicAppearance')) {
             Logger.Info('If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
                 + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
                 ' If everything is fine, ignore this warning.');
