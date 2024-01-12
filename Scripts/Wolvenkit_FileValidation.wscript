@@ -188,14 +188,18 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
 }
 
 const validMaterialFileExtensions = [ '.mi', '.mt', '.remt' ];
-function validateShaderTemplate(depotPath, _info) {
+function validateShaderTemplate(depotPath, _info) {    
     if (!checkDepotPath(depotPath, _info)) {
         return;
     }
-
+    
     // shouldn't be falsy, checkDepotPath should take care of that, but better safe than sorry
     const basePathString = stringifyPotentialCName(depotPath) || '';
-
+    
+    if (basePathString === pathToCurrentFile) {
+        Logger.Error(`${basePathString} uses itself as baseMaterial. This _will_ crash the game.`);
+    }
+    
     const extensionParts = basePathString.match(/[^.]+$/);
 
     if (!extensionParts || validMaterialFileExtensions.includes(extensionParts[0])) {
@@ -1471,11 +1475,6 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
         return;
     }
 
-    if (validateRecursively && materialDepotPath.endsWith('.mi') && !materialDepotPath.startsWith('base')) {
-        const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(materialDepotPath, 'json'));
-        _validateMiFile(miFileContent);
-    }
-
     switch (key) {
         case "MultilayerSetup":
             if (!materialDepotPath.endsWith(".mlsetup")) {
@@ -1539,6 +1538,14 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
 
     if (checkDepotPath(baseMaterial, materialName)) {
         validateShaderTemplate(baseMaterial, materialName);
+    }
+    
+    if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
+        const _currentFilePath = pathToCurrentFile;
+        const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
+        pathToCurrentFile = baseMaterial;
+        _validateMiFile(miFileContent);
+        pathToCurrentFile = _currentFilePath;
     }
 
     // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
