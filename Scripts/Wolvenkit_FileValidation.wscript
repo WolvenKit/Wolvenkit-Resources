@@ -902,19 +902,21 @@ function resolveSubstitution(paths) {
         }
         Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
             if (path.includes(variantFlag)) {
-                // For dynamic substitution and bodies: We need to check whether or not those are gendered
-                
                 // This is either falsy, or can be used to find the body gender in a map
                 let bodyGender = '';
-                if (!!genderPartialMatch && variantFlag === '{body}' && !path.includes('{gender}')) {
-                    const femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');
+                // For dynamic substitution and bodies: We need to check whether or not those are gendered
+                if (!!genderPartialMatch && variantFlag === '{body}') {
+                    let femGenderPartialString = "pwa"
+                    if (!path.includes('{gender}')) {
+                        femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');                        
+                    }                    
                     bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';                    
                 }
                 
                 archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
                     // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
-                    const isValid = !bodyGender || !!genderToBodyMap[bodyGender] && genderToBodyMap[bodyGender].includes(variantReplacement)
-                    ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));                    
+                    const isValid = !bodyGender || !!genderToBodyMap[bodyGender] && genderToBodyMap[bodyGender].includes(variantReplacement)                    
+                    ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));
                 });
             }         
         });
