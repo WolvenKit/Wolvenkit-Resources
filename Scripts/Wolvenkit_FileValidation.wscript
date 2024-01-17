@@ -179,7 +179,7 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
             if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
                 Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
-        } else {
+        } else if (!(isDynamicAppearance && isRootEntity)) {
             Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
         }
         ret = false;
@@ -559,8 +559,8 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     let info = `${appearanceName}.partsOverride[${index}]`;
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
     
-    if (!depotPath) {
-        appearanceErrorMessages[appearanceName].push('PartsOverride: depot path empty, override will be handled by engine instead of ArchiveXL');
+    if (!!depotPath) {
+        appearanceErrorMessages[appearanceName].push('PartsOverride: depot path given, override will be handled by engine instead of ArchiveXL');
     }
 
     if (!checkDepotPath(depotPath, info, true)) {
@@ -872,7 +872,7 @@ function getArchiveXLVariantComponentNames() {
 
 const archiveXLVarsAndValues = {
     '{camera}': ['fpp', 'tpp'],
-    '{legs_state}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
+    '{feet}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
     '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
     '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
 }
@@ -904,12 +904,6 @@ function resolveSubstitution(paths) {
             if (path.includes(variantFlag)) {
                 // For dynamic substitution and bodies: We need to check whether or not those are gendered
                 
-                // if there is body/gender substitution in the path and body was already resolved, skip this one, because 
-                // a version of it exists where gender was substituted first. We need this to check body validity.    
-                if (!!genderPartialMatch && variantFlag === '{gender}' && !path.includes('{body}')) {
-                    return;
-                }
-                
                 // This is either falsy, or can be used to find the body gender in a map
                 let bodyGender = '';
                 if (!!genderPartialMatch && variantFlag === '{body}' && !path.includes('{gender}')) {
@@ -925,9 +919,12 @@ function resolveSubstitution(paths) {
             }         
         });
     });
-        
+    
     // remove invalid substitutions and duplicates (via set)
-    return resolveSubstitution(Array.from(new Set(ret)).filter((path) => !path.includes("{INVALID}")));
+    return resolveSubstitution(Array.from(new Set(ret))
+        .filter((path) => !path.includes("{INVALID}"))
+        .map((path) => path.replace(/^\*/, ""))
+    );
 }
 
 function getArchiveXlMeshPaths(depotPath) {
@@ -1062,6 +1059,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
     
+    // Logger.Success(componentMeshPaths);
     componentMeshPaths.forEach((componentMeshPath) => {
         // check for component name uniqueness
         if (meshesByComponentName[componentName] && meshesByComponentName[componentName] !== meshDepotPath) {

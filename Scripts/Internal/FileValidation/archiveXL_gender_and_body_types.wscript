@@ -5,7 +5,7 @@ export class ArchiveXLConstants {
     static allPotentialBodies = [
         'base_body', 
         'lush', 
-        'adonis'
+        // 'adonis'
     ];
     
     // Which bodies from the array above are valid for which body gender?
