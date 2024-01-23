@@ -1471,7 +1471,7 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
 
     const materialDepotPath = stringifyPotentialCName(materialValue.DepotPath);
 
-    if (hasUppercase(materialDepotPath) || isNumericHash(materialDepotPath)) {
+    if (!materialDepotPath || hasUppercase(materialDepotPath) || isNumericHash(materialDepotPath)) {
         return;
     }
 
