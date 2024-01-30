@@ -1,0 +1,2 @@
+# Declare wscript files to use the javascript highlighter
+*.wscript linguist-language=JavaScript
