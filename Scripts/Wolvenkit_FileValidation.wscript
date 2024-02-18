@@ -151,6 +151,11 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
         return false;
     }
 
+    // skip example template files
+    if (depotPath.includes("extra_long_path")) {
+        return true;
+    }
+    
     // Check if the file is a numeric hash
     if (isNumericHash(depotPath)) {
         Logger.Info(`${info}No depot path set, only hash given`);
