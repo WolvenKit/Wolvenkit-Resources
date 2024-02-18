@@ -152,7 +152,7 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
     }
 
     // skip example template files
-    if (depotPath.includes("extra_long_path")) {
+    if (depotPath.includes && depotPath.includes("extra_long_path")) {
         return true;
     }
     
