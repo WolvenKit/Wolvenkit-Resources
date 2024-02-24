@@ -55,6 +55,9 @@ globalThis.onSave = function (ext, file) {
             case "mi":
                 FileValidation.validateMiFile(data, Settings.Mi);
                 break;
+            case "mltemplate":
+                FileValidation.validateMlTemplateFile(data, {});
+                break;
             case "workspot":
                 FileValidation.validateWorkspotFile(data, Settings.Workspot);
                 file = TypeHelper.JsonStringify(fileContent);

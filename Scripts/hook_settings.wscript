@@ -103,6 +103,12 @@ const Settings = {
          * in the root entity, or the presence of string substitution in nested files.
          */
         checkDynamicAppearanceTag: true,
+
+        /*
+         * Checks for {body_type} in dynamic variants and yells at you if you forgot to do refits.
+         */
+        warnAboutMissingRefits: false,
+
         /*
          * Set to "false" to suppress warnings about incomplete substitution
          */

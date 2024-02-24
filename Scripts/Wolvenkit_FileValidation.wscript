@@ -1113,7 +1113,10 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         }
         
         // if we're resolving paths: check if the files exists
-        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))) {
+        // Skip refit check if user doesn't want refit check
+        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", "")) 
+            && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
+        ) {
             localErrors.push(`${componentMeshPath} not found in game or project files`);
         }
         
@@ -1798,6 +1801,28 @@ export function validateMeshFile(mesh, _meshSettings) {
 
 //#endregion
 
+
+//#region mlTemplate
+
+export function validateMlTemplateFile(mltemplate, _mlTemplateSettings) {
+    if (mltemplate["Data"] && mi["Data"]["RootChunk"]) {
+        return validateMlTemplateFile(mltemplate["Data"]["RootChunk"]);
+    }
+    if (mltemplate.colorTexture?.DepotPath) {
+        checkDepotPath(mltemplate.colorTexture?.DepotPath, "mltemplate.colorTexture");
+    }
+    if (mltemplate.metalnessTexture?.DepotPath) {
+        checkDepotPath(mltemplate.metalnessTexture?.DepotPath, "mltemplate.metalnessTexture");
+    }
+    if (mltemplate.normalTexture?.DepotPath) {
+        checkDepotPath(mltemplate.normalTexture?.DepotPath, "mltemplate.normalTexture");
+    }
+    if (mltemplate.roughnessTexture?.DepotPath) {
+        checkDepotPath(mltemplate.roughnessTexture?.DepotPath, "mltemplate.roughnessTexture");
+    }
+}
+
+//#endregion
 
 //#region miFile
 
