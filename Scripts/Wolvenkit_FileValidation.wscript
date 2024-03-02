@@ -1861,6 +1861,7 @@ export function validateMiFile(mi, _miSettings) {
 }
 
 function _validateMiFile(mi, debugInfo) {
+    if (!mi) return;
     if (mi["Data"] && mi["Data"]["RootChunk"]) {
         return _validateMiFile(mi["Data"]["RootChunk"]);
     }
