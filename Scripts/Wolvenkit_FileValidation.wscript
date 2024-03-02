@@ -388,13 +388,28 @@ function printInvalidAppearanceWarningIfFound() {
 
     const appearanceErrors = Object.keys(appearanceErrorMessages) || [];
     if (appearanceErrors.length) {
-        Logger.Warning('Appearances have errors. Here\'s a list:');
+        Logger.Warning('Some of your appearances have issues. Here\'s a list:');
         appearanceErrors.forEach((key) => {
             const allErrors = (appearanceErrorMessages[key] || []);
             const foundErrors = allErrors.filter(function (item, pos, self) {
                 return self.indexOf(item) === pos;
+            }).map((errorMsg) => errorMsg.split('|'))
+                .reduce((acc, split) => {
+                    const msg = split.length > 1 ? split[1] : split[0];
+                    acc[msg] = split.length > 1 ? split[0] : 'INFO'; 
+                    return acc;
+                }, {});
+            
+            // now print them - consider severity levels
+            Object.keys(foundErrors).forEach((errorMsg) => {                
+                switch (foundErrors[errorMsg] || 'ERROR') {
+                    case 'WARNING': Logger.Warning(`  ${errorMsg}`); break;
+                    case 'ERROR': Logger.Error(`  ${errorMsg}`); break;
+                    case 'INFO': 
+                    default:
+                        Logger.Info(`  ${errorMsg}`); break;
+                }
             });
-            foundErrors.forEach((err) => Logger.Warning(`${key}: ${err}`));
         })
     }
 
@@ -565,7 +580,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
     
     if (!!depotPath) {
-        appearanceErrorMessages[appearanceName].push('PartsOverride: depot path given, override will be handled by engine instead of ArchiveXL');
+        appearanceErrorMessages[appearanceName].push('INFO|PartsOverride: depot path given, override will be handled by engine instead of ArchiveXL');
     }
 
     if (!checkDepotPath(depotPath, info, true)) {
@@ -657,10 +672,10 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
         tagNames.push(tag);
         if (tag.startsWith("hide_") && !hidingTags.includes(tag.replace("hide_", ""))) {
             // verify correct hiding tags
-            appearanceErrorMessages[appearanceName].push(`unknown hiding tag: ${tag}`);            
+            appearanceErrorMessages[appearanceName].push(`INFO|unknown hiding tag: ${tag}`);            
         } else if (tag.startsWith("force_") && !forcingTags.includes(tag.replace("force_", ""))) {
             // verify correct anti-hiding tags
-            appearanceErrorMessages[appearanceName].push(`unknown enforcing tag: ${tag}`);            
+            appearanceErrorMessages[appearanceName].push(`INFO|unknown enforcing tag: ${tag}`);            
         } else if (usedAppearanceTags.includes(tag) && !ignoredTags.includes(tag)) {
             // verify tag uniqueness
             duplicateTags.push(tag);
@@ -669,7 +684,7 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
         }
     });
     if (isWeaponAppFile && duplicateTags.length > 0) {
-        appearanceErrorMessages[appearanceName].push(`non-unique tags: [${duplicateTags.join(', ')}]`);
+        appearanceErrorMessages[appearanceName].push(`INFO|non-unique tags: [${duplicateTags.join(', ')}]`);
     }
     
     
@@ -678,7 +693,7 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
         const hiddenComponentNames = (componentsByEntityPath[path] || []).filter((componentName) => /^\w0_.+/.test(componentName));        
         if (!hiddenComponentNames.length) return;
 
-        appearanceErrorMessages[appearanceName].push(`has components hidden by your .app file: [${hiddenComponentNames.join(', ')}]`)
+        appearanceErrorMessages[appearanceName].push(`INFO|has components hidden by your .app file: [${hiddenComponentNames.join(', ')}]`)
     })
 }
 function appFile_validateAppearance(appearance, index, validateRecursively, validateComponentCollision) {
@@ -693,13 +708,13 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     if (!appearanceName) {
         appearanceName = `appearances[${index}]`;
-        appearanceErrorMessages[appearanceName].push(`appearance definition #${index} has no name yet`);
+        appearanceErrorMessages[appearanceName].push(`INFO|appearance definition #${index} has no name yet`);
     }
 
     appearanceErrorMessages[appearanceName] ||= [];
 
     if (alreadyDefinedAppearanceNames.includes(appearanceName)) {
-        appearanceErrorMessages[appearanceName].push(`An appearance with the name ${appearanceName} is already defined in .app file`);
+        appearanceErrorMessages[appearanceName].push(`INFO|An appearance with the name ${appearanceName} is already defined in .app file`);
     } else {
         alreadyDefinedAppearanceNames.push(appearanceName);
     }   
@@ -714,7 +729,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     componentIds.length = 0;
 
     if (isDynamicAppearance && components.length) {
-        appearanceErrorMessages[appearanceName].push(`.app ${appearanceName} is loaded as dynamic, but it has components outside of a mesh entity. They will be IGNORED.`)
+        appearanceErrorMessages[appearanceName].push(`WARNING|.app ${appearanceName} is loaded as dynamic, but it has components outside of a mesh entity. They will be IGNORED.`)
     } else {
         for (let i = 0; i < components.length; i++) {
             const component = components[i];
@@ -756,7 +771,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
             // check if it's colliding with a different variant of itself
             .filter((name) => !componentOverrideCollisions.map((name) => name.replace(/&.*/, '')).includes(name))
             .forEach((name) => {
-                appearanceErrorMessages[appearanceName].push(`components.${name}: Multiple components point at the same mesh. Did you make a copy-paste mistake?`);
+                appearanceErrorMessages[appearanceName].push(`INFO|components.${name}: Multiple components point at the same mesh. Did you make a copy-paste mistake?`);
             });
     }
 
@@ -766,7 +781,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     const numAmmComponents = allComponentNames.filter((name) => !!name && name.startsWith('amm_prop_slot')).length;
     if (numAmmComponents > 0 && numAmmComponents < 4 && !allComponentNames.includes('amm_prop_slot1')) {
-        appearanceErrorMessages[appearanceName].push(`Is this an AMM prop appearance? Only components with the names "amm_prop_slot1" - "amm_prop_slot4" will support scaling.`);
+        appearanceErrorMessages[appearanceName].push(`INFO|Is this an AMM prop appearance? Only components with the names "amm_prop_slot1" - "amm_prop_slot4" will support scaling.`);
     }
 
     // Dynamic appearances will ignore the components in the mesh. We'll use 'isUsingSubstitution' as indicator,
@@ -776,7 +791,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
             .filter((path, i, array) => !!path && array.indexOf(path) === i) // only unique
             .filter((path) => meshPathsFromEntityFiles.includes(path))
             .forEach((path) => {
-                appearanceErrorMessages[appearanceName].push(`Path is added twice (via entity file and via .app). Use only one: ${path}`);
+                appearanceErrorMessages[appearanceName].push(`WARNING|Path is added twice (via entity file and via .app). Use only one: ${path}`);
             });
     }
 
@@ -784,7 +799,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     if (isDynamicAppearance) {
         allComponentNames.filter((name) => name.includes('gender=f'))
             .forEach((name) => {
-                appearanceErrorMessages[appearanceName].push(`components.${name}: Incorrect substitution! It's 'gender=w'!`);
+                appearanceErrorMessages[appearanceName].push(`ERROR|components.${name}: Incorrect substitution! It's 'gender=w'!`);
             });
     }
 
