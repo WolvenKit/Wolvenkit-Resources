@@ -1521,6 +1521,12 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
                 return;
             }
             break;
+        case "IrisColorGradient":
+            if (!materialDepotPath.endsWith(".gradient")) {
+                Logger.Error(`${info}${materialDepotPath} doesn't end in .gradient. This will cause crashes.`);
+                return;
+            }
+            break;
     }
     if ((materialValue.Flags || '').includes('Embedded')) {
         Logger.Warning(`${info} is set to Embedded. This might not work as you expect it.`);        
