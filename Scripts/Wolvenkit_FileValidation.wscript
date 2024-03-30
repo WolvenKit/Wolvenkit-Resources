@@ -158,7 +158,7 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
     
     // Check if the file is a numeric hash
     if (isNumericHash(depotPath)) {
-        Logger.Info(`${info}No depot path set, only hash given`);
+        Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
         return false;
     }
 
