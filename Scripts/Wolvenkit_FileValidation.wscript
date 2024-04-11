@@ -179,14 +179,15 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
             return;
         }
         // File does not exist
+
         if (shouldHaveSubstitution(resolvedMeshPath)) {
             const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
             if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
                 Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
-        } else if (!(isDynamicAppearance && isRootEntity)) {
+        } else if (isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {          
             Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
-        }
+        } 
         ret = false;
     })
     return ret;
@@ -647,7 +648,7 @@ const ignoredTags = [
 
 const hidingTags = [
     "H1", "F1", "T1", "T2", "L1", "S1", "T1part", "Hair", "Genitals",
-    "Head", "Torso", "LowerAbdomen", "UpperAbdomen", "CollarBone", "Arms", "Thighs", "Calves", "Ankles", "Ankles",
+    "Head", "Torso", "Chest", "LowerAbdomen", "UpperAbdomen", "CollarBone", "Arms", "Thighs", "Calves", "Ankles", "Ankles",
     "Feet" , "Legs"
 ];
 const forcingTags = [
