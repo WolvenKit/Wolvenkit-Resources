@@ -440,13 +440,13 @@ function printSubstitutionWarningsIfFound() {
         return;
     }
 
-    Logger.Info('Some of your components seem to include ArchiveXL dynamic variants, but they may have errors:');
+    Logger.Info('Some of your components seem to use ArchiveXL dynamic variants, but they may have issues:');
     warningKeys.forEach((warningSource) => {
         const warnings = (invalidVariantAndSubstitutions[warningSource] || []).filter(function (item, pos, self) {
             return self.indexOf(item) === pos;
         });
         if (warnings.length) {
-            const output = warnings.length <= 1 ? `${warnings}` : `\n  ${warnings.join(',\n ')}`
+            const output = warnings.length <= 1 ? `${warnings}` : `\n\t${warnings.map((w) => w.replace(`${warningSource}: `, '')).join('\n\t')}`
             Logger.Warning(`${warningSource}: ${output}`);
         }
     });
@@ -1047,7 +1047,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     // Check if component IDs are even numbers and unique within the scope of the entity.
     // They should probably be globally unique, but we're not checking this, oh no, sir.
     // We're considering only the base component here, without checking for variants, hence the cut at the &
-    if (hasMesh && !isDebugComponent && entSettings.checkComponentIdsForGarmentSupport && !!component.id && !info?.startsWith('app')) {
+    if (hasMesh && !isDebugComponent && !info?.startsWith('app') && entSettings.checkComponentIdsForGarmentSupport && !!component.id ) {
         const savedComponentName = componentIds[component.id];
         const currentName = componentName.split('&')[0];
         if (!!savedComponentName && currentName !== savedComponentName && !savedComponentName.startsWith("amm")) {
@@ -1071,7 +1071,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         // Logger.Error(`${componentMeshPath}: not validating mesh`);
         return;
     }
-
+    
     if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath) && !meshDepotPath.endsWith('.w2mesh')) {
         Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
     }
@@ -1080,7 +1080,16 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         Logger.Error(`${info}: ${componentPropertyKeyWithDepotPath} starts with ${ARCHIVE_XL_VARIANT_INDICATOR}, but does not contain substitution! This will crash your game!`);
     }
 
+
     const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
+    
+    if (componentMeshPaths.length == 1 && !checkDepotPath(meshDepotPath)) {
+      Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
+      return;
+    }
+
+    const genderSubstitutionOnly = componentMeshPaths.length == 2 && (meshDepotPath.match(/{|}/g)?.length || 0) == 2 && meshDepotPath.includes("{gender}")    
+    
     
     // Logger.Success(componentMeshPaths);
     componentMeshPaths.forEach((componentMeshPath) => {
@@ -1114,6 +1123,11 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && !meshAppearanceName.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             localErrors.push(`name: ${MISSING_PREFIX_WARNING}`);
         }
+        
+        Logger.Success(`${pathHasSubstitution}: ${componentMeshPath}`);
+        if (!pathHasSubstitution && !checkDepotPath(componentMeshPath)) {
+            localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
+        }
 
         if (localErrors.length) {
             invalidVariantAndSubstitutions[info] ||= [];
@@ -1139,11 +1153,12 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
             localErrors.push(`path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
+        
         if (localErrors.length) {
             invalidVariantAndSubstitutions[info] ||= [];
-            invalidVariantAndSubstitutions[info].push(`DepotPath: ${componentMeshPath}: ${localErrors.join(', ')}`);
+            invalidVariantAndSubstitutions[info].push(`DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
             localErrors.length = 0;
-        }
+        }        
 
         const meshAppearances = component_collectAppearancesFromMesh(componentMeshPath);
         if (!meshAppearances) { // for debugging
