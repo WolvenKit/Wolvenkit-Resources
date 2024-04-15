@@ -1124,7 +1124,6 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             localErrors.push(`name: ${MISSING_PREFIX_WARNING}`);
         }
         
-        Logger.Success(`${pathHasSubstitution}: ${componentMeshPath}`);
         if (!pathHasSubstitution && !checkDepotPath(componentMeshPath)) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
