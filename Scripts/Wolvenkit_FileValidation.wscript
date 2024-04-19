@@ -1584,7 +1584,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
         validateShaderTemplate(baseMaterial, materialName);
     }
     
-    if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
+    if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
         const _currentFilePath = pathToCurrentFile;
         const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
         pathToCurrentFile = baseMaterial;
