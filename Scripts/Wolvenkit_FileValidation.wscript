@@ -901,8 +901,8 @@ const archiveXLVarsAndValues = {
 // For archive XL dynamic substitution: We need to make sure that we only check for valid gender/body combinations
 const genderToBodyMap = ArchiveXLConstants.genderToBodyMap;
 
-// something like \p{gender}a\ or just \{gender}\
-const genderMatchRegex =  /\\[^\\]*{gender}[^\\]*\\/
+// something like \_p{gender}a_\ or just \{gender}\
+const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
 
 // This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
 let genderPartialMatch = '';
@@ -925,6 +925,8 @@ function resolveSubstitution(paths) {
             if (path.includes(variantFlag)) {
                 // This is either falsy, or can be used to find the body gender in a map
                 let bodyGender = '';
+
+                
                 // For dynamic substitution and bodies: We need to check whether or not those are gendered
                 if (!!genderPartialMatch && variantFlag === '{body}') {
                     let femGenderPartialString = "pwa"
@@ -936,7 +938,7 @@ function resolveSubstitution(paths) {
                 
                 archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
                     // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
-                    const isValid = !bodyGender || !!genderToBodyMap[bodyGender] && genderToBodyMap[bodyGender].includes(variantReplacement)                    
+                    const isValid = !bodyGender || (genderToBodyMap[bodyGender] || []).includes(variantReplacement);
                     ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));
                 });
             }         
