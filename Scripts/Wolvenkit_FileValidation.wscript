@@ -125,10 +125,11 @@ function checkIfFileIsBroken(data, fileType, _info = '') {
  * @param _depotPath the depot path to analyse
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
+ * @param suppressLogOutput suppress log output (because they'll be gathered in other places)
  *
  * @return true if the depot path exists and can be resolved.
  */
-function checkDepotPath(_depotPath, _info, allowEmpty = false) {
+function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput = false) {
     // Don't validate if uppercase file names are present
     if (hasUppercasePaths) {
         return false;
@@ -142,7 +143,9 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
         if (allowEmpty) {
             return true;
         }
-        Logger.Warning(`${info}DepotPath not set`);
+        if (!suppressLogOutput) {
+            Logger.Warning(`${info}DepotPath not set`);            
+        }
         return false;
     }
 
@@ -158,7 +161,9 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
     
     // Check if the file is a numeric hash
     if (isNumericHash(depotPath)) {
-        Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
+        if (!suppressLogOutput) {
+            Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
+        }
         return false;
     }
 
@@ -170,7 +175,9 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
 
     componentMeshPaths.forEach((resolvedMeshPath) => {
         if (pathToCurrentFile === resolvedMeshPath) {
-            Logger.Error(`${info}Depot path ${resolvedMeshPath} references itself. This _will_ crash the game!`);
+            if (!suppressLogOutput) {
+                Logger.Error(`${info}Depot path ${resolvedMeshPath} references itself. This _will_ crash the game!`);
+            }
             ret = false;
             return;
         }
@@ -182,10 +189,10 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false) {
 
         if (shouldHaveSubstitution(resolvedMeshPath)) {
             const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
-            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
+            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution && !suppressLogOutput) {
                 Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
-        } else if (isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {          
+        } else if (isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app") && !suppressLogOutput) {          
             Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
         } 
         ret = false;
@@ -1085,7 +1092,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
     
-    if (componentMeshPaths.length == 1 && !checkDepotPath(meshDepotPath)) {
+    if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
       Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
     }
