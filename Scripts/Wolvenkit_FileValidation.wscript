@@ -39,30 +39,24 @@ function stringifyPotentialCName(cnameOrString, _info = '', suppressSpaceCheck =
     return ret;
 }
 
+const openingBraceRegex = new RegExp('{', 'g');
+const closingBraceRegex = new RegExp('}', 'g');
+
 /**
  * For ArchiveXL path validation: does the string contain the same number of { and }?
  * Will set flag to allow checking for root entity
  *
  * @param inputString depot path to check
  */
+function getNumCurlyBraces(inputString) {
+    const numOpenBraces = (inputString.match(openingBraceRegex) || []).length;
+    const numClosingBraces = (inputString.match(closingBraceRegex) || []).length;
+    
+    return [numOpenBraces, numClosingBraces];
+}
 function checkCurlyBraces(inputString) {
-    if (!inputString.includes('{') || inputString.includes('}')) {
-        return true;
-    }
-    isUsingSubstitution = true;
-
-    let openBraceCount = 0;
-    let closeBraceCount = 0;
-
-    for (let i = 0; i < inputString.length; i++) {
-        if (inputString[i] === '{') {
-            openBraceCount++;
-        } else if (inputString[i] === '}') {
-            closeBraceCount++;
-        }
-    }
-
-    return openBraceCount === closeBraceCount;
+    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
+    return numOpenBraces === numClosingBraces;
 }
 
 function hasUppercase(str) {
@@ -236,10 +230,13 @@ let isRootEntity = false;
 /** Are path substitutions used in the .app or the mesh entity?  */
 let isUsingSubstitution = false;
 
-function shouldHaveSubstitution(str, ignoreAsterisk = false) {
-    if (!str || typeof str === "bigint") return false;
-    return (!ignoreAsterisk && str.trim().startsWith(ARCHIVE_XL_VARIANT_INDICATOR))
-        || str.includes('{') || str.includes('}');
+function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
+    if (!inputString || typeof inputString === "bigint") return false;
+    if (!ignoreAsterisk && inputString.trim().startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
+        return true;
+    }
+    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
+    return numOpenBraces > 0 || numClosingBraces > 0;
 }
 
 /**
@@ -981,7 +978,7 @@ function getArchiveXlMeshPaths(depotPath) {
 
     // If nothing was substituted: We're done here
     if (!paths.length) {
-        paths.push(depotPath.replace('*', ''));
+        paths.push(depotPath.replace(ARCHIVE_XL_VARIANT_INDICATOR, ''));
     }
 
     // If nothing was substituted: We're done here
@@ -1501,6 +1498,7 @@ let localIndexList = [];
 
 // if checkDuplicateMaterialDefinitions is used: warn user if duplicates exist in list
 let listOfMaterialProperties = {};
+ 
 
 
 /**
@@ -1555,6 +1553,15 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
     if ((materialValue.Flags || '').includes('Embedded')) {
         Logger.Warning(`${info} is set to Embedded. This might not work as you expect it.`);        
     }
+    
+    // Check if the path should substitute, and if yes, if it's valid
+    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(materialDepotPath);
+    
+    if ((numOpenBraces > 0 || numClosingBraces) > 0 && !materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
+        Logger.Warning(`${info} Depot path seems to contain substitutions, but does not start with an *`);        
+    } else if (numOpenBraces !== numClosingBraces) {
+        Logger.Warning(`${info} Depot path has invalid substitution (uneven number of { and })`);
+    }
         
     // Once we've made sure that the file extension is correct, check if the file exists.
     checkDepotPath(materialDepotPath, info);
@@ -1589,6 +1596,9 @@ function material_getMaterialPropertyValue(key, materialValue) {
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
+    if (materialName.includes("@") && material.baseMaterial?.Flags !== "Soft") {
+        Logger.Warning(`${materialName}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
+    }
     if (checkDepotPath(baseMaterial, materialName)) {
         validateShaderTemplate(baseMaterial, materialName);
     }
@@ -1829,7 +1839,11 @@ export function validateMeshFile(mesh, _meshSettings) {
 
         for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
-            if (!ignoreChunkMaterialName(chunkMaterialName) && !(chunkMaterialName in materialNames)) {
+            if (!ignoreChunkMaterialName(chunkMaterialName)
+                && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
+                && !(chunkMaterialName in materialNames)
+                
+            ) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
         }
