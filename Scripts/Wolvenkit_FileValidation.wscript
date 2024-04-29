@@ -1507,9 +1507,10 @@ let listOfMaterialProperties = {};
  * @param key Key of array, e.g. BaseColor, Normal, MultilayerSetup
  * @param materialValue The material value definition contained within
  * @param info String for debugging, e.g. name of material and index of value
+ * @param isDynamicMaterial Is this a dynamic material?
  * @param validateRecursively If set to true, file validation will try to follow the .mi chain
  */
-function validateMaterialKeyValuePair(key, materialValue, info, validateRecursively) {
+function validateMaterialKeyValuePair(key, materialValue, info, isDynamicMaterial, validateRecursively) {
     if (key === "$type" || hasUppercasePaths) {
         return;
     }
@@ -1561,6 +1562,8 @@ function validateMaterialKeyValuePair(key, materialValue, info, validateRecursiv
         Logger.Warning(`${info} Depot path seems to contain substitutions, but does not start with an *`);        
     } else if (numOpenBraces !== numClosingBraces) {
         Logger.Warning(`${info} Depot path has invalid substitution (uneven number of { and })`);
+    } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
+        Logger.Warning(`${info} Dynamic material value requires Flags 'Soft'`);
     }
         
     // Once we've made sure that the file extension is correct, check if the file exists.
@@ -1596,7 +1599,8 @@ function material_getMaterialPropertyValue(key, materialValue) {
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
-    if (materialName.includes("@") && material.baseMaterial?.Flags !== "Soft") {
+    const isDynamicMaterial = materialName.includes("@");
+    if (isDynamicMaterial && material.baseMaterial?.Flags !== "Soft") {
         Logger.Warning(`${materialName}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
     }
     if (checkDepotPath(baseMaterial, materialName)) {
@@ -1629,7 +1633,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
             if (type.startsWith("rRef:")) {
-                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`, meshSettings.validateMaterialsRecursively);                
+                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`, isDynamicMaterial, meshSettings.validateMaterialsRecursively);                
             }
             if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
                 listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
