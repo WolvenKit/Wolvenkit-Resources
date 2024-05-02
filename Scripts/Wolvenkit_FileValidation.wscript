@@ -1815,8 +1815,14 @@ function printDuplicateMaterialWarnings() {
 function meshFile_collectDynamicChunkMaterials(mesh) {    
     numAppearances = 0;
     dynamicMaterials = {};
-    if (!mesh || !JSON.stringify(mesh).includes("@")) {
-        return;
+    // null-safety
+    if (!mesh) return;       
+    
+    // it's not dynamic
+    if (!JSON.stringify(mesh).includes("@")) return;
+    
+    if (mesh.appearances.length < 2) {
+        Logger.Warning(`You need at least two appearances for dynamic appearances to work!`);
     }
     
     for (let i = 0; i < mesh.appearances.length; i++) {
