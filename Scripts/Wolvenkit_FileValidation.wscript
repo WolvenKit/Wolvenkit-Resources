@@ -1599,14 +1599,20 @@ function material_getMaterialPropertyValue(key, materialValue) {
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
-    const isDynamicMaterial = materialName.includes("@");
-    if (isDynamicMaterial && material.baseMaterial?.Flags !== "Soft") {
-        Logger.Warning(`${materialName}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    }
     if (checkDepotPath(baseMaterial, materialName)) {
         validateShaderTemplate(baseMaterial, materialName);
     }
     
+    const isDynamicMaterial = materialName.includes("@");
+    const isSoftDependency = material.baseMaterial?.Flags === "Soft";
+    const isUsingSubstitution = baseMaterial.includes("{") || baseMaterial.includes("}")
+
+    
+    if (isUsingSubstitution && !isSoftDependency) {
+        Logger.Warning(`${materialName}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
+    } else if (!isSoftDependency && isSoftDependency) {
+        Logger.Info(`${materialName} is using Flags.Soft, but doesn't seem to be dynamic. Consider using 'Default' instead`);
+    }
     if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
         const _currentFilePath = pathToCurrentFile;
         const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
