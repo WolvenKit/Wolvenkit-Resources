@@ -115,7 +115,10 @@ function checkIfFileIsBroken(data, fileType, _info = '') {
     return true;
 }
 
+
 /**
+ * Will check if a depot path exists. If the path is dynamic, it will resolve substitution.
+ * 
  * @param _depotPath the depot path to analyse
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
@@ -159,15 +162,13 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput
             Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
         }
         return false;
-    }
-
-    
+    } 
     
     // ArchiveXL 1.5 variant magic requires checking this in a loop
-    const componentMeshPaths = getArchiveXlMeshPaths(stringifyPotentialCName(depotPath));
+    const archiveXlResolvedPaths = getArchiveXlResolvedPaths(stringifyPotentialCName(depotPath));
     let ret = true;
-
-    componentMeshPaths.forEach((resolvedMeshPath) => {
+    
+    archiveXlResolvedPaths.forEach((resolvedMeshPath) => {
         if (pathToCurrentFile === resolvedMeshPath) {
             if (!suppressLogOutput) {
                 Logger.Error(`${info}Depot path ${resolvedMeshPath} references itself. This _will_ crash the game!`);
@@ -180,16 +181,24 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput
             return;
         }
         // File does not exist
-
+        ret = false;
+        
+        if (suppressLogOutput) {
+            return;
+        }
+        
         if (shouldHaveSubstitution(resolvedMeshPath)) {
             const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
-            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution && !suppressLogOutput) {
+            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
                 Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
-        } else if (isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app") && !suppressLogOutput) {          
+            return;
+        } 
+        
+        if (!!currentMaterialName || isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {          
             Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
         } 
-        ret = false;
+        
     })
     return ret;
 }
@@ -911,6 +920,17 @@ const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
 // This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
 let genderPartialMatch = '';
 
+// ArchiveXL: Collect dynamic materials, group them by 
+let numAppearances = 0;
+let dynamicMaterials = {}
+var currentMaterialName = "";
+
+/**
+ * 
+ * @param paths An array of paths to fix substitutions in
+ * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
+ * @returns {{length}|*|[]|*[]}
+ */
 function resolveSubstitution(paths) {
 
     if (!paths || !paths.length) return [];
@@ -925,6 +945,14 @@ function resolveSubstitution(paths) {
         if(!shouldHaveSubstitution(path)) {
             ret.push(path);
         }
+    
+        if (currentMaterialName) {
+            (dynamicMaterials[currentMaterialName] || []).forEach((materialName) => {
+                ret.push(path.replace('{material}', materialName));            
+            });
+            return ret;
+        }
+        
         Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
             if (path.includes(variantFlag)) {
                 // This is either falsy, or can be used to find the body gender in a map
@@ -956,7 +984,7 @@ function resolveSubstitution(paths) {
     );
 }
 
-function getArchiveXlMeshPaths(depotPath) {
+function getArchiveXlResolvedPaths(depotPath) {
     
     if (!depotPath || typeof depotPath === "bigint") {
         return [];
@@ -1086,8 +1114,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         Logger.Error(`${info}: ${componentPropertyKeyWithDepotPath} starts with ${ARCHIVE_XL_VARIANT_INDICATOR}, but does not contain substitution! This will crash your game!`);
     }
 
-
-    const componentMeshPaths = getArchiveXlMeshPaths(meshDepotPath) || []
+    const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
     
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
       Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
@@ -1507,14 +1534,12 @@ let listOfMaterialProperties = {};
  * @param key Key of array, e.g. BaseColor, Normal, MultilayerSetup
  * @param materialValue The material value definition contained within
  * @param info String for debugging, e.g. name of material and index of value
- * @param isDynamicMaterial Is this a dynamic material?
- * @param validateRecursively If set to true, file validation will try to follow the .mi chain
  */
-function validateMaterialKeyValuePair(key, materialValue, info, isDynamicMaterial, validateRecursively) {
+function validateMaterialKeyValuePair(key, materialValue, info) {
     if (key === "$type" || hasUppercasePaths) {
         return;
     }
-
+    
     const materialDepotPath = stringifyPotentialCName(materialValue.DepotPath);
 
     if (!materialDepotPath || hasUppercase(materialDepotPath) || isNumericHash(materialDepotPath) || "none" === materialDepotPath.toLowerCase()) {
@@ -1565,7 +1590,7 @@ function validateMaterialKeyValuePair(key, materialValue, info, isDynamicMateria
     } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
         Logger.Warning(`${info} Dynamic material value requires Flags 'Soft'`);
     }
-        
+
     // Once we've made sure that the file extension is correct, check if the file exists.
     checkDepotPath(materialDepotPath, info);
 }
@@ -1596,31 +1621,40 @@ function material_getMaterialPropertyValue(key, materialValue) {
             return `${materialValue}`;
     }    
 }
-function meshFile_CheckMaterialProperties(material, materialName, materialIndex) {
-    const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
-    if (checkDepotPath(baseMaterial, materialName)) {
-        validateShaderTemplate(baseMaterial, materialName);
-    }
+// Dynamic materials need at least two appearances
+function meshFile_CheckMaterialProperties(material, materialName, materialIndex, materialInfo) {
+    const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
     
-    const isDynamicMaterial = materialName.includes("@");
+    
     const isSoftDependency = material.baseMaterial?.Flags === "Soft";
     const isUsingSubstitution = baseMaterial.includes("{") || baseMaterial.includes("}")
 
+    var baseMaterialPaths = [ baseMaterial ];
+    
+    currentMaterialName = materialName.includes("@") ? materialName : undefined;
     
     if (isUsingSubstitution && !isSoftDependency) {
-        Logger.Warning(`${materialName}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    } else if (!isSoftDependency && isSoftDependency) {
-        Logger.Info(`${materialName} is using Flags.Soft, but doesn't seem to be dynamic. Consider using 'Default' instead`);
-    }
-    if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
-        const _currentFilePath = pathToCurrentFile;
-        const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
-        pathToCurrentFile = baseMaterial;
-        _validateMiFile(miFileContent);
-        pathToCurrentFile = _currentFilePath;
+        Logger.Warning(`${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
+    } else if (!isUsingSubstitution && isSoftDependency) {
+        Logger.Info(`${materialInfo} is using Flags.Soft, but doesn't seem to be dynamic. Consider using 'Default' instead`);
+    } else if  (isUsingSubstitution) {
+        baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
     }
 
+    baseMaterialPaths.forEach((path) => {
+        if (checkDepotPath(path, materialInfo)) {
+            validateShaderTemplate(path, materialInfo);
+        }    
+        
+        if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
+            const _currentFilePath = pathToCurrentFile;
+            const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
+            pathToCurrentFile = baseMaterial;
+            _validateMiFile(miFileContent);
+            pathToCurrentFile = _currentFilePath;
+        }
+    });
     // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
     listOfMaterialProperties[materialIndex] = {
         'materialName': materialName,
@@ -1639,13 +1673,15 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex)
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
             if (type.startsWith("rRef:")) {
-                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`, isDynamicMaterial, meshSettings.validateMaterialsRecursively);                
+                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`);                
             }
             if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
                 listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
             }
         });
     }
+
+    currentMaterialName = null;
 }
 
 function checkMeshMaterialIndices(mesh) {
@@ -1775,6 +1811,29 @@ function printDuplicateMaterialWarnings() {
         });
     }
 }
+
+function meshFile_collectDynamicChunkMaterials(mesh) {
+    numAppearances = 0;
+    dynamicMaterials = {};
+    
+    for (let i = 0; i < mesh.appearances.length; i++) {
+        numAppearances += 1;
+        let appearance = mesh.appearances[i].Data;
+        for (let j = 0; j < appearance.chunkMaterials.length; j++) {
+            const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
+            if (ignoreChunkMaterialName(chunkMaterialName)) {
+                continue;
+            }
+            const nameParts = chunkMaterialName.split("@");
+            if (nameParts.length < 2) {
+                continue;
+            }
+            const dynamicMaterialName = `@${nameParts[1]}`;
+            dynamicMaterials[dynamicMaterialName] = dynamicMaterials[dynamicMaterialName] || new Set();
+            dynamicMaterials[dynamicMaterialName].add(nameParts[0]);
+        }
+    }
+}
 export function validateMeshFile(mesh, _meshSettings) {
     // check if settings are enabled
     if (!_meshSettings?.Enabled) return;
@@ -1787,7 +1846,9 @@ export function validateMeshFile(mesh, _meshSettings) {
     resetInternalFlagsAndCaches();
 
     checkMeshMaterialIndices(mesh);
-
+    
+    meshFile_collectDynamicChunkMaterials(mesh);
+    
     if (mesh.localMaterialBuffer.materials !== null) {
         for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
             let material = mesh.localMaterialBuffer.materials[i];
@@ -1802,7 +1863,7 @@ export function validateMeshFile(mesh, _meshSettings) {
             if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
                 meshFile_validatePlaceholderMaterial(material, `localMaterialBuffer.materials[${i}]`);
             } else {
-                meshFile_CheckMaterialProperties(material, `localMaterialBuffer.${materialName}`, i);
+                meshFile_CheckMaterialProperties(material, materialName, i, `localMaterialBuffer.${materialName}`);
             }
         }
     }
@@ -1820,7 +1881,7 @@ export function validateMeshFile(mesh, _meshSettings) {
         if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
             meshFile_validatePlaceholderMaterial(material, `preloadLocalMaterials[${i}]`);
         } else {
-            meshFile_CheckMaterialProperties(material.Data, `preloadLocalMaterials.${materialName}`);
+            meshFile_CheckMaterialProperties(material.Data, materialName, i, `preloadLocalMaterials.${materialName}`);
         }
     }
 
@@ -1931,7 +1992,7 @@ function _validateMiFile(mi, debugInfo) {
         }
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
-            validateMaterialKeyValuePair(key, definedMaterial, `Values[${i}]`, miSettings.validateRecursively);
+            validateMaterialKeyValuePair(key, definedMaterial, '', `Values[${i}]`);
         });
     }
 }
