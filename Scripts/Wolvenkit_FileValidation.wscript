@@ -1576,8 +1576,8 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
             }
             break;
     }
-    if ((materialValue.Flags || '').includes('Embedded')) {
-        Logger.Warning(`${info} is set to Embedded. This might not work as you expect it.`);        
+    if (materialValue.Flags?.includes('Embedded')) {
+        Logger.Info(`${info} is set to Embedded. This might not work as you expect it.`);        
     }
     
     // Check if the path should substitute, and if yes, if it's valid
@@ -1812,9 +1812,12 @@ function printDuplicateMaterialWarnings() {
     }
 }
 
-function meshFile_collectDynamicChunkMaterials(mesh) {
+function meshFile_collectDynamicChunkMaterials(mesh) {    
     numAppearances = 0;
     dynamicMaterials = {};
+    if (!mesh || !JSON.stringify(mesh).includes("@")) {
+        return;
+    }
     
     for (let i = 0; i < mesh.appearances.length; i++) {
         numAppearances += 1;
