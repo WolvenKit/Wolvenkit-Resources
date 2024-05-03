@@ -12,7 +12,7 @@ import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidati
  * If this is set to "true" and file validation runs into any errors, then YOUR FILES WILL NO LONGER SAVE.
  * ONLY ENABLE THIS IF YOU KNOW WHAT YOU'RE DOING!
  */
-const isWolvenkitDeveloper = true;
+const isWolvenkitDeveloper = false;
 
 const README_URL = 'https://wiki.redmodding.org/wolvenkit/wolvenkit-app/file-validation';
 
@@ -29,6 +29,7 @@ globalThis.onSave = function (ext, file) {
     const fileName = (fileContent.Header?.ArchiveFileName || '').split('archive\\').pop() || '';
     FileValidation.setPathToCurrentFile(fileName);
     
+    wkit.SuspendFileWatcher(true);
     let success = true;
     try {
         const data = fileContent["Data"]["RootChunk"];
@@ -86,6 +87,8 @@ globalThis.onSave = function (ext, file) {
         Logger.Info(`If you are using this as a hack to disable the feature, see ${README_URL}.`)
     }
 
+    wkit.SuspendFileWatcher(false);
+
     const retSuccess = {
         success: success,
         file: file
@@ -93,7 +96,7 @@ globalThis.onSave = function (ext, file) {
 
     // either we have nothing to write or we aren't supposed to write => abort
     if (!FileValidation.isDataChangedForWriting || Settings.DisableAutofix) return retSuccess;
-
+    
     const filePath = wkit.GetActiveDocument().FilePath;
     
     // unless it's a workspot, automatically close and re-open it

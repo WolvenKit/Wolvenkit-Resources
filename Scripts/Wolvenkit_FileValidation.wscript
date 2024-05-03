@@ -2259,8 +2259,11 @@ function workspotFile_CheckAnimSet(idx, animSet) {
     }
 
     for (let i = 0; i < animSet.Data.list.length; i++) {
-        const childItem = animSet.Data.list[i];
-        const childItemName = childItem.Data.animName.value || '';
+        const childItem = animSet.Data.list[i];        
+        const childItemName = childItem.Data?.animName?.value || '';
+        if (!childItemName) {
+            continue;
+        }
         workEntryIndicesByAnimName[childItemName] = idx;
 
         animSetId = childItem.Data.id.id;
@@ -2395,7 +2398,7 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
         });
     }
 
-    const unusedAnimSetNames = workspotAnimSetNames.filter((name) => !allAnimNamesFromAnimFiles.includes(name));
+    const unusedAnimSetNames = workspotAnimSetNames.filter((name) => !!name && !allAnimNamesFromAnimFiles.includes(name));
     if (workspotSettings.showUndefinedWorkspotAnims && unusedAnimSetNames.length > 0) {
         Logger.Info(`Items from .workspot not found in .anim files:`);
         Logger.Info(unusedAnimSetNames.map((name) => `${workEntryIndicesByAnimName[name]}: ${name}`));
