@@ -1,9 +1,10 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.2
+// @version 1.4
+// Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
-import * as Export_Mesh from 'Export_Mesh.wscript';
+import * as Collision_Shapes from 'collision_shapes.wscript';
 
 // Export all sectors in project? (set to false to only use sectors list below)
 const add_from_project = true;
@@ -11,17 +12,30 @@ const add_from_project = true;
 // Set to true to disable warnings about failed meshes
 const suppressLogFileOutput = false;
 
+// If you dont want mats then set this to false
+const withmats=true;
+
+// If you only want files that are new exporting set this to true
+const only_new=true
+
+// If you want mesh colliders extracting then set this to true
+const mesh_colliders=false
+
+
 /**
  * Any sectors in the list below will be added to your project before exporting. List of sector files to add to your project, see wiki: https://tinyurl.com/cyberpunk2077worldsectors
  *
  * If the file is in default _compiled dir, file name is enough. Otherwise, put the full path (remember to double slashes)!
  */
 let sectors = [
+	// El Coyote
+	//'interior_-20_-16_0_1','interior_-39_-31_0_0','interior_-39_-32_0_0','interior_-40_-31_0_0','interior_-40_-32_0_0'
+    
     /* V's apartment: H10 */
     // 'interior_-22_19_1_1', 'interior_-22_20_1_1', 'interior_-43_39_3_0', 'interior_-44_39_3_0', 'interior_-44_40_3_0', 'interior_-46_40_3_0', 'exterior_-22_19_1_0', 'quest_b705140105a75f58', 'quest_acd280b2b73c4d5b', 'quest_2467054678ccf8f6', 'quest_3509076113f76078', 'quest_e1ef450702659584', 'quest_2be595b225125038', 'quest_5eb84e72f3942283', 'quest_e1ef450702659584', 'quest_1fbb2ceaeeaac973',
 
     /* V's apartment: Loft */
-    // 'exterior_-24_-16_1_0', 'interior_-24_-16_1_1', 'interior_-48_-31_2_0', 'quest_ca115e9713d725d7',
+    // 'exterior_-24_-16_1_0', 'interior_-24_-16_1_1', 'interior_-48_-31_2_0', 'quest_ca115e9713d725d7'
 
     /* V's apartment: Northside dump */
     // 'exterior_-24_34_0_0', 'interior_-48_68_0_0', 'interior_-12_17_0_2', 'exterior_-12_17_0_1', 'interior_-47_69_0_0', 'interior_-48_69_0_0',
@@ -42,12 +56,21 @@ let sectors = [
 /*
  * ===================================== Change below this line at own risk ========================================
  */
+ 
+ 
 
 const fileTemplate = '{"Header":{"WKitJsonVersion":"0.0.7","DataType":"CR2W"},"Data":{"Version":195,"BuildVersion":0,"RootChunk":{},"EmbeddedFiles":[]}}';
 
-const jsonExtensions = [".app", ".ent", ".mi", ".mt", ".streamingsector"];
-const exportExtensions = [".mesh", ".xbm"];
-const exportEmbeddedExtensions = [".mesh", ".xbm", ".mlmask"];
+let jsonExtensions = [".app", ".ent", ".mi", ".mt", ".streamingsector"];
+let exportExtensions = [".mesh","w2mesh",".xbm"]; // need xbms for decals
+let exportEmbeddedExtensions = [".mesh", ".xbm", ".mlmask", "mlsetup"];
+
+if (!withmats){
+	Logger.Info('Withmats false')
+    jsonExtensions = [".app", ".ent", ".streamingsector"];
+    exportExtensions = [".mesh","w2mesh",".physicalscene"];
+    exportEmbeddedExtensions = [".mesh"];
+}
 
 const sectorPathInFiles = 'base\\worlds\\03_night_city\\_compiled\\default';
 for (let i = 0; i < sectors.length; i += 1) {
@@ -102,10 +125,12 @@ for (const fileName of projectSet) {
     }
 }
 
+let exportsettings = {Mesh: { ExportType: "MeshOnly", WithMaterials: withmats, ImageType: "png", LodFilter: true, Binary: true}}
+
+
 // export all of our files with the default export settings
 Logger.Info(`Exporting ${exportSet.size} files...`);
-wkit.ExportFiles([...exportSet]);
-
+wkit.ExportFiles([...exportSet], exportsettings);
 Logger.Success("======================================\nSector export finished!\n\n")
 
 //#region helper_functions
@@ -119,6 +144,39 @@ function* GetPaths(jsonData) {
         }
     }
 }
+
+function export_filename(filename){
+	// Define a mapping of extensions and their replacements
+    const extensionMap = {
+        'mesh': 'glb',
+        'xbm': 'png',
+        'w2mesh':'glb',
+        'physicalscene':'glb',
+        
+        // Add more extensions and replacements as needed
+    };
+
+    // Find the position of the last occurrence of '.' to get the extension
+    const dotIndex = filename.lastIndexOf('.');
+    if (dotIndex === -1) {
+        // If no extension found, return the filename as it is
+        return filename;
+    } else {
+        // Extract the existing extension
+        const extension = filename.substring(dotIndex + 1);
+
+        // Check if the extension exists in the mapping
+        if (extensionMap.hasOwnProperty(extension)) {
+            // Replace the existing extension with the mapped one
+            return filename.substring(0, dotIndex) + '.' + extensionMap[extension];
+        } else {
+            // If extension not found in mapping, return the filename as it is
+            return filename;
+        }
+    }
+
+}
+
 
 function convertEmbedded(embeddedFile) {
     let data = TypeHelper.JsonParse(fileTemplate);
@@ -146,12 +204,14 @@ function ParseFile(fileName, parentFile) {
         const embeddedFiles = parentFile?.Data?.EmbeddedFiles || [];
         for (let embeddedFile of embeddedFiles) {
             if (embeddedFile["FileName"] === fileName) {
-                convertEmbedded(embeddedFile);
+            	if (!only_new || (only_new && !wkit.FileExistsInRaw(fileName))){
+                	convertEmbedded(embeddedFile);
 
-                // add nested file to export list
-                if (jsonExtensions.includes(extension)) jsonSet.add(fileName);
-                if (exportEmbeddedExtensions.includes(extension)) exportSet.add(fileName);
-
+                	// add nested file to export list
+                	    
+	                if (jsonExtensions.includes(extension)) jsonSet.add(fileName);
+	                if (exportEmbeddedExtensions.includes(extension)) exportSet.add(fileName);
+				}
                 return;
             }
         }
@@ -190,16 +250,26 @@ function ParseFile(fileName, parentFile) {
     if (!(jsonExtensions.includes(file.Extension) || exportExtensions.includes(file.Extension))) {
         return;
     }
-    projectSet.add(fileName);
-
-    if (jsonExtensions.includes(file.Extension)) jsonSet.add(fileName);
-    if (exportExtensions.includes(file.Extension)) exportSet.add(fileName);
+    
+    if (!only_new || (only_new && !wkit.FileExistsInProject(export_filename(fileName)))) projectSet.add(fileName);
+    
+    
+    if (!only_new || (only_new && !wkit.FileExistsInRaw(fileName+'.json'))){
+	    if (jsonExtensions.includes(file.Extension)) jsonSet.add(fileName);
+	    }
+	if (!only_new || (only_new && !wkit.FileExistsInRaw(export_filename(fileName)))){
+	    if (exportExtensions.includes(file.Extension)) exportSet.add(fileName);
+    	}
+    
 
     // now check if there are referenced files and parse them
     if (file.Extension !== ".xbm") {
         let json = TypeHelper.JsonParse(wkit.GameFileToJson(file));
         for (let path of GetPaths(json["Data"]["RootChunk"])) {
             ParseFile(path, json);
+        }
+        if (file.Extension == ".streamingsector" && mesh_colliders) {
+        Collision_Shapes.Export_Sector_Collisions(json);
         }
     }
 }
