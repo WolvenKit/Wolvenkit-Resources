@@ -3,6 +3,7 @@
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
+import {JsonStringify} from "TypeHelper.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -1816,10 +1817,10 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     numAppearances = 0;
     dynamicMaterials = {};
     // null-safety
-    if (!mesh || typeof mesh === 'bigint') return;       
+    if (!mesh || typeof mesh === 'bigint') return;    
     
     // it's not dynamic
-    if (!JSON.stringify(mesh).includes("@")) return;
+    if (!JsonStringify(mesh).includes("@")) return;
     
     if (mesh.appearances.length < 2) {
         Logger.Warning(`You need at least two appearances for dynamic appearances to work!`);
