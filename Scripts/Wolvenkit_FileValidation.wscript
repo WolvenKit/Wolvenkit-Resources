@@ -1816,7 +1816,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     numAppearances = 0;
     dynamicMaterials = {};
     // null-safety
-    if (!mesh || typeof cnameOrString === 'bigint') return;       
+    if (!mesh || typeof mesh === 'bigint') return;       
     
     // it's not dynamic
     if (!JSON.stringify(mesh).includes("@")) return;
