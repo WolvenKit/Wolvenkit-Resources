@@ -1627,6 +1627,10 @@ function material_getMaterialPropertyValue(key, materialValue) {
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex, materialInfo) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
     
+    if (!baseMaterial) {
+      Logger.Info(`${materialInfo}: No base material defined. Skipping validation`);
+      return;
+    }
     
     const isSoftDependency = material.baseMaterial?.Flags === "Soft";
     const isUsingSubstitution = baseMaterial.includes("{") || baseMaterial.includes("}")
@@ -1637,7 +1641,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     
     if (isUsingSubstitution && !isSoftDependency) {
         Logger.Warning(`${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    } else if (!isUsingSubstitution && isSoftDependency) {
+    } else if (!isUsingSubstitution && isSoftDependency && !currentMaterialName) {
         Logger.Info(`${materialInfo} is using Flags.Soft, but doesn't seem to be dynamic. Consider using 'Default' instead`);
     } else if  (isUsingSubstitution) {
         baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
