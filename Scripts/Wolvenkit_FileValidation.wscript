@@ -1641,8 +1641,8 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     
     if (isUsingSubstitution && !isSoftDependency) {
         Logger.Warning(`${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    } else if (!isUsingSubstitution && isSoftDependency && !currentMaterialName) {
-        Logger.Info(`${materialInfo} is using Flags.Soft, but doesn't seem to be dynamic. Consider using 'Default' instead`);
+    } else if (!isUsingSubstitution && isSoftDependency) {
+        Logger.Warning(`${materialInfo}: baseMaterial is using Flags.Soft, but doesn't contain substitutions. This will crash your game; use 'Default'!`);
     } else if  (isUsingSubstitution) {
         baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
     }
