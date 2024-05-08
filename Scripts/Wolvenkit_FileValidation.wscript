@@ -355,8 +355,13 @@ export function validateAnimationFile(animAnimSet, _animAnimSettings) {
 // map: { 'path/to/file.mesh': ['default', 'red', 'black'] };
 const appearanceNamesByMeshFile = {};
 
+const hasGarmentSupportByMeshFile = {};
+
 // map: { 'path/to/file.mesh', [ 'not_found1', 'not_found2' ] }
 let invalidVariantAndSubstitutions = {};
+
+// map: { 'component_name', [ 'error description 1', 'error description 2' ] }
+let invalidComponentTypes = {};
 
 // map: { 'appearance_in_app_file', [ 'error description 1', 'error description 2' ] }
 let appearanceErrorMessages = {};
@@ -464,7 +469,24 @@ function printSubstitutionWarningsIfFound() {
             Logger.Warning(`${warningSource}: ${output}`);
         }
     });
+}
 
+function printComponentWarningsIfFound() {
+    const warningKeys = Object.keys(invalidComponentTypes) || [];
+    if (!warningKeys.length) {
+        return;
+    }
+
+    Logger.Info('Some of your components seem to have other issues:');
+    warningKeys.forEach((warningSource) => {
+        const warnings = (invalidComponentTypes[warningSource] || []).filter(function (item, pos, self) {
+            return self.indexOf(item) === pos;
+        });
+        if (warnings.length) {
+            const output = warnings.length <= 1 ? `${warnings}` : `\n\t${warnings.map((w) => w.replace(`${warningSource}: `, '')).join('\n\t')}`
+            Logger.Info(`${warningSource}: ${output}`);
+        }
+    });
 }
 
 
@@ -521,10 +543,11 @@ function component_collectAppearancesFromMesh(componentMeshPath) {
         try {
             const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');
             const mesh = TypeHelper.JsonParse(fileContent);
-            if (!mesh || !mesh.Data || !mesh.Data.RootChunk || !mesh.Data.RootChunk.appearances) {
+            if (!mesh || !mesh.Data || !mesh.Data.RootChunk) {
                 return;
             }
-            appearanceNamesByMeshFile[componentMeshPath] = mesh.Data.RootChunk.appearances
+            hasGarmentSupportByMeshFile[componentMeshPath] = !!(mesh.Data.RootChunk.parameters || []).find((p) => p.Data?.$type === "meshMeshParamGarmentSupport");
+            appearanceNamesByMeshFile[componentMeshPath] = (mesh.Data.RootChunk.appearances || [])
                 .map((appearance) => stringifyPotentialCName(appearance.Data.name));
         } catch (err) {
             Logger.Warning(`Couldn't parse ${componentMeshPath}`);
@@ -624,7 +647,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
             const appearanceNames = component_collectAppearancesFromMesh(meshPath);
             const meshAppearanceName = stringifyPotentialCName(componentOverride.meshAppearance);
             if (isDynamicAppearance) {
-                // No implemented yet
+                // TODO: Not implemented yet
             } else if ((appearanceNames || []).length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName)
             ) {
                 appearanceNotFound(meshPath, meshAppearanceName, info);
@@ -860,10 +883,7 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
         ? entSettings.checkComponentNameDuplication
         : appFileSettings.checkComponentNameDuplication;
 
-    invalidVariantAndSubstitutions = {};
-
-    meshAppearancesNotFound = {};
-    meshAppearancesNotFoundByComponent = {};
+    resetInternalErrorMaps();
 
     appearanceErrorMessages = {};
 
@@ -1122,7 +1142,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
       return;
     }
 
-    const genderSubstitutionOnly = componentMeshPaths.length == 2 && (meshDepotPath.match(/{|}/g)?.length || 0) == 2 && meshDepotPath.includes("{gender}")    
+    const genderSubstitutionOnly = componentMeshPaths.length === 2 && (meshDepotPath.match(/{|}/g)?.length || 0) === 2 && meshDepotPath.includes("{gender}")    
     
     
     // Logger.Success(componentMeshPaths);
@@ -1194,6 +1214,12 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         }        
 
         const meshAppearances = component_collectAppearancesFromMesh(componentMeshPath);
+        
+        if (hasGarmentSupportByMeshFile[componentMeshPath] && component.$type !== "entGarmentSkinnedMeshComponent") {
+            invalidComponentTypes[info] ||= [];
+            invalidComponentTypes[info].push(`${info} includes a mesh with GarmentSupport, but is not an entGarmentSkinnedMeshComponent. GarmentSupport will not work.`);
+        }
+        
         if (!meshAppearances) { // for debugging
             // Logger.Error(`failed to collect appearances from ${componentMeshPath}`);
             return;
@@ -1340,6 +1366,13 @@ function validateAppearanceNameSuffixes(appearanceName, entAppearanceNames, tags
     }
 }
 
+function resetInternalErrorMaps() {
+    invalidVariantAndSubstitutions = {};
+    meshAppearancesNotFound = {};
+    meshAppearancesNotFoundByComponent = {};
+    invalidComponentTypes = {};
+}
+
 /**
  *
  * @param {*} ent The entity file as read from WKit
@@ -1357,9 +1390,7 @@ export function validateEntFile(ent, _entSettings) {
     const allComponentNames = [];
     const duplicateComponentNames = [];
 
-    invalidVariantAndSubstitutions = {};
-    meshAppearancesNotFound = {};
-    meshAppearancesNotFoundByComponent = {};
+    resetInternalErrorMaps();
 
     const currentFileName = pathToCurrentFile.replace(/^.*[\\/]/, '');
 
@@ -1502,6 +1533,7 @@ export function validateEntFile(ent, _entSettings) {
     if (entSettings.validateRecursively) {
         printInvalidAppearanceWarningIfFound();
         printSubstitutionWarningsIfFound();
+        printComponentWarningsIfFound();
     }
 
     isDataChangedForWriting = _isDataChangedForWriting;
