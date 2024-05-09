@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.4.1
+// @version 1.5
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
