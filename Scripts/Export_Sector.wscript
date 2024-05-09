@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.4
+// @version 1.4.1
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
@@ -152,6 +152,7 @@ function export_filename(filename){
         'xbm': 'png',
         'w2mesh':'glb',
         'physicalscene':'glb',
+	'streamingsector':'streamingsector.json'
         
         // Add more extensions and replacements as needed
     };
@@ -251,7 +252,7 @@ function ParseFile(fileName, parentFile) {
         return;
     }
     
-    if (!only_new || (only_new && !wkit.FileExistsInProject(export_filename(fileName)))) projectSet.add(fileName);
+    if (!only_new || (only_new && !wkit.FileExistsInRaw(export_filename(fileName)))) projectSet.add(fileName);
     
     
     if (!only_new || (only_new && !wkit.FileExistsInRaw(fileName+'.json'))){
