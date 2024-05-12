@@ -1509,8 +1509,8 @@ export function validateEntFile(ent, _entSettings) {
 
     // validate default appearance - not for dynamic appearances, because those will never be props.
     if (isRootEntity && entAppearanceNames.length && !isDynamicAppearance) {
-        const defaultAppearance = stringifyPotentialCName(ent.defaultAppearance);
-        if (!!defaultAppearance && !('random' === defaultAppearance || entAppearanceNames.includes(defaultAppearance))) {
+        const defaultAppearance = stringifyPotentialCName(ent.defaultAppearance) || '';
+        if ('random' !== defaultAppearance && !entAppearanceNames.includes(defaultAppearance)) {
             Logger.Info(`Root entity: defaultAppearance ${defaultAppearance} not found. If this is a prop, then it will spawn invisible.`)
         }
     }
