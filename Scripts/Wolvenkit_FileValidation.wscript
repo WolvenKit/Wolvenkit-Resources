@@ -1950,11 +1950,12 @@ export function validateMeshFile(mesh, _meshSettings) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
-        if (appearanceName && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > (appearance.chunkMaterials || []).length) {
+        const numAppearanceChunks = (appearance.chunkMaterials || []).length
+        if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
             Logger.Warning(`Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
         }
 
-        for (let j = 0; j < appearance.chunkMaterials.length; j++) {
+        for (let j = 0; j < numAppearanceChunks; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
             if (!ignoreChunkMaterialName(chunkMaterialName)
                 && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
