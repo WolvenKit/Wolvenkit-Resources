@@ -967,7 +967,7 @@ function resolveSubstitution(paths) {
             ret.push(path);
         }
     
-        if (currentMaterialName) {
+        if (currentMaterialName && path.includes('{material}')) {
             (dynamicMaterials[currentMaterialName] || []).forEach((materialName) => {
                 ret.push(path.replace('{material}', materialName));            
             });
