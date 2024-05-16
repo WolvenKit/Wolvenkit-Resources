@@ -52,7 +52,7 @@ const closingBraceRegex = new RegExp('}', 'g');
 function getNumCurlyBraces(inputString) {
     const numOpenBraces = (inputString.match(openingBraceRegex) || []).length;
     const numClosingBraces = (inputString.match(closingBraceRegex) || []).length;
-    
+
     return [numOpenBraces, numClosingBraces];
 }
 function checkCurlyBraces(inputString) {
@@ -119,7 +119,7 @@ function checkIfFileIsBroken(data, fileType, _info = '') {
 
 /**
  * Will check if a depot path exists. If the path is dynamic, it will resolve substitution.
- * 
+ *
  * @param _depotPath the depot path to analyse
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
@@ -142,7 +142,7 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput
             return true;
         }
         if (!suppressLogOutput) {
-            Logger.Warning(`${info}DepotPath not set`);            
+            Logger.Warning(`${info}DepotPath not set`);
         }
         return false;
     }
@@ -156,19 +156,19 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput
     if (depotPath.includes && depotPath.includes("extra_long_path")) {
         return true;
     }
-    
+
     // Check if the file is a numeric hash
     if (isNumericHash(depotPath)) {
         if (!suppressLogOutput) {
             Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
         }
         return false;
-    } 
-    
+    }
+
     // ArchiveXL 1.5 variant magic requires checking this in a loop
     const archiveXlResolvedPaths = getArchiveXlResolvedPaths(stringifyPotentialCName(depotPath));
     let ret = true;
-    
+
     archiveXlResolvedPaths.forEach((resolvedMeshPath) => {
         if (pathToCurrentFile === resolvedMeshPath) {
             if (!suppressLogOutput) {
@@ -183,40 +183,40 @@ function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput
         }
         // File does not exist
         ret = false;
-        
+
         if (suppressLogOutput) {
             return;
         }
-        
+
         if (shouldHaveSubstitution(resolvedMeshPath)) {
             const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
             if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
                 Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
             return;
-        } 
-        
-        if (!!currentMaterialName || isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {          
+        }
+
+        if (!!currentMaterialName || isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {
             Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
-        } 
-        
+        }
+
     })
     return ret;
 }
 
 const validMaterialFileExtensions = [ '.mi', '.mt', '.remt' ];
-function validateShaderTemplate(depotPath, _info) {    
+function validateShaderTemplate(depotPath, _info) {
     if (!checkDepotPath(depotPath, _info)) {
         return;
     }
-    
+
     // shouldn't be falsy, checkDepotPath should take care of that, but better safe than sorry
     const basePathString = stringifyPotentialCName(depotPath) || '';
-    
+
     if (basePathString === pathToCurrentFile) {
         Logger.Error(`${basePathString} uses itself as baseMaterial. This _will_ crash the game.`);
     }
-    
+
     const extensionParts = basePathString.match(/[^.]+$/);
 
     if (!extensionParts || validMaterialFileExtensions.includes(extensionParts[0])) {
@@ -416,16 +416,16 @@ function printInvalidAppearanceWarningIfFound() {
             }).map((errorMsg) => errorMsg.split('|'))
                 .reduce((acc, split) => {
                     const msg = split.length > 1 ? split[1] : split[0];
-                    acc[msg] = split.length > 1 ? split[0] : 'INFO'; 
+                    acc[msg] = split.length > 1 ? split[0] : 'INFO';
                     return acc;
                 }, {});
-            
+
             // now print them - consider severity levels
-            Object.keys(foundErrors).forEach((errorMsg) => {                
+            Object.keys(foundErrors).forEach((errorMsg) => {
                 switch (foundErrors[errorMsg] || 'ERROR') {
                     case 'WARNING': Logger.Warning(`  ${errorMsg}`); break;
                     case 'ERROR': Logger.Error(`  ${errorMsg}`); break;
-                    case 'INFO': 
+                    case 'INFO':
                     default:
                         Logger.Info(`  ${errorMsg}`); break;
                 }
@@ -572,7 +572,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     const componentsInEntityFile = [];
     if (validateRecursively) {
         try {
-            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');            
+            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
 
             // fileExists has been checked in validatePartsOverride
             const entity = TypeHelper.JsonParse(fileContent);
@@ -616,7 +616,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 
     let info = `${appearanceName}.partsOverride[${index}]`;
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
-    
+
     if (!!depotPath) {
         appearanceErrorMessages[appearanceName].push('INFO|PartsOverride: depot path given, override will be handled by engine instead of ArchiveXL');
     }
@@ -655,7 +655,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
         }
     }
 
-    // restore app file path 
+    // restore app file path
     pathToCurrentFile = appFilePath;
 
 }
@@ -667,7 +667,7 @@ function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearance
         return;
     }
 
-    // save current file path, then change it to nested file  
+    // save current file path, then change it to nested file
     const appFilePath = pathToCurrentFile;
     pathToCurrentFile = partsValueEntityDepotPath;
     appFile_collectComponentsFromEntPath(partsValueEntityDepotPath, validateRecursively, `${info}`);
@@ -675,10 +675,10 @@ function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearance
 }
 
 
-// We're ignoring tags that the game uses, or psi's extra tags for annotating stuff 
+// We're ignoring tags that the game uses, or psi's extra tags for annotating stuff
 const ignoredTags = [
     'PlayerBodyPart', 'Tight', 'Normal', 'Large', 'XLarge',  // clothing
-    'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound    
+    'Boots', 'Heels', 'Sneakers', 'Stilettos', 'Metal_feet', // footwear sound
     'AMM_prop', 'AMM_Prop',
     'Male', 'Female',
 ];
@@ -693,7 +693,7 @@ const forcingTags = [
 ]
 
 /**
- * 
+ *
  * @param appearance
  * @param appearanceName Name of appearance (for debug output)
  * @param partsValuePaths If we have certain hiding tags, we need to warn the user about potentially hiding their own components.
@@ -710,10 +710,10 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
         tagNames.push(tag);
         if (tag.startsWith("hide_") && !hidingTags.includes(tag.replace("hide_", ""))) {
             // verify correct hiding tags
-            appearanceErrorMessages[appearanceName].push(`INFO|unknown hiding tag: ${tag}`);            
+            appearanceErrorMessages[appearanceName].push(`INFO|unknown hiding tag: ${tag}`);
         } else if (tag.startsWith("force_") && !forcingTags.includes(tag.replace("force_", ""))) {
             // verify correct anti-hiding tags
-            appearanceErrorMessages[appearanceName].push(`INFO|unknown enforcing tag: ${tag}`);            
+            appearanceErrorMessages[appearanceName].push(`INFO|unknown enforcing tag: ${tag}`);
         } else if (usedAppearanceTags.includes(tag) && !ignoredTags.includes(tag)) {
             // verify tag uniqueness
             duplicateTags.push(tag);
@@ -724,11 +724,11 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
     if (isWeaponAppFile && duplicateTags.length > 0) {
         appearanceErrorMessages[appearanceName].push(`INFO|non-unique tags: [${duplicateTags.join(', ')}]`);
     }
-    
-    
+
+
     if (!tagNames.find((tag) => tag === "hide_Ankles" || tag === "hide_Legs")) return;
     partsValuePaths.forEach((path) => {
-        const hiddenComponentNames = (componentsByEntityPath[path] || []).filter((componentName) => /^\w0_.+/.test(componentName));        
+        const hiddenComponentNames = (componentsByEntityPath[path] || []).filter((componentName) => /^\w0_.+/.test(componentName));
         if (!hiddenComponentNames.length) return;
 
         appearanceErrorMessages[appearanceName].push(`INFO|has components hidden by your .app file: [${hiddenComponentNames.join(', ')}]`)
@@ -755,7 +755,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         appearanceErrorMessages[appearanceName].push(`INFO|An appearance with the name ${appearanceName} is already defined in .app file`);
     } else {
         alreadyDefinedAppearanceNames.push(appearanceName);
-    }   
+    }
 
     // we'll collect all mesh paths that are linked in entity paths
     meshPathsFromComponents.length = 0;
@@ -784,9 +784,9 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     componentIds = _componentIds;
 
     const meshPathsFromEntityFiles = [];
-    
+
     const partsValuePaths = [];
-    
+
     // check these before the overrides, because we're parsing the linked files
     for (let i = 0; i < appearance.Data.partsValues.length; i++) {
         const partsValue = appearance.Data.partsValues[i];
@@ -796,12 +796,12 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         (meshesByEntityPath[depotPath] || []).forEach((path) => meshPathsFromEntityFiles.push(path));
         if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
             Logger.Warning(`${appearanceName}.partsValues[${i}]: Substitution in depot path not supported.`);
-        }        
+        }
     }
 
 
     appFile_validateTags(appearance, appearanceName, partsValuePaths);
-    
+
     if (validateComponentCollision) {
         Object.values(componentNameCollisions)
             .filter((name) => overriddenComponents.includes(name))
@@ -823,7 +823,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     }
 
     // Dynamic appearances will ignore the components in the mesh. We'll use 'isUsingSubstitution' as indicator,
-    // since those only work for dynamic appearances, and the app file doesn't know if it's dynamic otherwise. 
+    // since those only work for dynamic appearances, and the app file doesn't know if it's dynamic otherwise.
     if (!isDynamicAppearance && !isUsingSubstitution) {
         meshPathsFromComponents
             .filter((path, i, array) => !!path && array.indexOf(path) === i) // only unique
@@ -890,9 +890,9 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
     const baseEntityType = stringifyPotentialCName(app.baseEntityType?.DepotPath);
     const preset = stringifyPotentialCName(app.preset?.DepotPath);
     const depotPath = stringifyPotentialCName(app.baseEntity?.DepotPath);
-    
-    isWeaponAppFile = (!!baseEntityType && 'None' !== baseEntityType) 
-        || (!!preset && 'None' !== preset) 
+
+    isWeaponAppFile = (!!baseEntityType && 'None' !== baseEntityType)
+        || (!!preset && 'None' !== preset)
         || (!!depotPath && '0' !== depotPath);
 
     for (let i = 0; i < app.appearances.length; i++) {
@@ -941,13 +941,13 @@ const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
 // This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
 let genderPartialMatch = '';
 
-// ArchiveXL: Collect dynamic materials, group them by 
+// ArchiveXL: Collect dynamic materials, group them by
 let numAppearances = 0;
 let dynamicMaterials = {}
 var currentMaterialName = "";
 
 /**
- * 
+ *
  * @param paths An array of paths to fix substitutions in
  * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
  * @returns {{length}|*|[]|*[]}
@@ -955,49 +955,49 @@ var currentMaterialName = "";
 function resolveSubstitution(paths) {
 
     if (!paths || !paths.length) return [];
-    
+
     // if no replacements can be made, we're done here
     if (!paths.find((path) => path.includes('{') || path.includes('}'))) {
         return paths;
     }
-     
+
     let ret = []
     paths.forEach((path) => {
         if(!shouldHaveSubstitution(path)) {
             ret.push(path);
         }
-    
+
         if (currentMaterialName && path.includes('{material}')) {
             (dynamicMaterials[currentMaterialName] || []).forEach((materialName) => {
-                ret.push(path.replace('{material}', materialName));            
+                ret.push(path.replace('{material}', materialName));
             });
             return ret;
         }
-        
+
         Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
             if (path.includes(variantFlag)) {
                 // This is either falsy, or can be used to find the body gender in a map
                 let bodyGender = '';
 
-                
+
                 // For dynamic substitution and bodies: We need to check whether or not those are gendered
                 if (!!genderPartialMatch && variantFlag === '{body}') {
                     let femGenderPartialString = "pwa"
                     if (!path.includes('{gender}')) {
-                        femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');                        
-                    }                    
-                    bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';                    
+                        femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');
+                    }
+                    bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';
                 }
-                
+
                 archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
                     // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
                     const isValid = !bodyGender || (genderToBodyMap[bodyGender] || []).includes(variantReplacement);
                     ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));
                 });
-            }         
+            }
         });
     });
-    
+
     // remove invalid substitutions and duplicates (via set)
     return resolveSubstitution(Array.from(new Set(ret))
         .filter((path) => !path.includes("{INVALID}"))
@@ -1006,7 +1006,7 @@ function resolveSubstitution(paths) {
 }
 
 function getArchiveXlResolvedPaths(depotPath) {
-    
+
     if (!depotPath || typeof depotPath === "bigint") {
         return [];
     }
@@ -1017,7 +1017,7 @@ function getArchiveXlResolvedPaths(depotPath) {
     if (depotPath.includes('{gender}') && depotPath.includes('{body}') && depotPath.match(genderMatchRegex)) {
         genderPartialMatch = depotPath.match(genderMatchRegex).pop() || '';
     }
-    
+
     let paths = [];
     if (!(shouldHaveSubstitution(depotPath) && checkCurlyBraces(depotPath))) {
         paths.push(depotPath);
@@ -1065,9 +1065,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     if (componentName?.includes(":")) {
         return;
     }
-        
+
     // allow empty paths for debug components
-    let depotPathCanBeEmpty = isDebugComponent; 
+    let depotPathCanBeEmpty = isDebugComponent;
     let componentPropertyKeyWithDepotPath = '';
 
     // entGarmentSkinnedMeshComponent - entSkinnedMeshComponent - entMeshComponent
@@ -1106,16 +1106,16 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         const savedComponentName = componentIds[component.id];
         const currentName = componentName.split('&')[0];
         if (!!savedComponentName && currentName !== savedComponentName && !savedComponentName.startsWith("amm")) {
-            componentIdErrors.push(`${component.id}: not unique (${componentName})`);  
+            componentIdErrors.push(`${component.id}: not unique (${componentName})`);
         }
         componentIds[component.id] = currentName;
-        // parseInt or parseFloat will lead to weird side effects here. Give it an ID of 1638580377071202307, 
-        // and it'll arrive at the numeric value of 1638580377071202300. 
+        // parseInt or parseFloat will lead to weird side effects here. Give it an ID of 1638580377071202307,
+        // and it'll arrive at the numeric value of 1638580377071202300.
         if (!/^[02468]$/.test((component.id.match(/\d$/) || ["0"])[0])) {
             componentIdErrors.push(`${component.id}: not an even number (${componentName})`);
         }
     }
-    
+
     if (componentName.includes('gender=f')) {
         Logger.Warning(`${info} name: invalid substitution, it's 'gender=w'!`);
     }
@@ -1126,7 +1126,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         // Logger.Error(`${componentMeshPath}: not validating mesh`);
         return;
     }
-    
+
     if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath) && !meshDepotPath.endsWith('.w2mesh')) {
         Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
     }
@@ -1136,15 +1136,15 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     }
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
-    
+
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
       Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
     }
 
-    const genderSubstitutionOnly = componentMeshPaths.length === 2 && (meshDepotPath.match(/{|}/g)?.length || 0) === 2 && meshDepotPath.includes("{gender}")    
-    
-    
+    const genderSubstitutionOnly = componentMeshPaths.length === 2 && (meshDepotPath.match(/{|}/g)?.length || 0) === 2 && meshDepotPath.includes("{gender}")
+
+
     // Logger.Success(componentMeshPaths);
     componentMeshPaths.forEach((componentMeshPath) => {
         // check for component name uniqueness
@@ -1177,7 +1177,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && !meshAppearanceName.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             localErrors.push(`name: ${MISSING_PREFIX_WARNING}`);
         }
-        
+
         if (!pathHasSubstitution && !checkDepotPath(componentMeshPath)) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
@@ -1194,32 +1194,32 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             localErrors.push(`path: ${MISSING_PREFIX_WARNING}`);
         }
-        
+
         // if we're resolving paths: check if the files exists
         // Skip refit check if user doesn't want refit check
-        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", "")) 
+        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))
             && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
         ) {
             localErrors.push(`${componentMeshPath} not found in game or project files`);
         }
-        
+
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
             localErrors.push(`path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
-        
+
         if (localErrors.length) {
             invalidVariantAndSubstitutions[info] ||= [];
             invalidVariantAndSubstitutions[info].push(`DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
             localErrors.length = 0;
-        }        
+        }
 
         const meshAppearances = component_collectAppearancesFromMesh(componentMeshPath);
-        
+
         if (hasGarmentSupportByMeshFile[componentMeshPath] && component.$type !== "entGarmentSkinnedMeshComponent") {
             invalidComponentTypes[info] ||= [];
             invalidComponentTypes[info].push(`${info} includes a mesh with GarmentSupport, but is not an entGarmentSkinnedMeshComponent. GarmentSupport will not work.`);
         }
-        
+
         if (!meshAppearances) { // for debugging
             // Logger.Error(`failed to collect appearances from ${componentMeshPath}`);
             return;
@@ -1259,7 +1259,7 @@ function getAppearanceNamesInAppFile(_depotPath) {
 // check for name duplications
 const alreadyDefinedAppearanceNames = [];
 
-// files that couldn't be parsed 
+// files that couldn't be parsed
 const invalidFiles = [];
 
 /**
@@ -1267,14 +1267,14 @@ const invalidFiles = [];
  */
 function entFile_validateAppearance(appearance) {
     const appearanceName = (stringifyPotentialCName(appearance.name) || '');
-    
+
     // ignore separator appearances such as
     // =============================
     // -----------------------------
     if (appearanceName.length === 0 || PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
         return;
     }
-    
+
     let appearanceNameInAppFile = (stringifyPotentialCName(appearance.appearanceName) || '').trim()
     if (!appearanceNameInAppFile || appearanceNameInAppFile === 'None') {
         appearanceNameInAppFile = appearanceName;
@@ -1310,11 +1310,11 @@ function entFile_validateAppearance(appearance) {
     const entFilePath = pathToCurrentFile;
     pathToCurrentFile = appFilePath;
 
-    // if we're being dynamic here, also check for appearance names with suffixes. 
+    // if we're being dynamic here, also check for appearance names with suffixes.
     const namesInAppFile = getAppearanceNamesInAppFile(appFilePath, appearanceName) || []
-    
+
     const dynamicNamesInAppFile = namesInAppFile.map((name) => name.split('&')[0]);
-    if (!namesInAppFile.includes(appearanceNameInAppFile) && 
+    if (!namesInAppFile.includes(appearanceNameInAppFile) &&
         (!isDynamicAppearance || !dynamicNamesInAppFile.includes(appearanceNameInAppFile))
     ) {
         entAppearancesNotFoundByFile[appFilePath] ||= {};
@@ -1404,7 +1404,7 @@ export function validateEntFile(ent, _entSettings) {
 
     isRootEntity = isDynamicAppearance || (ent.appearances?.length || 0) > 0;
 
-    // check entity type  
+    // check entity type
     const entityType = ent.entity?.Data?.$type;
     if (isRootEntity) {
         if (entityType === "entEntity") {
@@ -1414,7 +1414,7 @@ export function validateEntFile(ent, _entSettings) {
         }
     } else if (entityType === "gameGarmentItemObject") {
         Logger.Info(`${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
-    }       
+    }
 
     if (visualTagList.some((tag) => tag.startsWith('hide'))) {
         Logger.Warning('Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
@@ -1430,7 +1430,7 @@ export function validateEntFile(ent, _entSettings) {
         (allComponentNames.includes(componentName) ? duplicateComponentNames : allComponentNames).push(componentName);
     }
 
-    if (componentIdErrors.length > 0) {       
+    if (componentIdErrors.length > 0) {
         Logger.Warning(`${currentFileName}: Component ID(s) may cause errors with garment support: ${formatArrayForPrint(componentIdErrors)}`);
     }
 
@@ -1486,9 +1486,9 @@ export function validateEntFile(ent, _entSettings) {
         const appearance = ent.appearances[i];
         entFile_validateAppearance(appearance, i);
         const name = (stringifyPotentialCName(appearance.name) || '');
-        entAppearanceNames.push(name);        
-        isUsingSuffixesOnRootEntityNames ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');        
-        isUsingSuffixesOnRootEntityNames ||= name.includes('&');            
+        entAppearanceNames.push(name);
+        isUsingSuffixesOnRootEntityNames ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');
+        isUsingSuffixesOnRootEntityNames ||= name.includes('&');
         pathToCurrentFile = _pathToCurrentFile;
     }
 
@@ -1500,7 +1500,7 @@ export function validateEntFile(ent, _entSettings) {
         Logger.Warning(`Dynamic appearances: EmptyAppearance:FPP might be flaky. Rename your appearance(s) in the .app file like ${exampleAppearanceName}&camera:tpp instead.`);
     }
 
-    
+
     // now validate names
     for (let i = 0; i < ent.appearances.length; i++) {
         const appearance = ent.appearances[i];
@@ -1558,7 +1558,7 @@ let localIndexList = [];
 
 // if checkDuplicateMaterialDefinitions is used: warn user if duplicates exist in list
 let listOfMaterialProperties = {};
- 
+
 
 
 /**
@@ -1572,7 +1572,7 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
     if (key === "$type" || hasUppercasePaths) {
         return;
     }
-    
+
     const materialDepotPath = stringifyPotentialCName(materialValue.DepotPath);
 
     if (!materialDepotPath || hasUppercase(materialDepotPath) || isNumericHash(materialDepotPath) || "none" === materialDepotPath.toLowerCase()) {
@@ -1610,14 +1610,14 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
             break;
     }
     if (materialValue.Flags?.includes('Embedded')) {
-        Logger.Info(`${info} is set to Embedded. This might not work as you expect it.`);        
+        Logger.Info(`${info} is set to Embedded. This might not work as you expect it.`);
     }
-    
+
     // Check if the path should substitute, and if yes, if it's valid
     const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(materialDepotPath);
-    
+
     if ((numOpenBraces > 0 || numClosingBraces) > 0 && !materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        Logger.Warning(`${info} Depot path seems to contain substitutions, but does not start with an *`);        
+        Logger.Warning(`${info} Depot path seems to contain substitutions, but does not start with an *`);
     } else if (numOpenBraces !== numClosingBraces) {
         Logger.Warning(`${info} Depot path has invalid substitution (uneven number of { and })`);
     } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
@@ -1652,25 +1652,25 @@ function material_getMaterialPropertyValue(key, materialValue) {
             return `RGBA: ${materialValue.W}, ${materialValue.X}, ${materialValue.Y}, ${materialValue.Z}`
         default:
             return `${materialValue}`;
-    }    
+    }
 }
 
 // Dynamic materials need at least two appearances
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex, materialInfo) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
-    
+
     if (!baseMaterial) {
       Logger.Info(`${materialInfo}: No base material defined. Skipping validation`);
       return;
     }
-    
+
     const isSoftDependency = material.baseMaterial?.Flags === "Soft";
     const isUsingSubstitution = baseMaterial.includes("{") || baseMaterial.includes("}")
 
     var baseMaterialPaths = [ baseMaterial ];
-    
+
     currentMaterialName = materialName.includes("@") ? materialName : undefined;
-    
+
     if (isUsingSubstitution && !isSoftDependency) {
         Logger.Warning(`${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
     } else if (!isUsingSubstitution && isSoftDependency) {
@@ -1682,8 +1682,8 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     baseMaterialPaths.forEach((path) => {
         if (checkDepotPath(path, materialInfo)) {
             validateShaderTemplate(path, materialInfo);
-        }    
-        
+        }
+
         if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
             const _currentFilePath = pathToCurrentFile;
             const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
@@ -1698,10 +1698,10 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
         'baseMaterial': baseMaterial,
         'numProperties': material.values.length,
     }
-    
+
     for (let i = 0; i < material.values.length; i++) {
         let tmp = material.values[i];
-        
+
         const type = tmp["$type"] || tmp["type"] || '';
 
         if (!type.startsWith("rRef:") && !meshSettings.checkDuplicateMaterialDefinitions) {
@@ -1710,7 +1710,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
             if (type.startsWith("rRef:")) {
-                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`);                
+                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`);
             }
             if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
                 listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
@@ -1810,7 +1810,7 @@ export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
 function printDuplicateMaterialWarnings() {
     // If we want to check material for duplication
     if (!meshSettings.checkDuplicateMaterialDefinitions) return;
-    
+
     // Collect and filter entries
     const identicalMaterials = {};
     const foundDuplicates = [];
@@ -1849,19 +1849,19 @@ function printDuplicateMaterialWarnings() {
     }
 }
 
-function meshFile_collectDynamicChunkMaterials(mesh) {    
+function meshFile_collectDynamicChunkMaterials(mesh) {
     numAppearances = 0;
     dynamicMaterials = {};
     // null-safety
-    if (!mesh || typeof mesh === 'bigint') return;    
-    
+    if (!mesh || typeof mesh === 'bigint') return;
+
     // it's not dynamic
     if (!JsonStringify(mesh).includes("@")) return;
-    
+
     if (mesh.appearances.length < 2) {
         Logger.Warning(`You need at least two appearances for dynamic appearances to work!`);
     }
-    
+
     for (let i = 0; i < mesh.appearances.length; i++) {
         numAppearances += 1;
         let appearance = mesh.appearances[i].Data;
@@ -1892,9 +1892,17 @@ export function validateMeshFile(mesh, _meshSettings) {
     resetInternalFlagsAndCaches();
 
     checkMeshMaterialIndices(mesh);
-    
+
     meshFile_collectDynamicChunkMaterials(mesh);
-    
+
+    var definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));
+
+    var undefinedDynamicMaterialNames = Object.keys(dynamicMaterials).filter((name) => !definedMaterialNames.includes(name));
+
+    if (undefinedDynamicMaterialNames.length > 0) {
+        Logger.Error(`You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
+    }
+
     if (mesh.localMaterialBuffer.materials !== null) {
         for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
             let material = mesh.localMaterialBuffer.materials[i];
@@ -1960,7 +1968,7 @@ export function validateMeshFile(mesh, _meshSettings) {
             if (!ignoreChunkMaterialName(chunkMaterialName)
                 && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
                 && !(chunkMaterialName in materialNames)
-                
+
             ) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
@@ -2065,7 +2073,7 @@ export function validateCsvFile(csvData, csvSettings) {
 
     resetInternalFlagsAndCaches();
 
-    // check if we have invalid depot paths (mixing up a json and a csv maybe) 
+    // check if we have invalid depot paths (mixing up a json and a csv maybe)
     let potentiallyInvalidFactoryPaths = [];
 
     for (let i = 0; i < csvData.compiledData.length; i++) {
@@ -2149,7 +2157,7 @@ export function validateJsonFile(jsonData, jsonSettings) {
                 + 'unless you set this value to 0');
         }
         const duplicateKeys = secondaryKeys
-            .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys 
+            .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
             .filter((path, i, array) => !!path && array.indexOf(path) === i); // filter out duplicates
 
         if (duplicateKeys?.length) {
@@ -2297,7 +2305,7 @@ function workspotFile_CheckAnimSet(idx, animSet) {
     }
 
     for (let i = 0; i < animSet.Data.list.length; i++) {
-        const childItem = animSet.Data.list[i];        
+        const childItem = animSet.Data.list[i];
         const childItemName = childItem.Data?.animName?.value || '';
         if (!childItemName) {
             continue;
