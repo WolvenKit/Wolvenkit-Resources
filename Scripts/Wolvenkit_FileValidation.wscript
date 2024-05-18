@@ -101,8 +101,6 @@ function checkIfFileIsBroken(data, fileType, _info = '') {
               infoMsg.push(`${info}: entity is null. This file will probably not work.`)
               break;
             } 
-            infoMsg.push(`${info}: If this .ent file belongs to a character, you can ignore this.`)
-            infoMsg.push(`If this is an item, this will not work (best-case) or crash your game (worst-case):`)
             if (!data.components) {
                 errorMsg.push('"components" doesn\'t exist. There\'s a good chance that this file won\'t work.');
             }
@@ -114,10 +112,14 @@ function checkIfFileIsBroken(data, fileType, _info = '') {
             break;
     }
     
-    if (!infoMsg.length && !errorMsg.length) {
+    if (!errorMsg.length && !infoMsg.length) {
         return false;
     }
-
+    if (errorMsg.length && !infoMsg.length) {    
+      infoMsg.push(`${info}: If this .ent file belongs to a character, you can ignore this.`);
+      infoMsg.push(`If this is an item, this will not work (best-case) or crash your game (worst-case):`);
+    }
+  
     infoMsg.forEach((msg) => Logger.Warning(`${msg}`));    
     errorMsg.forEach((msg) => Logger.Warning(`\t${msg}`));
     return true;
