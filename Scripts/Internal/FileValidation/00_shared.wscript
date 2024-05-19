@@ -159,18 +159,20 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         // File does not exist
         ret = false;
 
-        if (suppressLogOutput) {
+        if (suppressLogOutput || !warnAboutSubstitution) {
             return;
         }
 
-        if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath)) {
-            if (resolvedPath?.includes("{") || resolvedPath?.includes("}")) {
-                Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
-            }
+        if ( shouldHaveSubstitution(resolvedPath, true)) {
+            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
+            return;
+        }
+        if (!!currentMaterialName) {
+            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It may not be defined yet.`);
             return;
         }
 
-        if (!!currentMaterialName || (isDynamicAppearance && isRootEntity && resolvedPath.endsWith(".app"))) {
+        if (isDynamicAppearance && isRootEntity && resolvedPath.endsWith(".app")) {
             Logger.Warning(`${info}${resolvedPath} not found in project or game files`);
         }
 

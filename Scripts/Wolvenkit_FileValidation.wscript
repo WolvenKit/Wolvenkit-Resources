@@ -2,7 +2,6 @@
 
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
-import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
 
 import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
@@ -737,21 +736,9 @@ function getArchiveXLVariantComponentNames() {
 
 }
 
-const archiveXLVarsAndValues = {
-    '{camera}': ['fpp', 'tpp'],
-    '{feet}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
-    '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
-    '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
-}
-
-// For archive XL dynamic substitution: We need to make sure that we only check for valid gender/body combinations
-const genderToBodyMap = ArchiveXLConstants.genderToBodyMap;
-
 // something like \_p{gender}a_\ or just \{gender}\
 const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
 
-// This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
-let genderPartialMatch = '';
 
 // ArchiveXL: Collect dynamic materials, group them by
 let numAppearances = 0;
@@ -1596,15 +1583,14 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
                 continue;
             }
             const nameParts = chunkMaterialName.split("@");
-            if (nameParts.length < 2) {
-                continue;
+            const dynamicMaterialName = `@${nameParts[(nameParts.length -1)]}`;
+            dynamicMaterials[dynamicMaterialName] = dynamicMaterials[dynamicMaterialName] || [];
+
+            if (!dynamicMaterials[dynamicMaterialName].includes(nameParts[0])) {
+                dynamicMaterials[dynamicMaterialName].push(nameParts[0]);
             }
-            const dynamicMaterialName = `@${nameParts[1]}`;
-            dynamicMaterials[dynamicMaterialName] = dynamicMaterials[dynamicMaterialName] || new Set();
-            dynamicMaterials[dynamicMaterialName].add(nameParts[0]);
         }
     }
-    Logger.Success(dynamicMaterials);
 }
 export function validateMeshFile(mesh, _meshSettings) {
     // check if settings are enabled

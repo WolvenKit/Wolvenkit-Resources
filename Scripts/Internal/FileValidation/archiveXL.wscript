@@ -1,9 +1,23 @@
 
 import { checkCurlyBraces, getNumCurlyBraces } from "./00_shared.wscript";
 import { currentMaterialName, dynamicMaterials  } from '../../Wolvenkit_FileValidation.wscript';
+import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
 import * as Logger from 'Logger.wscript';
 
 export const ARCHIVE_XL_VARIANT_INDICATOR = '*';
+
+const archiveXLVarsAndValues = {
+    '{camera}': ['fpp', 'tpp'],
+    '{feet}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
+    '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
+    '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
+}
+
+// This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
+let genderPartialMatch = '';
+
+// For archive XL dynamic substitution: We need to make sure that we only check for valid gender/body combinations
+const genderToBodyMap = ArchiveXLConstants.genderToBodyMap;
 
 
 export function getArchiveXlResolvedPaths(depotPath) {
