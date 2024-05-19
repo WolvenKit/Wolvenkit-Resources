@@ -3,7 +3,15 @@
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
+
+import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR } from "./Internal/FileValidation/archiveXL.wscript";
+import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
 import {JsonStringify} from "TypeHelper.wscript";
+import {
+    checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, hasUppercase,
+    getNumCurlyBraces, checkCurlyBraces, isNumericHash, formatArrayForPrint, shouldHaveSubstitution
+} from "./Internal/FileValidation/00_shared.wscript";
+
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -18,200 +26,6 @@ import {JsonStringify} from "TypeHelper.wscript";
  * the Wolvenkit_ prefix from the path, and edit the importing files.
  */
 
-/**
- * Will safely convert a cname to string and run some validation on it
- */
-function stringifyPotentialCName(cnameOrString, _info = '', suppressSpaceCheck = false) {
-    if (!cnameOrString) return undefined;
-    if (typeof cnameOrString === 'string') {
-        return cnameOrString;
-    }
-    if (typeof cnameOrString === 'bigint') {
-        return `${cnameOrString}`;
-    }
-    const ret = !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
-    const info = _info ? `${_info}: '${ret}' ` : `'${ret}' `;
-
-    if (ret && ret.trim && ret.trim() !== ret) {
-        Logger.Error(`${info}has trailing or leading spaces! Make sure to remove them, or the component might not work!`);
-    } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0 && !PLACEHOLDER_NAME_REGEX.test(ret || '')) {
-        Logger.Warning(`${info}includes spaces. Please use _ instead.`);
-    }
-    return ret;
-}
-
-const openingBraceRegex = new RegExp('{', 'g');
-const closingBraceRegex = new RegExp('}', 'g');
-
-/**
- * For ArchiveXL path validation: does the string contain the same number of { and }?
- * Will set flag to allow checking for root entity
- *
- * @param inputString depot path to check
- */
-function getNumCurlyBraces(inputString) {
-    const numOpenBraces = (inputString.match(openingBraceRegex) || []).length;
-    const numClosingBraces = (inputString.match(closingBraceRegex) || []).length;
-
-    return [numOpenBraces, numClosingBraces];
-}
-function checkCurlyBraces(inputString) {
-    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
-    return numOpenBraces === numClosingBraces;
-}
-
-function hasUppercase(str) {
-    if (!str || !/[A-Z]/.test(str)) return false;
-    hasUppercasePaths = true;
-    return true;
-}
-
-function isNumericHash(str) {
-    return !!str && /^\d+$/.test(str);
-}
-
-function formatArrayForPrint(ary) {
-    if (!ary || undefined === ary.length) return '';
-    if (0 === ary.length) return '[ ]';
-    if (1 === ary.length) return `[ ${ary[0]} ]`;
-    return `[\n\t${ary.join('\n\t')}\n]`;
-}
-
-/**
- * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
- * and caused exceptions in file validation because certain values weren't set. This method fixes the structure
- * and prints warnings.
- *
- * @param data the file's data
- * @param fileType for the switch case.
- * @param _info Optional: information for the debug output
- */
-function checkIfFileIsBroken(data, fileType, _info = '') {
-    let errorMsg = [];
-    let infoMsg = [];
-    let info = _info;
-    if (!info) {
-        const fileName = (pathToCurrentFile || '').split('\\\\').pop();
-        info = `${fileName ? fileName : `${fileType} file`}`;
-    }
-
-    switch (fileType) {
-        case 'ent':
-            if (null === data.entity) {
-              infoMsg.push(`${info}: entity is null. This file will probably not work.`)
-              break;
-            } 
-            if (!data.components) {
-                errorMsg.push('"components" doesn\'t exist. There\'s a good chance that this file won\'t work.');
-            }
-            if (!data.appearances) {
-                errorMsg.push('"appearances" doesn\'t exist. There\'s a good chance that this file won\'t work.');
-            }
-            break;
-        default:
-            break;
-    }
-    
-    if (!errorMsg.length && !infoMsg.length) {
-        return false;
-    }
-    if (errorMsg.length && !infoMsg.length) {    
-      infoMsg.push(`${info}: If this .ent file belongs to a character, you can ignore this.`);
-      infoMsg.push(`If this is an item, this will not work (best-case) or crash your game (worst-case):`);
-    }
-  
-    infoMsg.forEach((msg) => Logger.Warning(`${msg}`));    
-    errorMsg.forEach((msg) => Logger.Warning(`\t${msg}`));
-    return true;
-}
-
-
-/**
- * Will check if a depot path exists. If the path is dynamic, it will resolve substitution.
- *
- * @param _depotPath the depot path to analyse
- * @param _info info string for the user
- * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
- * @param suppressLogOutput suppress log output (because they'll be gathered in other places)
- *
- * @return true if the depot path exists and can be resolved.
- */
-function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLogOutput = false) {
-    // Don't validate if uppercase file names are present
-    if (hasUppercasePaths) {
-        return false;
-    }
-    const info = _info ? `${_info}: ` : '';
-
-    // if (!_info) {         throw new Error();     }
-
-    const depotPath = stringifyPotentialCName(_depotPath) || '';
-    if (!depotPath) {
-        if (allowEmpty) {
-            return true;
-        }
-        if (!suppressLogOutput) {
-            Logger.Warning(`${info}DepotPath not set`);
-        }
-        return false;
-    }
-
-    // check if the path has uppercase characters
-    if (hasUppercase(depotPath)) {
-        return false;
-    }
-
-    // skip example template files
-    if (depotPath.includes && depotPath.includes("extra_long_path")) {
-        return true;
-    }
-
-    // Check if the file is a numeric hash
-    if (isNumericHash(depotPath)) {
-        if (!suppressLogOutput) {
-            Logger.Info(`${info}Wolvenkit can't resolve hashed depot path ${depotPath}`);
-        }
-        return false;
-    }
-
-    // ArchiveXL 1.5 variant magic requires checking this in a loop
-    const archiveXlResolvedPaths = getArchiveXlResolvedPaths(stringifyPotentialCName(depotPath));
-    let ret = true;
-
-    archiveXlResolvedPaths.forEach((resolvedMeshPath) => {
-        if (pathToCurrentFile === resolvedMeshPath) {
-            if (!suppressLogOutput) {
-                Logger.Error(`${info}Depot path ${resolvedMeshPath} references itself. This _will_ crash the game!`);
-            }
-            ret = false;
-            return;
-        }
-        // all fine
-        if (wkit.FileExists(resolvedMeshPath)) {
-            return;
-        }
-        // File does not exist
-        ret = false;
-
-        if (suppressLogOutput) {
-            return;
-        }
-
-        if (shouldHaveSubstitution(resolvedMeshPath)) {
-            const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
-            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
-                Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
-            }
-            return;
-        }
-
-        if (!!currentMaterialName || isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {
-            Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
-        }
-
-    })
-    return ret;
-}
 
 const validMaterialFileExtensions = [ '.mi', '.mt', '.remt' ];
 function validateShaderTemplate(depotPath, _info) {
@@ -249,15 +63,6 @@ let isRootEntity = false;
 /** Are path substitutions used in the .app or the mesh entity?  */
 let isUsingSubstitution = false;
 
-function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
-    if (!inputString || typeof inputString === "bigint") return false;
-    if (!ignoreAsterisk && inputString.trim().startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        return true;
-    }
-    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
-    return numOpenBraces > 0 || numClosingBraces > 0;
-}
-
 /**
  * Matches placeholders such as
  * ----------------
@@ -266,7 +71,7 @@ function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
 const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
-let pathToCurrentFile = '';
+export let pathToCurrentFile = '';
 
 export function setPathToCurrentFile(path) {
     pathToCurrentFile = path;
@@ -917,8 +722,6 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
 
 //#endregion
 
-const ARCHIVE_XL_VARIANT_INDICATOR = '*';
-
 // TODO read ArchiveXL stuff from yaml
 
 /**
@@ -1014,34 +817,6 @@ function resolveSubstitution(paths) {
     );
 }
 
-function getArchiveXlResolvedPaths(depotPath) {
-
-    if (!depotPath || typeof depotPath === "bigint") {
-        return [];
-    }
-    if (!depotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        return [depotPath];
-    }
-
-    if (depotPath.includes('{gender}') && depotPath.includes('{body}') && depotPath.match(genderMatchRegex)) {
-        genderPartialMatch = depotPath.match(genderMatchRegex).pop() || '';
-    }
-
-    let paths = [];
-    if (!(shouldHaveSubstitution(depotPath) && checkCurlyBraces(depotPath))) {
-        paths.push(depotPath);
-    } else {
-        paths = resolveSubstitution([ depotPath ]);
-    }
-
-    // If nothing was substituted: We're done here
-    if (!paths.length) {
-        paths.push(depotPath.replace(ARCHIVE_XL_VARIANT_INDICATOR, ''));
-    }
-
-    // If nothing was substituted: We're done here
-    return paths;
-}
 
 //#region entFile
 let entSettings = {};
@@ -2462,33 +2237,4 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
 }
 //#endregion
 
-
-//#region inkatlas
-export function validateInkatlasFile(inkatlas, _inkatlasSettings) {
-    if (!_inkatlasSettings?.Enabled) return;
-    if (inkatlas["Data"] && inkatlas["Data"]["RootChunk"]) {
-        return validateWorkspotFile(workspot["Data"]["RootChunk"], _inkatlasSettings);
-    }
-    if (checkIfFileIsBroken(inkatlas, 'inkatlas')) {
-        return;
-    }
-
-    let depotPath;
-    if (_inkatlasSettings.CheckDynamicTexture) {
-        depotPath = stringifyPotentialCName(inkatlas.dynamicTexture?.DepotPath);
-        checkDepotPath(depotPath, 'inkatlas.dynamicTexture', true);
-        depotPath = stringifyPotentialCName(inkatlas.dynamicTextureSlot?.texture?.DepotPath);
-        checkDepotPath(depotPath, 'inkatlas.dynamicTextureSlot.texture', true);
-        depotPath = stringifyPotentialCName(inkatlas.texture?.DepotPath);
-        checkDepotPath(depotPath, 'inkatlas.dynamicTextureSlot.texture', true);
-    }
-
-
-    if (_inkatlasSettings.CheckSlots) {
-        (inkatlas.slots?.Elements || []).forEach((entry, index) => {
-            depotPath = stringifyPotentialCName(entry.texture?.DepotPath);
-            checkDepotPath(depotPath, `inkatlas.slots[${index}].texture`, index > 0);
-        });
-    }
-
-}
+export const validateInkatlasFile = validate_inkatlas_file;
