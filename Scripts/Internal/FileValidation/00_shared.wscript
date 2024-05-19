@@ -1,5 +1,14 @@
-import { pathToCurrentFile, hasUppercasePaths } from '../../Wolvenkit_FileValidation.wscript';
-import { getArchiveXlResolvedPaths } from './archiveXL.wscript';
+import {
+    pathToCurrentFile,
+    hasUppercasePaths,
+    currentMaterialName,
+    isDynamicAppearance,
+    entSettings,
+    meshSettings,
+    dynamicMaterials
+ } from '../../Wolvenkit_FileValidation.wscript';
+import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
+import * as Logger from 'Logger.wscript';
 
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
@@ -125,16 +134,26 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     const archiveXlResolvedPaths = getArchiveXlResolvedPaths(stringifyPotentialCName(depotPath));
     let ret = true;
 
-    archiveXlResolvedPaths.forEach((resolvedMeshPath) => {
-        if (pathToCurrentFile === resolvedMeshPath) {
+    let warnAboutSubstitution = false;
+    switch (pathToCurrentFile.split('.').pop()) {
+        case 'ent':
+            warnAboutSubstitution = entSettings.warnAboutSubstitution;
+        case 'mesh':
+            warnAboutSubstitution = meshSettings.enabled;;
+        default:
+            warnAboutSubstitution = false;
+    }
+
+    archiveXlResolvedPaths.forEach((resolvedPath) => {
+        if (pathToCurrentFile === resolvedPath) {
             if (!suppressLogOutput) {
-                Logger.Error(`${info}Depot path ${resolvedMeshPath} references itself. This _will_ crash the game!`);
+                Logger.Error(`${info}Depot path ${resolvedPath} references itself. This _will_ crash the game!`);
             }
             ret = false;
             return;
         }
         // all fine
-        if (wkit.FileExists(resolvedMeshPath)) {
+        if (wkit.FileExists(resolvedPath)) {
             return;
         }
         // File does not exist
@@ -144,16 +163,15 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             return;
         }
 
-        if (shouldHaveSubstitution(resolvedMeshPath)) {
-            const nameHasSubstitution = resolvedMeshPath && resolvedMeshPath.includes("{") || resolvedMeshPath.includes("}")
-            if (nameHasSubstitution && entSettings.warnAboutIncompleteSubstitution) {
-                Logger.Info(`${info}${resolvedMeshPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
+        if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath)) {
+            if (resolvedPath?.includes("{") || resolvedPath?.includes("}")) {
+                Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             }
             return;
         }
 
-        if (!!currentMaterialName || isDynamicAppearance && isRootEntity && resolvedMeshPath.endsWith(".app")) {
-            Logger.Warning(`${info}${resolvedMeshPath} not found in project or game files`);
+        if (!!currentMaterialName || (isDynamicAppearance && isRootEntity && resolvedPath.endsWith(".app"))) {
+            Logger.Warning(`${info}${resolvedPath} not found in project or game files`);
         }
 
     })
@@ -198,13 +216,4 @@ export function formatArrayForPrint(ary) {
     if (0 === ary.length) return '[ ]';
     if (1 === ary.length) return `[ ${ary[0]} ]`;
     return `[\n\t${ary.join('\n\t')}\n]`;
-}
-
-export function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
-    if (!inputString || typeof inputString === "bigint") return false;
-    if (!ignoreAsterisk && inputString.trim().startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        return true;
-    }
-    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
-    return numOpenBraces > 0 || numClosingBraces > 0;
 }

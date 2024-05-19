@@ -1,6 +1,7 @@
 
-import { checkCurlyBraces, shouldHaveSubstitution} from "./00_shared.wscript";
-
+import { checkCurlyBraces, getNumCurlyBraces } from "./00_shared.wscript";
+import { currentMaterialName, dynamicMaterials  } from '../../Wolvenkit_FileValidation.wscript';
+import * as Logger from 'Logger.wscript';
 
 export const ARCHIVE_XL_VARIANT_INDICATOR = '*';
 
@@ -32,4 +33,73 @@ export function getArchiveXlResolvedPaths(depotPath) {
 
     // If nothing was substituted: We're done here
     return paths;
+}
+
+export function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
+    if (!inputString || typeof inputString === "bigint") return false;
+    if (!ignoreAsterisk && inputString.trim().startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
+        return true;
+    }
+    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(inputString);
+    return numOpenBraces > 0 || numClosingBraces > 0;
+}
+
+
+/**
+ *
+ * @param paths An array of paths to fix substitutions in
+ * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
+ * @returns {{length}|*|[]|*[]}
+ */
+export function resolveSubstitution(paths) {
+
+    if (!paths || !paths.length) return [];
+
+    // if no replacements can be made, we're done here
+    if (!paths.find((path) => path.includes('{') || path.includes('}'))) {
+        return paths;
+    }
+
+    let ret = []
+    paths.forEach((path) => {
+        if(!shouldHaveSubstitution(path)) {
+            ret.push(path);
+        }
+
+        if (currentMaterialName && path.includes('{material}')) {
+            (dynamicMaterials[currentMaterialName] || []).forEach((materialName) => {
+                ret.push(path.replace('{material}', materialName));
+            });
+            return ret;
+        }
+
+        Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
+            if (path.includes(variantFlag)) {
+                // This is either falsy, or can be used to find the body gender in a map
+                let bodyGender = '';
+
+
+                // For dynamic substitution and bodies: We need to check whether or not those are gendered
+                if (!!genderPartialMatch && variantFlag === '{body}') {
+                    let femGenderPartialString = "pwa"
+                    if (!path.includes('{gender}')) {
+                        femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');
+                    }
+                    bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';
+                }
+
+                archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
+                    // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
+                    const isValid = !bodyGender || (genderToBodyMap[bodyGender] || []).includes(variantReplacement);
+                    ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));
+                });
+            }
+        });
+    });
+
+    // remove invalid substitutions and duplicates (via set)
+    return resolveSubstitution(Array.from(new Set(ret))
+        .filter((path) => !path.includes("{INVALID}"))
+        .map((path) => path.replace(/^\*/, ""))
+    );
 }

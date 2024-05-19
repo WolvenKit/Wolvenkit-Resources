@@ -4,12 +4,12 @@ import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
 
-import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR } from "./Internal/FileValidation/archiveXL.wscript";
+import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
 import {JsonStringify} from "TypeHelper.wscript";
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, hasUppercase,
-    getNumCurlyBraces, checkCurlyBraces, isNumericHash, formatArrayForPrint, shouldHaveSubstitution
+    getNumCurlyBraces, checkCurlyBraces, isNumericHash, formatArrayForPrint
 } from "./Internal/FileValidation/00_shared.wscript";
 
 
@@ -52,7 +52,7 @@ export let hasUppercasePaths = false;
 export let isDataChangedForWriting = false;
 
 /** Is the root entity using a dynamic appearance? */
-let isDynamicAppearance = false;
+export let isDynamicAppearance = false;
 
 /** Is the .app file for a weapon? */
 let isWeaponAppFile = false;
@@ -755,71 +755,12 @@ let genderPartialMatch = '';
 
 // ArchiveXL: Collect dynamic materials, group them by
 let numAppearances = 0;
-let dynamicMaterials = {}
-var currentMaterialName = "";
-
-/**
- *
- * @param paths An array of paths to fix substitutions in
- * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
- * @returns {{length}|*|[]|*[]}
- */
-function resolveSubstitution(paths) {
-
-    if (!paths || !paths.length) return [];
-
-    // if no replacements can be made, we're done here
-    if (!paths.find((path) => path.includes('{') || path.includes('}'))) {
-        return paths;
-    }
-
-    let ret = []
-    paths.forEach((path) => {
-        if(!shouldHaveSubstitution(path)) {
-            ret.push(path);
-        }
-
-        if (currentMaterialName && path.includes('{material}')) {
-            (dynamicMaterials[currentMaterialName] || []).forEach((materialName) => {
-                ret.push(path.replace('{material}', materialName));
-            });
-            return ret;
-        }
-
-        Object.keys(archiveXLVarsAndValues).forEach((variantFlag) => {
-            if (path.includes(variantFlag)) {
-                // This is either falsy, or can be used to find the body gender in a map
-                let bodyGender = '';
-
-
-                // For dynamic substitution and bodies: We need to check whether or not those are gendered
-                if (!!genderPartialMatch && variantFlag === '{body}') {
-                    let femGenderPartialString = "pwa"
-                    if (!path.includes('{gender}')) {
-                        femGenderPartialString = genderPartialMatch.replace('{gender}', 'w');
-                    }
-                    bodyGender = path.includes(femGenderPartialString) ? 'w' : 'm';
-                }
-
-                archiveXLVarsAndValues[variantFlag].forEach((variantReplacement) => {
-                    // If no valid value is found (gendered, body value), substitute with INVALID for later filtering
-                    const isValid = !bodyGender || (genderToBodyMap[bodyGender] || []).includes(variantReplacement);
-                    ret.push(path.replace(variantFlag, isValid ? variantReplacement : "{INVALID}"));
-                });
-            }
-        });
-    });
-
-    // remove invalid substitutions and duplicates (via set)
-    return resolveSubstitution(Array.from(new Set(ret))
-        .filter((path) => !path.includes("{INVALID}"))
-        .map((path) => path.replace(/^\*/, ""))
-    );
-}
+export let dynamicMaterials = {};
+export var currentMaterialName = "";
 
 
 //#region entFile
-let entSettings = {};
+export let entSettings = {};
 
 /**
  * Will be used as a dynamic variant check
@@ -1333,7 +1274,7 @@ export function validateEntFile(ent, _entSettings) {
  * ===============================================================================================================
  */
 
-let meshSettings = {};
+export let meshSettings = {};
 let morphtargetSettings = {};
 
 // scan materials, save for the next function
@@ -1663,6 +1604,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
             dynamicMaterials[dynamicMaterialName].add(nameParts[0]);
         }
     }
+    Logger.Success(dynamicMaterials);
 }
 export function validateMeshFile(mesh, _meshSettings) {
     // check if settings are enabled
