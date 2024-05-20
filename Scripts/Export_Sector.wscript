@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.6
+// @version 1.7
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
@@ -207,13 +207,14 @@ function ParseFile(fileName, parentFile) {
         const embeddedFiles = parentFile?.Data?.EmbeddedFiles || [];
         for (let embeddedFile of embeddedFiles) {
             if (embeddedFile["FileName"].value === fileName) {
+            	let embextension = typeof (fileName) !== 'string' ? 'unknown' : `.${fileName.split('.').pop()}`;
             	if (!only_new || (only_new && !wkit.FileExistsInRaw(export_filename(fileName)))){
                 	convertEmbedded(embeddedFile);
 
                 	// add nested file to export list
                 	    
 	                if (jsonExtensions.includes(extension)) jsonSet.add(fileName);
-	                if (exportEmbeddedExtensions.includes(extension)) exportSet.add(fileName);
+	                if (exportEmbeddedExtensions.includes(embextension)) exportSet.add(fileName);
 				}
                 return;
             }
