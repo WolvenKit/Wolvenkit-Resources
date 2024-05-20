@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.5
+// @version 1.6
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
@@ -21,6 +21,8 @@ const only_new=true
 // If you want mesh colliders extracting then set this to true
 const mesh_colliders=false
 
+// format for images to get exported to
+const imgFormat = 'png'
 
 /**
  * Any sectors in the list below will be added to your project before exporting. List of sector files to add to your project, see wiki: https://tinyurl.com/cyberpunk2077worldsectors
@@ -125,7 +127,7 @@ for (const fileName of projectSet) {
     }
 }
 
-let exportsettings = {Mesh: { ExportType: "MeshOnly", WithMaterials: withmats, ImageType: "png", LodFilter: true, Binary: true}}
+let exportsettings = {Mesh: { ExportType: "MeshOnly", WithMaterials: withmats, ImageType: imgFormat, LodFilter: true, Binary: true}}
 
 
 // export all of our files with the default export settings
@@ -149,7 +151,7 @@ function export_filename(filename){
 	// Define a mapping of extensions and their replacements
     const extensionMap = {
         'mesh': 'glb',
-        'xbm': 'png',
+        'xbm': imgFormat,
         'w2mesh':'glb',
         'physicalscene':'glb',
 	'streamingsector':'streamingsector.json'
@@ -185,7 +187,7 @@ function convertEmbedded(embeddedFile) {
     let jsonString = TypeHelper.JsonStringify(data);
 
     let cr2w = wkit.JsonToCR2W(jsonString);
-    wkit.SaveToProject(embeddedFile["FileName"], cr2w);
+    wkit.SaveToProject(embeddedFile["FileName"].value, cr2w);
 }
 
 // Parse a CR2W file
@@ -204,8 +206,8 @@ function ParseFile(fileName, parentFile) {
         }
         const embeddedFiles = parentFile?.Data?.EmbeddedFiles || [];
         for (let embeddedFile of embeddedFiles) {
-            if (embeddedFile["FileName"] === fileName) {
-            	if (!only_new || (only_new && !wkit.FileExistsInRaw(fileName))){
+            if (embeddedFile["FileName"].value === fileName) {
+            	if (!only_new || (only_new && !wkit.FileExistsInRaw(export_filename(fileName)))){
                 	convertEmbedded(embeddedFile);
 
                 	// add nested file to export list
