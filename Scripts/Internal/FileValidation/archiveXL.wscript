@@ -13,6 +13,9 @@ const archiveXLVarsAndValues = {
     '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
 }
 
+// something like \_p{gender}a_\ or just \{gender}\
+const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
+
 // This is set in resolveArchiveXLVariants _if_ the depot path contains both {gender} and {body}
 let genderPartialMatch = '';
 
