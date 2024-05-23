@@ -6,10 +6,11 @@ import {
     entSettings,
     meshSettings,
     dynamicMaterials,
-    PLACEHOLDER_NAME_REGEX,
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from 'Logger.wscript';
+
+const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
