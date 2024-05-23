@@ -1,8 +1,11 @@
+// @type lib
+// @name FileValidation_ArchiveXL
 
 import { checkCurlyBraces, getNumCurlyBraces } from "./00_shared.wscript";
 import { currentMaterialName, dynamicMaterials  } from '../../Wolvenkit_FileValidation.wscript';
 import {ArchiveXLConstants} from "./Internal/FileValidation/archiveXL_gender_and_body_types.wscript";
 import * as Logger from 'Logger.wscript';
+
 
 export const ARCHIVE_XL_VARIANT_INDICATOR = '*';
 

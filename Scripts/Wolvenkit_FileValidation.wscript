@@ -5,6 +5,7 @@ import * as TypeHelper from 'TypeHelper.wscript';
 
 import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
+import * as FileHelper from "./Internal/FileHelper.wscript";
 import {JsonStringify} from "TypeHelper.wscript";
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, hasUppercase,
@@ -35,7 +36,7 @@ function validateShaderTemplate(depotPath, _info) {
     // shouldn't be falsy, checkDepotPath should take care of that, but better safe than sorry
     const basePathString = stringifyPotentialCName(depotPath) || '';
 
-    if (basePathString === pathToCurrentFile) {
+    if (basePathString === getPathToCurrentFile()) {
         Logger.Error(`${basePathString} uses itself as baseMaterial. This _will_ crash the game.`);
     }
 
@@ -70,10 +71,14 @@ let isUsingSubstitution = false;
 export const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
-export let pathToCurrentFile = '';
+let pathToCurrentFile = '';
 
 export function setPathToCurrentFile(path) {
     pathToCurrentFile = path;
+}
+
+export function getPathToCurrentFile() {
+    return pathToCurrentFile || FileHelper.GetActiveFileRelativePath();
 }
 
 function resetInternalFlagsAndCaches() {
@@ -735,10 +740,6 @@ function getVariantsFromYaml() {
 function getArchiveXLVariantComponentNames() {
 
 }
-
-// something like \_p{gender}a_\ or just \{gender}\
-const genderMatchRegex =  /[_\\]([a-z]*{gender}[a-z]*)[_\\]/
-
 
 // ArchiveXL: Collect dynamic materials, group them by
 let numAppearances = 0;

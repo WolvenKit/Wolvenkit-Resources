@@ -1,16 +1,18 @@
+// @type lib
+// @name FileValidation_shared
+
 import {
-    pathToCurrentFile,
+    getPathToCurrentFile,
     hasUppercasePaths,
     currentMaterialName,
     isDynamicAppearance,
     entSettings,
     meshSettings,
-    dynamicMaterials,
+    PLACEHOLDER_NAME_REGEX
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from 'Logger.wscript';
 
-const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
@@ -26,7 +28,7 @@ export function checkIfFileIsBroken(data, fileType, _info = '') {
     let infoMsg = [];
     let info = _info;
     if (!info) {
-        const fileName = (pathToCurrentFile || '').split('\\\\').pop();
+        const fileName = getPathToCurrentFile().split('\\\\').pop();
         info = `${fileName ? fileName : `${fileType} file`}`;
     }
 
@@ -137,7 +139,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     let ret = true;
 
     let warnAboutSubstitution = false;
-    switch (pathToCurrentFile.split('.').pop()) {
+    switch (getPathToCurrentFile().split('.').pop()) {
         case 'ent':
             warnAboutSubstitution = entSettings.warnAboutSubstitution;
         case 'mesh':
@@ -147,7 +149,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     }
 
     archiveXlResolvedPaths.forEach((resolvedPath) => {
-        if (pathToCurrentFile === resolvedPath) {
+        if (getPathToCurrentFile() === resolvedPath) {
             if (!suppressLogOutput) {
                 Logger.Error(`${info}Depot path ${resolvedPath} references itself. This _will_ crash the game!`);
             }

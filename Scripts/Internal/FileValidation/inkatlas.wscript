@@ -1,3 +1,5 @@
+// @type lib
+// @name FileValidation_Inkatlas 
 
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath
