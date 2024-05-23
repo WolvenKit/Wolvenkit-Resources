@@ -5,7 +5,8 @@ import {
     isDynamicAppearance,
     entSettings,
     meshSettings,
-    dynamicMaterials
+    dynamicMaterials,
+    PLACEHOLDER_NAME_REGEX,
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from 'Logger.wscript';
