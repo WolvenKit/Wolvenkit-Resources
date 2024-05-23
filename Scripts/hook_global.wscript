@@ -12,7 +12,7 @@ import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidati
  * If this is set to "true" and file validation runs into any errors, then YOUR FILES WILL NO LONGER SAVE.
  * ONLY ENABLE THIS IF YOU KNOW WHAT YOU'RE DOING!
  */
-const isWolvenkitDeveloper = true;
+const isWolvenkitDeveloper = false;
 
 const README_URL = 'https://wiki.redmodding.org/wolvenkit/wolvenkit-app/file-validation';
 

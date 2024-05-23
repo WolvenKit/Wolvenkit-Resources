@@ -67,7 +67,7 @@ let isUsingSubstitution = false;
  * ----------------
  * ================
  */
-const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
+export const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
 export let pathToCurrentFile = '';
