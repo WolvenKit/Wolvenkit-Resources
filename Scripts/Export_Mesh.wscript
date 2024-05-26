@@ -94,7 +94,7 @@ function convertEmbedded(embeddedFile) {
     let jsonString = TypeHelper.JsonStringify(data);
 
     let cr2w = wkit.JsonToCR2W(jsonString);
-    wkit.SaveToProject(embeddedFile["FileName"], cr2w);
+    wkit.SaveToProject(embeddedFile["FileName"].value, cr2w);
 }
 
 // Parse a CR2W file
@@ -113,7 +113,7 @@ function ParseFile(fileName, parentFile) {
     if (extension !== 'unknown') {
         const embeddedFiles = parentFile?.Data?.EmbeddedFiles || [];
         for (let embeddedFile of embeddedFiles) {
-            if (embeddedFile["FileName"] === fileName) {
+            if (embeddedFile["FileName"].value === fileName) {
                 convertEmbedded(embeddedFile);
 
                 if (jsonExtensions.includes(extension)) {
