@@ -1580,7 +1580,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         let appearance = mesh.appearances[i].Data;
         for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
-            if (ignoreChunkMaterialName(chunkMaterialName)) {
+            if (ignoreChunkMaterialName(chunkMaterialName) || !chunkMaterialName.includes("@")) {
                 continue;
             }
             const nameParts = chunkMaterialName.split("@");
