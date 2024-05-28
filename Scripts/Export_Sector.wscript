@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.7
+// @version 1.8
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
@@ -63,15 +63,15 @@ let sectors = [
 
 const fileTemplate = '{"Header":{"WKitJsonVersion":"0.0.7","DataType":"CR2W"},"Data":{"Version":195,"BuildVersion":0,"RootChunk":{},"EmbeddedFiles":[]}}';
 
-let jsonExtensions = [".app", ".ent", ".mi", ".mt", ".streamingsector"];
-let exportExtensions = [".mesh","w2mesh",".xbm"]; // need xbms for decals
-let exportEmbeddedExtensions = [".mesh", ".xbm", ".mlmask", "mlsetup"];
+let jsonExtensions = [".app", ".ent", ".mi", ".mt", ".streamingsector",".cfoliage"];
+let exportExtensions = [".mesh",".w2mesh",".physicalscene",".xbm"]; // need xbms for decals
+let exportEmbeddedExtensions = [".mesh",".w2mesh", ".xbm", ".mlmask", ".mlsetup",".cfoliage", ".streamingsector"];
 
 if (!withmats){
 	Logger.Info('Withmats false')
-    jsonExtensions = [".app", ".ent", ".streamingsector"];
-    exportExtensions = [".mesh","w2mesh",".physicalscene"];
-    exportEmbeddedExtensions = [".mesh"];
+    jsonExtensions = [".app", ".ent", ".streamingsector",".cfoliage"];
+    exportExtensions = [".mesh",".w2mesh",".physicalscene"];
+    exportEmbeddedExtensions = [".mesh",".w2mesh",".cfoliage", ".streamingsector"];
 }
 
 const sectorPathInFiles = 'base\\worlds\\03_night_city\\_compiled\\default';
