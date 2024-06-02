@@ -71,6 +71,12 @@ globalThis.onSave = function (ext, file) {
                 FileValidation.validateJsonFile(data, Settings.Json);
                 file = TypeHelper.JsonStringify(fileContent);
                 break;
+            case "questphase":
+                FileValidation.validateQuestphaseFile(data, Settings.GraphQuestphase);
+                break;
+            case "scene":
+                FileValidation.validateSceneFile(data, Settings.GraphScene);
+                break;
         }        
     } catch (err) {
         if (isWolvenkitDeveloper) {
