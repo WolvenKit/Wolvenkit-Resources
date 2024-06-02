@@ -235,6 +235,18 @@ const Settings = {
          * Set this to "false" to suppress checking of nested files in workspot.
          */
         checkFilepaths: true,
+    },
+    GraphQuestphase: {
+        /*
+         * Set this to "false" to disable file validation for .questphase files.
+         */
+        Enabled: true,
+    },
+    GraphScene: {
+        /*
+         * Set this to "false" to disable file validation for .scene files.
+         */
+        Enabled: true,
     }
 };
 

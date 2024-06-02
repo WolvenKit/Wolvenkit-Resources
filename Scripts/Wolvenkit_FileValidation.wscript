@@ -11,7 +11,8 @@ import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, hasUppercase,
     getNumCurlyBraces, checkCurlyBraces, isNumericHash, formatArrayForPrint
 } from "./Internal/FileValidation/00_shared.wscript";
-
+import { validateQuestphaseFile as validate_questphase_file } from "./Internal/FileValidation/graph_questphase.wscript"
+import { validateSceneFile as validate_scene_file } from "./Internal/FileValidation/graph_scene.wscript"
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -2165,5 +2166,9 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
     return rootEntry;
 }
 //#endregion
+
+export const validateQuestphaseFile = validate_questphase_file;
+
+export const validateSceneFile = validate_scene_file;
 
 export const validateInkatlasFile = validate_inkatlas_file;
