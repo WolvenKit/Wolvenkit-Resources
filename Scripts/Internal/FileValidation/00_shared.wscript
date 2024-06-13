@@ -143,7 +143,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         case 'ent':
             warnAboutSubstitution = entSettings.warnAboutSubstitution;
         case 'mesh':
-            warnAboutSubstitution = meshSettings.enabled;;
+            warnAboutSubstitution = meshSettings.enabled;
         default:
             warnAboutSubstitution = false;
     }
@@ -160,22 +160,23 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         if (wkit.FileExists(resolvedPath)) {
             return;
         }
+
+        if (suppressLogOutput) {
+            return;
+        }
+        
         // File does not exist
         ret = false;
 
-        if (suppressLogOutput || !warnAboutSubstitution) {
-            return;
-        }
-
-        if ( shouldHaveSubstitution(resolvedPath, true)) {
+        if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath, true)) {
             Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
             return;
         }
+        
         if (!!currentMaterialName) {
             Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It may not be defined yet.`);
             return;
         }
-
         Logger.Warning(`${info}${resolvedPath} not found in project or game files`);        
     })
     return ret;
