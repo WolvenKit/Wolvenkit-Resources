@@ -437,7 +437,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     const depotPath = stringifyPotentialCName(override.partResource.DepotPath, info);
 
     if (!!depotPath) {
-        appearanceErrorMessages[appearanceName].push('INFO|PartsOverride: depot path given, override will be handled by engine instead of ArchiveXL');
+        appearanceErrorMessages[appearanceName].push(`INFO|${info}: depot path given, override will be handled by engine instead of ArchiveXL`);
     }
 
     if (!checkDepotPath(depotPath, info, true)) {
