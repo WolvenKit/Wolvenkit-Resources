@@ -176,10 +176,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             return;
         }
 
-        if (isDynamicAppearance && isRootEntity && resolvedPath.endsWith(".app")) {
-            Logger.Warning(`${info}${resolvedPath} not found in project or game files`);
-        }
-
+        Logger.Warning(`${info}${resolvedPath} not found in project or game files`);        
     })
     return ret;
 }
