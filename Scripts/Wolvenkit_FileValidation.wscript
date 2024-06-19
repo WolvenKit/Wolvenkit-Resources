@@ -1667,12 +1667,18 @@ export function validateMeshFile(mesh, _meshSettings) {
     if (mesh.renderResourceBlob !== "undefined") {
         numSubMeshes = mesh.renderResourceBlob?.Data?.header?.renderChunkInfos?.length;
     }
-
+    
+    if (mesh.appearances.length === 0) return;
+    const firstMaterialHasChunks = (mesh.appearances[0].Data.chunkMaterials || []).length >= numSubMeshes;
+    
     for (let i = 0; i < mesh.appearances.length; i++) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
         const numAppearanceChunks = (appearance.chunkMaterials || []).length
+        if (firstMaterialHasChunks && numAppearanceChunks === 0) {
+            continue;
+        }
         if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
             Logger.Warning(`Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
         }
