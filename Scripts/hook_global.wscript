@@ -2,8 +2,9 @@
 // @type hook
 // @hook_extension global
 
-import * as Logger from 'Logger.wscript';
 import * as FileValidation from 'Wolvenkit_FileValidation.wscript';
+import * as Logger from 'Logger.wscript';
+import {GetActiveFileRelativePath, GetActiveFileExtension} from "Internal/FileHelper.wscript";
 import * as TypeHelper from 'TypeHelper.wscript';
 import Settings from 'hook_settings.wscript';
 import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidation.wscript";
@@ -23,12 +24,18 @@ globalThis.onSave = function (ext, file) {
             file: file
         }
     }
-    const fileContent = TypeHelper.JsonParse(file);
+    return RunFileValidation(ext, file);
 
+}
+
+export function RunFileValidation(ext, file) {
+
+    const fileContent = TypeHelper.JsonParse(file);
+    
     // grab file name from json and inform file validation about it
     const fileName = (fileContent.Header?.ArchiveFileName || '').split('archive\\').pop() || '';
     FileValidation.setPathToCurrentFile(fileName);
-    
+
     wkit.SuspendFileWatcher(true);
     let success = true;
     try {
@@ -77,7 +84,7 @@ globalThis.onSave = function (ext, file) {
             case "scene":
                 FileValidation.validateSceneFile(data, Settings.GraphScene);
                 break;
-        }        
+        }
     } catch (err) {
         if (isWolvenkitDeveloper) {
             throw err;
@@ -102,9 +109,9 @@ globalThis.onSave = function (ext, file) {
 
     // either we have nothing to write or we aren't supposed to write => abort
     if (!FileValidation.isDataChangedForWriting || Settings.DisableAutofix) return retSuccess;
-    
+
     const filePath = wkit.GetActiveDocument().FilePath;
-    
+
     // unless it's a workspot, automatically close and re-open it
     if (!fileName.endsWith('workspot') || Settings.Workspot.autoReopenFile) {
         try {
@@ -132,8 +139,6 @@ globalThis.onSave = function (ext, file) {
 
     Logger.Info(`You need to close and re-open ${filePath}, or file validation won't know about the automatic changes.`);
     return retSuccess;
-
-
 }
 
 globalThis.onExport = function (path, settings) {

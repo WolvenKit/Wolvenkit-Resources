@@ -53,8 +53,12 @@ export function WriteToActiveFile(jsonData, reopenFile=true) {
     }
 }
 
+export function GetActiveFileAbsolutePath() {
+    return wkit.GetActiveDocument()?.FilePath;
+}
+    
 export function GetActiveFileRelativePath() {
-    let absolutePath = wkit.GetActiveDocument()?.FilePath;
+    let absolutePath = GetActiveFileAbsolutePath();
     if (!absolutePath) return null; 
     
     const relativePath = absolutePath.split('archive\\').pop();
@@ -63,6 +67,13 @@ export function GetActiveFileRelativePath() {
         return null;
     }
     return relativePath;
+}
+export function GetActiveFileExtension() {
+    const relativePath = GetActiveFileRelativePath();
+    if (!relativePath) return null;
+    const fileName = relativePath.split('archive\\').pop()
+    if (!fileName || !fileName.includes(".")) return null;
+    return fileName.substring(fileName.indexOf('.'));
 }
 
 export function ReadActiveFileAsJson(expectedFileExtension) {

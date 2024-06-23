@@ -1576,9 +1576,20 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         Logger.Warning(`You need at least two appearances for dynamic appearances to work!`);
     }
 
+    const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
+    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
+    
+    
+    
     for (let i = 0; i < mesh.appearances.length; i++) {
         numAppearances += 1;
         let appearance = mesh.appearances[i].Data;
+        if (appearance.chunkMaterials.length === 0) {
+            for (let j = 0; i < firstAppearanceChunks.length; i++) {
+                appearance.chunkMaterials[j] = {... firstAppearanceChunks[j] };
+                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearance.name);
+            }            
+        }
         for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
             if (ignoreChunkMaterialName(chunkMaterialName) || !chunkMaterialName.includes("@")) {
@@ -1670,14 +1681,19 @@ export function validateMeshFile(mesh, _meshSettings) {
     
     if (mesh.appearances.length === 0) return;
     const firstMaterialHasChunks = (mesh.appearances[0].Data.chunkMaterials || []).length >= numSubMeshes;
+    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
     
     for (let i = 0; i < mesh.appearances.length; i++) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
-        const numAppearanceChunks = (appearance.chunkMaterials || []).length
+        let numAppearanceChunks = (appearance.chunkMaterials || []).length
         if (firstMaterialHasChunks && numAppearanceChunks === 0) {
-            continue;
+            appearance.chunkMaterials = mesh.appearances[0].Data.chunkMaterials;
+            for (let j = 0; i < appearance.chunkMaterials.length; i++) {
+                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearanceName); 
+            }
+            numAppearanceChunks = appearance.chunkMaterials.length;
         }
         if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
             Logger.Warning(`Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
@@ -1688,7 +1704,6 @@ export function validateMeshFile(mesh, _meshSettings) {
             if (!ignoreChunkMaterialName(chunkMaterialName)
                 && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
                 && !(chunkMaterialName in materialNames)
-
             ) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
