@@ -523,8 +523,10 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
 
     const tagNames = [];
     const duplicateTags = [];
+    let counter = 0;
     tags.forEach((_tag) => {
-        const tag = stringifyPotentialCName(_tag);
+        const tag = stringifyPotentialCName(_tag, `${appearanceName}.tags[${ counter}]`);
+        counter++;
         if (!tag || tag.toLowerCase().startsWith('amm')) return;
         tagNames.push(tag);
         if (tag.startsWith("hide_") && !hidingTags.includes(tag.replace("hide_", ""))) {
@@ -1107,7 +1109,7 @@ export function validateEntFile(ent, _entSettings) {
     resetInternalErrorMaps();
 
     const currentFileName = pathToCurrentFile.replace(/^.*[\\/]/, '');
-
+    
     // Collect tags
     const visualTagList = (ent.visualTagsSchema?.Data?.visualTags?.tags || []).map((tag) => stringifyPotentialCName(tag));
 
@@ -1185,12 +1187,15 @@ export function validateEntFile(ent, _entSettings) {
 
     const entAppearanceNames = [];
 
+
+
     // Check naming pattern
     if (!isDynamicAppearance && ent.appearances.length === 1) {
         const entName = stringifyPotentialCName(ent.appearances[0].name);
         const entAppearanceName = stringifyPotentialCName(ent.appearances[0].appearanceName)
         isDynamicAppearance ||= (entName.endsWith("_") && (entAppearanceName === entName || entAppearanceNames === ''));
     }
+
 
     const _pathToCurrentFile = pathToCurrentFile;
 
@@ -1336,6 +1341,8 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
         Logger.Warning(`${info} Depot path has invalid substitution (uneven number of { and })`);
     } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
         Logger.Warning(`${info} Dynamic material value requires Flags 'Soft'`);
+    } else if (!materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && (materialValue.Flags || '').includes('Soft')) {
+        Logger.Warning(`${info} Non-dynamic material value might not work with Flag 'Soft', set to 'Default'`);
     }
 
     // Once we've made sure that the file extension is correct, check if the file exists.
