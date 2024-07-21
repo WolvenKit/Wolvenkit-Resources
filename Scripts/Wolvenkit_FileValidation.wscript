@@ -853,6 +853,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
 
+   
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
       Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
@@ -883,7 +884,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         const meshAppearanceName = stringifyPotentialCName(component.meshAppearance);
         const nameHasSubstitution = meshAppearanceName && meshAppearanceName.includes("{") || meshAppearanceName.includes("}")
         const pathHasSubstitution = componentMeshPath && componentMeshPath.includes("{") || componentMeshPath.includes("}")
-
+        
         const localErrors = [];
         isUsingSubstitution = isUsingSubstitution || nameHasSubstitution || pathHasSubstitution;
 
@@ -893,8 +894,8 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && !meshAppearanceName.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             localErrors.push(`name: ${MISSING_PREFIX_WARNING}`);
         }
-
-        if (!pathHasSubstitution && !checkDepotPath(componentMeshPath)) {
+        
+        if (!pathHasSubstitution && componentMeshPaths.length === 1 && !checkDepotPath(componentMeshPath)) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
 
