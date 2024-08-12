@@ -1,9 +1,25 @@
-// Exports Collision shapes from StreamingSector files 
+// Exports Collision shapes from StreamingSector files
 // @author Simarilius
-// @version 0.1
+// @version 0.2
 
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
+let sectors = []
+
+for (let filename of wkit.GetProjectFiles('archive')) {
+        // Logger.Success(filename);
+        if (filename.split('.').pop() === "streamingsector") {
+            sectors.push(filename);
+        }
+    }
+
+// loop over every sector in `sectors`
+for (let sect in sectors) {
+    Logger.Info(`Extracting Collision meshes for sector...\n${sectors[sect]}`);
+    let file = wkit.GetFileFromProject(sectors[sect], OpenAs.GameFile);
+    let json = TypeHelper.JsonParse(wkit.GameFileToJson(file));
+    Export_Sector_Collisions(json);
+}
 
 
 export function Export_Sector_Collisions(data) {
@@ -14,9 +30,9 @@ var shapeHashesSet = new Set(); // Creating a Set to store unique hashes
 
 data["Data"]["RootChunk"]["nodes"].forEach(node => {
 	if (node['Data']['$type']=='worldCollisionNode'){
-		//Logger.Info(Object.keys(node['Data']))
+		Logger.Info(Object.keys(node['Data']))
 		var sectorHash = node['Data']["sectorHash"].toString()
-		//Logger.Info("Sector Hash: "+  sectorHash);
+		Logger.Info("Sector Hash: "+  sectorHash);
 		sectorHashesSet.add(sectorHash);
 		
 		
@@ -32,7 +48,7 @@ data["Data"]["RootChunk"]["nodes"].forEach(node => {
 	         	if (Object.keys(actors[actor]['Shapes'][shape]).includes('Hash')){
 	         		var hash=actors[actor]['Shapes'][shape]['Hash'].toString() ;
 	         		//Logger.Info("Entry Hash: "+ hash);
-	         		shapeHashesSet.add(hash);
+	         		shapeHashesSet.add([sectorHash,hash]);
 	         	}
 	         }	         
 	    }	    
@@ -52,12 +68,12 @@ shapeHashes.forEach(function(hash) {
     Logger.Info("Entry Hash: " + hash);
 });
 
-if (sectHashesLength==1) {
-	shapeHashes.forEach(function(hash) {
-	let json = wkit.ExportGeometryCacheEntry(sectorHashes[0],hash);
-	wkit.SaveToRaw('collision_meshes\\' + sectorHashes[0] + '_' + hash + '.json', json);
-	
-	});
-}
+
+shapeHashes.forEach(function(hash) {
+let json = wkit.ExportGeometryCacheEntry(hash[0],hash[1]);
+wkit.SaveToRaw('collision_meshes\\' + hash[0] + '_' + hash[1] + '.json', json);
+
+});
+
 
 }
