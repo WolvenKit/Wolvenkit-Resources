@@ -13,6 +13,7 @@ import {
 } from "./Internal/FileValidation/00_shared.wscript";
 import { validateQuestphaseFile as validate_questphase_file } from "./Internal/FileValidation/graph_questphase.wscript"
 import { validateSceneFile as validate_scene_file } from "./Internal/FileValidation/graph_scene.wscript"
+import {GetActiveFileRelativePath} from "./Internal/FileHelper.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -38,13 +39,13 @@ function validateShaderTemplate(depotPath, _info) {
     const basePathString = stringifyPotentialCName(depotPath) || '';
 
     if (basePathString === getPathToCurrentFile()) {
-        Logger.Error(`${basePathString} uses itself as baseMaterial. This _will_ crash the game.`);
+        addWarning(LOGLEVEL_ERROR, `${basePathString} uses itself as baseMaterial. This _will_ crash the game.`);
     }
 
     const extensionParts = basePathString.match(/[^.]+$/);
 
     if (!extensionParts || validMaterialFileExtensions.includes(extensionParts[0])) {
-        Logger.Warning(`${_info ? `${_info}: ` : ''}Invalid base material: ${basePathString}`);
+        addWarning(LOGLEVEL_WARN, `${_info ? `${_info}: ` : ''}Invalid base material: ${basePathString}`);
     }
 }
 
@@ -73,6 +74,65 @@ export const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
 let pathToCurrentFile = '';
+let pathToParentFile = '';
+
+function pushCurrentFilePath(path) {
+    path ||= pathToCurrentFile;
+    if (path === pathToCurrentFile && pathToParentFile === pathToCurrentFile) {
+        return;
+    }
+    pathToParentFile = pathToCurrentFile;
+    pathToCurrentFile = path;
+}
+
+function popCurrentFilePath() {
+    if (pathToParentFile === pathToCurrentFile) {
+        pathToParentFile = '';
+        return;
+    } 
+    pathToCurrentFile = pathToParentFile;  
+    
+}
+
+const LOGLEVEL_INFO  = 0;
+const LOGLEVEL_WARN  = 1;
+const LOGLEVEL_ERROR = 2;
+const LOGLEVEL_SUCCESS = 3;
+
+// Internal dictionary: 
+// {
+//   'path/to/file.mesh': {
+//       'this is a warning': LOGLEVEL_WARN,
+//       'this is an info':   LOGLEVEL_INFO,
+//       'this is an error':  LOGLEVEL_ERROR,
+//   }
+// }
+let currentWarnings = {};
+
+function addWarning(loglevel, text) {
+    if (!currentWarnings[getPathToCurrentFile()]) {
+        currentWarnings[getPathToCurrentFile()] = {};            
+    }
+    currentWarnings[getPathToCurrentFile()][text] = loglevel;
+}
+
+function printUserInfo() {    
+    for (const [filePath, warnings] of Object.entries(currentWarnings)) {
+        if (warnings.length === 0) {
+            return;
+        }
+        Logger.Info('=========================================================');
+        Logger.Info(`${filePath}`);
+        for (const [warning, errorLevel] of Object.entries(warnings)) {
+            switch (errorLevel) {
+                case LOGLEVEL_INFO:     Logger.Info(`\t${warning}`); break;
+                case LOGLEVEL_WARN:     Logger.Warning(`\t${warning}`); break;
+                case LOGLEVEL_ERROR:    Logger.Error(`\t${warning}`); break;
+                case LOGLEVEL_SUCCESS:  Logger.Success(`\t${warning}`); break;
+            }
+        }
+    } 
+}
 
 export function setPathToCurrentFile(path) {
     pathToCurrentFile = path;
@@ -81,8 +141,8 @@ export function setPathToCurrentFile(path) {
 export function getPathToCurrentFile() {
     return pathToCurrentFile || FileHelper.GetActiveFileRelativePath();
 }
-
 function resetInternalFlagsAndCaches() {
+ 
     isDataChangedForWriting = false;
     hasUppercasePaths = false;
     isDynamicAppearance = false;
@@ -98,8 +158,10 @@ function resetInternalFlagsAndCaches() {
     componentIds.length = 0;
 
     // mesh stuff
-    meshAppearancesNotFound = {}
-    meshAppearancesNotFoundByComponent = {}
+    meshAppearancesNotFound = {};
+    meshAppearancesNotFoundByComponent = {};
+
+    currentWarnings = {};
 }
 
 //#region animFile
@@ -129,12 +191,12 @@ function animFile_CheckForDuplicateNames() {
         return;
     }
 
-    Logger.Info(`Duplicate animations found (you can ignore these):`);
+    addWarning(LOGLEVEL_INFO,`Duplicate animations found (you can ignore these):`);
     duplicateNames.forEach((animName) => {
         const usedIndices = Object.keys(animNamesByIndex)
             .filter((key) => animNamesByIndex[key] === animName)
             .map((idx) => `${idx}`.padStart(2, '0'));
-        Logger.Info(`        [ ${usedIndices.join(', ')} ]: ${animName}`);
+        addWarning(LOGLEVEL_INFO, (`        [ ${usedIndices.join(', ')} ]: ${animName}`));
     });
 }
 
@@ -163,8 +225,10 @@ export function validateAnimationFile(animAnimSet, _animAnimSettings) {
     }
 
     if (animAnimSettings.printAnimationNames) {
-        Logger.Info(`Animations in current file:\n\t${animNames.join('\n\t')}`);
+        addWarning(LOGLEVEL_INFO, `Animations in current file:\n\t${animNames.join('\n\t')}`);
     }
+
+    printUserInfo();
 }
 
 //#endregion
@@ -204,30 +268,30 @@ let entAppearancesNotFoundByFile = {};
 function printInvalidAppearanceWarningIfFound() {
     let warningKeys = Object.keys(meshAppearancesNotFoundByComponent) || [];
     if (warningKeys.length) {
-        Logger.Warning('Mesh appearances not found. Here\'s a list:');
+        addWarning(LOGLEVEL_WARN,'Mesh appearances not found. Here\'s a list:');
     }
     warningKeys.forEach((meshPath) => {
         const componentNames = meshAppearancesNotFoundByComponent[meshPath] || [];
         const appearanceNames = meshAppearancesNotFound[meshPath] || [];
 
         const definedAppearances = component_collectAppearancesFromMesh(meshPath).join(', ')
-        Logger.Warning(`${meshPath} with the appearances [ ${definedAppearances} }`);
+        addWarning(LOGLEVEL_WARN`${meshPath} with the appearances [ ${definedAppearances} }`);
 
         // print as table
-        Logger.Warning(`  ${'Source'.padEnd(65, ' ')} | Appearance`);
+        addWarning(LOGLEVEL_WARN`  ${'Source'.padEnd(65, ' ')} | Appearance`);
         // print table entries
         for (let i = componentNames.length; i > 0; i -= 1) {
             let calledFrom = componentNames.pop();
             // truncate at the beginning if too long
             if (calledFrom.length >= 60) calledFrom = `…${calledFrom.substring(calledFrom.length - 60)}`;
             const appearanceName = appearanceNames.pop();
-            Logger.Warning(`  ${calledFrom.padEnd(65, ' ')} | ${appearanceName}`);
+            addWarning(LOGLEVEL_WARN`  ${calledFrom.padEnd(65, ' ')} | ${appearanceName}`);
         }
     })
 
     const appearanceErrors = Object.keys(appearanceErrorMessages) || [];
     if (appearanceErrors.length) {
-        Logger.Warning('Some of your appearances have issues. Here\'s a list:');
+        addWarning(LOGLEVEL_WARN, 'Some of your appearances have issues. Here\'s a list:');
         appearanceErrors.forEach((key) => {
             const allErrors = (appearanceErrorMessages[key] || []);
             const foundErrors = allErrors.filter(function (item, pos, self) {
@@ -239,14 +303,14 @@ function printInvalidAppearanceWarningIfFound() {
                     return acc;
                 }, {});
 
-            // now print them - consider severity levels
+            // TODO: now print them - consider severity levels
             Object.keys(foundErrors).forEach((errorMsg) => {
                 switch (foundErrors[errorMsg] || 'ERROR') {
-                    case 'WARNING': Logger.Warning(`  ${errorMsg}`); break;
-                    case 'ERROR': Logger.Error(`  ${errorMsg}`); break;
+                    case 'WARNING': addWarning(LOGLEVEL_WARN, `  ${errorMsg}`); break;
+                    case 'ERROR': addWarning(LOGLEVEL_ERROR, `  ${errorMsg}`); break;
                     case 'INFO':
                     default:
-                        Logger.Info(`  ${errorMsg}`); break;
+                        addWarning(LOGLEVEL_INFO, `  ${errorMsg}`); break;
                 }
             });
         })
@@ -256,18 +320,18 @@ function printInvalidAppearanceWarningIfFound() {
         .filter((depotPath) => !!depotPath && wkit.FileExists(depotPath) && !invalidFiles.includes(depotPath));
 
     if (warningKeys.length) {
-        Logger.Warning('Appearances not found in files. Here\'s a list:');
+        addWarning(LOGLEVEL_WARN, 'Appearances not found in files. Here\'s a list:');
     }
 
     warningKeys.forEach((appFilePath) => {
         const appearanceNames = (getAppearanceNamesInAppFile(appFilePath) || []).join(', ');
-        Logger.Warning(`${appFilePath} defines appearances [ ${appearanceNames} ]`);
-        Logger.Warning(`  ${'name'.padEnd(50, ' ')} | Appearance`);
+        addWarning(LOGLEVEL_WARN, `${appFilePath} defines appearances [ ${appearanceNames} ]`);
+        addWarning(LOGLEVEL_WARN, `  ${'name'.padEnd(50, ' ')} | Appearance`);
         const data = entAppearancesNotFoundByFile[appFilePath] || {};
         if (!Object.keys(data)?.length) return;
 
         Object.keys(data).forEach((appearancName) => {
-            Logger.Warning(`  ${appearancName.padEnd(50, ' ')} | ${data[appearancName]}`);
+            addWarning(LOGLEVEL_WARN, `  ${appearancName.padEnd(50, ' ')} | ${data[appearancName]}`);
         })
     });
 }
@@ -278,14 +342,14 @@ function printSubstitutionWarningsIfFound() {
         return;
     }
 
-    Logger.Info('Some of your components seem to use ArchiveXL dynamic variants, but they may have issues:');
+    addWarning(LOGLEVEL_INFO, 'Some of your components seem to use ArchiveXL dynamic variants, but they may have issues:');
     warningKeys.forEach((warningSource) => {
         const warnings = (invalidVariantAndSubstitutions[warningSource] || []).filter(function (item, pos, self) {
             return self.indexOf(item) === pos;
         });
         if (warnings.length) {
             const output = warnings.length <= 1 ? `${warnings}` : `\n\t${warnings.map((w) => w.replace(`${warningSource}: `, '')).join('\n\t')}`
-            Logger.Warning(`${warningSource}: ${output}`);
+            addWarning(LOGLEVEL_WARN, `${warningSource}: ${output}`);
         }
     });
 }
@@ -296,14 +360,14 @@ function printComponentWarningsIfFound() {
         return;
     }
 
-    Logger.Info('Some of your components seem to have other issues:');
+    addWarning(LOGLEVEL_INFO, 'Some of your components seem to have other issues:');
     warningKeys.forEach((warningSource) => {
         const warnings = (invalidComponentTypes[warningSource] || []).filter(function (item, pos, self) {
             return self.indexOf(item) === pos;
         });
         if (warnings.length) {
             const output = warnings.length <= 1 ? `${warnings}` : `\n\t${warnings.map((w) => w.replace(`${warningSource}: `, '')).join('\n\t')}`
-            Logger.Info(`${warningSource}: ${output}`);
+            addWarning(LOGLEVEL_INFO, `${warningSource}: ${output}`);
         }
     });
 }
@@ -369,7 +433,7 @@ function component_collectAppearancesFromMesh(componentMeshPath) {
             appearanceNamesByMeshFile[componentMeshPath] = (mesh.Data.RootChunk.appearances || [])
                 .map((appearance) => stringifyPotentialCName(appearance.Data.name));
         } catch (err) {
-            Logger.Warning(`Couldn't parse ${componentMeshPath}`);
+            addWarning(LOGLEVEL_WARN, `Couldn't parse ${componentMeshPath}`);
             appearanceNamesByMeshFile[componentMeshPath] = null;
         }
     }
@@ -378,7 +442,7 @@ function component_collectAppearancesFromMesh(componentMeshPath) {
 
 function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursively, info) {
     if (!wkit.FileExists(entityDepotPath)) {
-        Logger.Warn(`Trying to check on partsValue '${entityDepotPath}', but it doesn't exist in game or project files`);
+        addWarning(LOGLEVEL_WARN, `Trying to check on partsValue '${entityDepotPath}', but it doesn't exist in game or project files`);
         return;
     }
 
@@ -414,8 +478,8 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
             }
             componentIds = _componentIds;
         } catch (err) {
-            Logger.Error(`Couldn't load file from depot path: ${entityDepotPath} (${err.message})`);
-            Logger.Info(`\tThat can happen if you use a root entity instead of a mesh entity.`);
+            addWarning(LOGLEVEL_ERROR, `Couldn't load file from depot path: ${entityDepotPath} (${err.message})`);
+            addWarning(LOGLEVEL_INFO, `\tThat can happen if you use a root entity instead of a mesh entity.`);
         }
     }
 
@@ -445,16 +509,15 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     }
 
     if (depotPath && !depotPath.endsWith(".ent")) {
-        Logger.Error(`${info}: ${depotPath} does not point to an entity file! This can crash your game!`);
+        addWarning(LOGLEVEL_ERROR, `${info}: ${depotPath} does not point to an entity file! This can crash your game!`);
         return;
     }
 
     if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
-        Logger.Warning(`${info}: Substitution for depot path not supported in .app files, use mesh_entity.`);
+        addWarning(LOGLEVEL_WARN, `${info}: Substitution for depot path not supported in .app files, use mesh_entity.`);
     }
 
-    const appFilePath = pathToCurrentFile;
-    pathToCurrentFile = depotPath;
+    pushCurrentFilePath(depotPath);
 
     for (let i = 0; i < override.componentsOverrides.length; i++) {
         const componentOverride = override.componentsOverrides[i];
@@ -475,8 +538,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
     }
 
     // restore app file path
-    pathToCurrentFile = appFilePath;
-
+    popCurrentFilePath();
 }
 
 function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearanceName, validateRecursively) {
@@ -487,10 +549,9 @@ function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearance
     }
 
     // save current file path, then change it to nested file
-    const appFilePath = pathToCurrentFile;
-    pathToCurrentFile = partsValueEntityDepotPath;
+    pushCurrentFilePath(partsValueEntityDepotPath);
     appFile_collectComponentsFromEntPath(partsValueEntityDepotPath, validateRecursively, `${info}`);
-    pathToCurrentFile = appFilePath;
+    popCurrentFilePath();
 }
 
 
@@ -616,7 +677,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         appFile_validatePartsValue(depotPath, i, appearanceName, validateRecursively);
         (meshesByEntityPath[depotPath] || []).forEach((path) => meshPathsFromEntityFiles.push(path));
         if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
-            Logger.Warning(`${appearanceName}.partsValues[${i}]: Substitution in depot path not supported.`);
+            addWarning(LOGLEVEL_WARN, `${appearanceName}.partsValues[${i}]: Substitution in depot path not supported.`);
         }
     }
 
@@ -679,6 +740,8 @@ export function validateAppFile(app, _appFileSettings) {
     resetInternalFlagsAndCaches();
 
     _validateAppFile(app, _appFileSettings?.validateRecursively, false);
+    
+    printUserInfo();
 }
 
 function _validateAppFile(app, validateRecursively, calledFromEntFileValidation) {
@@ -694,6 +757,8 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
         return;
     }
 
+    pushCurrentFilePath();
+    
     // empty array with name collisions
     componentOverrideCollisions.length = 0;
     alreadyDefinedAppearanceNames.length = 0;
@@ -720,11 +785,6 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
         const appearance = app.appearances[i];
         appFile_validateAppearance(appearance, i, validateRecursively, validateCollisions);
     }
-
-    // If we're recursively validating an ent file, we're calling this one in there
-    if (!calledFromEntFileValidation || !entSettings?.validateRecursively) {
-        printInvalidAppearanceWarningIfFound();
-    }
 }
 
 //#endregion
@@ -749,7 +809,6 @@ let numAppearances = 0;
 export let dynamicMaterials = {};
 export var currentMaterialName = "";
 
-
 //#region entFile
 export let entSettings = {};
 
@@ -767,9 +826,10 @@ const MISSING_PREFIX_WARNING = 'not starting with *, substitution disabled';
 //  for warnings
 const INVALID_GENDER_SUBSTITUTION = 'it\'s "gender=w", not "gender=f"';
 
-
 let componentIdErrors = [];
-const WITH_MESH = 'withMesh';
+const WITH_DEPOT_PATH = 'withMesh';
+
+const depotPathSubkeys = [ 'mesh', 'morphtarget', 'morphResource', 'facialSetup', 'graph', 'rig' ];
 
 // For different component types, check DepotPath property
 function entFile_appFile_validateComponent(component, _index, validateRecursively, info) {
@@ -781,26 +841,23 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     if (componentName?.includes(":")) {
         return;
     }
-
-    // allow empty paths for debug components
-    let depotPathCanBeEmpty = isDebugComponent;
     let componentPropertyKeyWithDepotPath = '';
 
-    // entGarmentSkinnedMeshComponent - entSkinnedMeshComponent - entMeshComponent
-    if (component?.mesh?.DepotPath) {
-        type = WITH_MESH;
-        componentPropertyKeyWithDepotPath = 'mesh';
-        depotPathCanBeEmpty ||= componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot');
-    }
-    if (component?.morphResource?.DepotPath) {
-        type = WITH_MESH;
-        componentPropertyKeyWithDepotPath = 'morphResource';
-    }
-
+    depotPathSubkeys.forEach((propertyName) => {
+      if (!!component && !!component[propertyName] && !!component[propertyName].DepotPath) {
+        type = WITH_DEPOT_PATH;
+        componentPropertyKeyWithDepotPath = propertyName;
+      }
+    });
+    
     // flag for mesh validation, in case this is called recursively from app file
     let hasMesh = false;
+
+    // allow empty paths for debug components
+    const depotPathCanBeEmpty = isDebugComponent || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot'));
+
     switch (type) {
-        case WITH_MESH:
+        case WITH_DEPOT_PATH:
             checkDepotPath(component[componentPropertyKeyWithDepotPath].DepotPath, `${info}.${componentName}`, depotPathCanBeEmpty);
             hasMesh = true;
             break;
@@ -809,7 +866,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             break;
         default:
             if (!isRootEntity && type.toLowerCase().includes('mesh')) {
-                Logger.Info(`Component of type ${type} doesn't have a mesh path`);
+                addWarning(LOGLEVEL_INFO, `Component of type ${type} doesn't have a mesh path`);
             }
             break;
     }
@@ -833,36 +890,36 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     }
 
     if (componentName.includes('gender=f')) {
-        Logger.Warning(`${info} name: invalid substitution, it's 'gender=w'!`);
+        addWarning(LOGLEVEL_WARN, `${info} name: invalid substitution, it's 'gender=w'!`);
     }
 
     const meshDepotPath = `${hasMesh ? stringifyPotentialCName(component[componentPropertyKeyWithDepotPath]?.DepotPath) : '' || ''}`.trim();
 
     if (!validateRecursively || !hasMesh || hasUppercasePaths || meshDepotPath.endsWith('.morphtarget')) {
-        // Logger.Error(`${componentMeshPath}: not validating mesh`);
+        // addWarning(LOGLEVEL_ERROR, `${meshDepotPath}: not validating mesh`);
         return;
     }
 
-    if (!meshDepotPath.endsWith('.mesh') && !/^\d+$/.test(meshDepotPath) && !meshDepotPath.endsWith('.w2mesh')) {
-        Logger.Warning(`${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
+    // the depot path isn't numeric-only
+    if (!/^\d+$/.test(meshDepotPath)) {
+      if ((componentPropertyKeyWithDepotPath === 'morphtarget' || componentPropertyKeyWithDepotPath === 'mesh') && !meshDepotPath.endsWith('.mesh') && !meshDepotPath.endsWith('.w2mesh')) {
+        addWarning(LOGLEVEL_WARN, `${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
+      } else if (!meshDepotPath.endsWith(`.${componentPropertyKeyWithDepotPath}`)) {
+        addWarning(LOGLEVEL_WARN, `${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .${componentPropertyKeyWithDepotPath}). This can crash your game!`);
+      }
     }
 
     if (meshDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !meshDepotPath.includes('{')) {
-        Logger.Error(`${info}: ${componentPropertyKeyWithDepotPath} starts with ${ARCHIVE_XL_VARIANT_INDICATOR}, but does not contain substitution! This will crash your game!`);
+        addWarning(LOGLEVEL_ERROR, `${info}: ${componentPropertyKeyWithDepotPath} starts with ${ARCHIVE_XL_VARIANT_INDICATOR}, but does not contain substitution! This will crash your game!`);
     }
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
-
    
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
-      Logger.Warning(`${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
+      addWarning(LOGLEVEL_WARN, `${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
     }
 
-    const genderSubstitutionOnly = componentMeshPaths.length === 2 && (meshDepotPath.match(/{|}/g)?.length || 0) === 2 && meshDepotPath.includes("{gender}")
-
-
-    // Logger.Success(componentMeshPaths);
     componentMeshPaths.forEach((componentMeshPath) => {
         // check for component name uniqueness
         if (meshesByComponentName[componentName] && meshesByComponentName[componentName] !== meshDepotPath) {
@@ -881,7 +938,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
         // ArchiveXL: Check for invalid component substitution
 
-        const meshAppearanceName = stringifyPotentialCName(component.meshAppearance);
+        const meshAppearanceName = stringifyPotentialCName(component.meshAppearance) ?? '';
         const nameHasSubstitution = meshAppearanceName && meshAppearanceName.includes("{") || meshAppearanceName.includes("}")
         const pathHasSubstitution = componentMeshPath && componentMeshPath.includes("{") || componentMeshPath.includes("}")
         
@@ -899,9 +956,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
 
-        if (localErrors.length) {
+        if (localErrors.length) {            
             invalidVariantAndSubstitutions[info] ||= [];
-            invalidVariantAndSubstitutions[info].push(`meshAppearance: ${meshAppearanceName}: ${localErrors.join(', ')}`);
+            addWarning(LOGLEVEL_INFO, `meshAppearance: ${meshAppearanceName}: ${localErrors.join(', ')}`);
             localErrors.length = 0;
         }
 
@@ -917,34 +974,52 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))
             && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
         ) {
-            localErrors.push(`${componentMeshPath} not found in game or project files`);
+            localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
 
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
-            localErrors.push(`path: ${INVALID_GENDER_SUBSTITUTION}`);
+            localErrors.push(`${info}: path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
 
         if (localErrors.length) {
-            invalidVariantAndSubstitutions[info] ||= [];
-            invalidVariantAndSubstitutions[info].push(`DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
+            addWarning(LOGLEVEL_INFO, `${info}: DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
             localErrors.length = 0;
+        }
+        
+        if (!(componentMeshPath ?? '').includes('.mesh')) {
+          return;
         }
 
         const meshAppearances = component_collectAppearancesFromMesh(componentMeshPath);
 
         if (hasGarmentSupportByMeshFile[componentMeshPath] && component.$type !== "entGarmentSkinnedMeshComponent") {
             invalidComponentTypes[info] ||= [];
-            invalidComponentTypes[info].push(`${info} includes a mesh with GarmentSupport, but is not an entGarmentSkinnedMeshComponent. GarmentSupport will not work.`);
+            invalidComponentTypes[info].push(`${info} uses meshes with garment support, but not in entGarmentSkinnedMeshComponent: ${componentMeshPath} has garment support.`);
         }
 
         if (!meshAppearances) { // for debugging
-            // Logger.Error(`failed to collect appearances from ${componentMeshPath}`);
+            // addWarning(LOGLEVEL_ERROR, `failed to collect appearances from ${componentMeshPath}`);
             return;
         }
         if (meshAppearanceName.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
             // TODO: ArchiveXL variant checking
         } else if (meshAppearances && meshAppearances.length > 0 && !meshAppearances.includes(meshAppearanceName)) {
             appearanceNotFound(componentMeshPath, meshAppearanceName, `${info} (${componentName})`);
+        }
+        
+        if (validateRecursively) {
+            const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');
+            const mesh = TypeHelper.JsonParse(fileContent);
+            
+            meshSettings ||= {
+                validateMaterialsRecursively: true,
+                checkDuplicateMlSetupFilePaths: true,
+                checkExternalMaterialPaths: true,
+            }
+            
+            pushCurrentFilePath(componentMeshPath);
+            _validateMeshFile(mesh)
+            popCurrentFilePath();
         }
     });
 }
@@ -1001,11 +1076,11 @@ function entFile_validateAppearance(appearance) {
     const info = `.ent appearances.${appearanceName}`;
 
     if (isDynamicAppearance && appearanceName.includes('&')) {
-        Logger.Error(`${info}: dynamic appearances can't support suffixes in the root entity!`);
+        addWarning(LOGLEVEL_ERROR, `${info}: dynamic appearances can't support suffixes in the root entity!`);
     }
 
     if (!!appearanceName && alreadyDefinedAppearanceNames.includes(`ent_${appearanceName}`)) {
-        Logger.Warning(`.ent file: An appearance with the name ${appearanceName} is already defined`);
+        addWarning(LOGLEVEL_WARN, `.ent file: An appearance with the name ${appearanceName} is already defined`);
     } else {
         alreadyDefinedAppearanceNames.push(`ent_${appearanceName}`);
     }
@@ -1016,16 +1091,15 @@ function entFile_validateAppearance(appearance) {
     }
 
     if (!appFilePath.endsWith('app')) {
-        Logger.Warning(`${info}: appearanceResource '${appFilePath}' does not appear to be an .app file`);
+        addWarning(LOGLEVEL_WARN, `${info}: appearanceResource '${appFilePath}' does not appear to be an .app file`);
         return;
     }
 
-    if (!entSettings.validateRecursively) {
+    if (!entSettings.validateAppsRecursively) {
         return;
     }
 
-    const entFilePath = pathToCurrentFile;
-    pathToCurrentFile = appFilePath;
+    pushCurrentFilePath(appFilePath);
 
     // if we're being dynamic here, also check for appearance names with suffixes.
     const namesInAppFile = getAppearanceNamesInAppFile(appFilePath, appearanceName) || []
@@ -1048,14 +1122,15 @@ function entFile_validateAppearance(appearance) {
         const fileContent = wkit.LoadGameFileFromProject(appFilePath, 'json');
         const appFile = TypeHelper.JsonParse(fileContent);
         if (null === appFile && !invalidFiles.includes(appFilePath)) {
-            Logger.Warning(`${info}: File ${appFilePath} exists, but couldn't be parsed. If everything works, you can ignore this warning.`);
+            addWarning(LOGLEVEL_WARN, `${info}: File ${appFilePath} exists, but couldn't be parsed. If everything works, you can ignore this warning.`);
+            
             invalidFiles.push(appFilePath);
         } else if (null !== appFile) {
-            _validateAppFile(appFile, entSettings.validateRecursively, true);
+            _validateAppFile(appFile, entSettings.validateMeshesRecursively, true);
         }
     }
 
-    pathToCurrentFile = entFilePath;
+    popCurrentFilePath(); 
 }
 
 
@@ -1066,20 +1141,20 @@ function validateAppearanceNameSuffixes(appearanceName, entAppearanceNames, tags
         return;
     }
     if (appearanceName.includes('FPP') && !entAppearanceNames.includes(appearanceName.replace('FPP', 'TPP')) && !tags.includes('EmptyAppearance:TPP')) {
-        Logger.Warning(`${appearanceName}: You have not defined a third person appearance.`)
-        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:TPP" or define "${appearanceName.replace('FPP', 'TPP')}" and point it to ${emptyAppearanceString}.`);
+        addWarning(LOGLEVEL_WARN, `${appearanceName}: You have not defined a third person appearance.`)
+        addWarning(LOGLEVEL_WARN, `To avoid display bugs, add the tag "EmptyAppearance:TPP" or define "${appearanceName.replace('FPP', 'TPP')}" and point it to ${emptyAppearanceString}.`);
     }
     if (appearanceName.includes('TPP') && !entAppearanceNames.includes(appearanceName.replace('TPP', 'FPP')) && !tags.includes('EmptyAppearance:FFP')) {
-        Logger.Warning(`${appearanceName}: You have not defined a first person appearance.`);
-        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:FPP" or define "${appearanceName.replace('TPP', 'FPP')}" and point it to ${emptyAppearanceString}.`);
+        addWarning(LOGLEVEL_WARN, `${appearanceName}: You have not defined a first person appearance.`);
+        addWarning(LOGLEVEL_WARN, `To avoid display bugs, add the tag "EmptyAppearance:FPP" or define "${appearanceName.replace('TPP', 'FPP')}" and point it to ${emptyAppearanceString}.`);
     }
     if (appearanceName.includes('Male') && !entAppearanceNames.includes(appearanceName.replace('Male', 'Female')) && !tags.includes('EmptyAppearance:Female')) {
-        Logger.Warning(`${appearanceName}: You have not defined a female variant.`);
-        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:Female" or define "${appearanceName.replace('Male', 'Female')}" and point it to ${emptyAppearanceString}.`);
+        addWarning(LOGLEVEL_WARN, `${appearanceName}: You have not defined a female variant.`);
+        addWarning(LOGLEVEL_WARN, `To avoid display bugs, add the tag "EmptyAppearance:Female" or define "${appearanceName.replace('Male', 'Female')}" and point it to ${emptyAppearanceString}.`);
     }
     if (appearanceName.includes('Female') && !entAppearanceNames.includes(appearanceName.replace('Female', 'Male')) && !tags.includes('EmptyAppearance:Male')) {
-        Logger.Warning(`${appearanceName}: You have not defined a male variant.`);
-        Logger.Warning(`To avoid display bugs, add the tag "EmptyAppearance:Male" or define "${appearanceName.replace('Female', 'Male')}" and point it to ${emptyAppearanceString}.`);
+        addWarning(LOGLEVEL_WARN, `${appearanceName}: You have not defined a male variant.`);
+        addWarning(LOGLEVEL_WARN, `To avoid display bugs, add the tag "EmptyAppearance:Male" or define "${appearanceName.replace('Female', 'Male')}" and point it to ${emptyAppearanceString}.`);
     }
 }
 
@@ -1125,16 +1200,16 @@ export function validateEntFile(ent, _entSettings) {
     const entityType = ent.entity?.Data?.$type;
     if (isRootEntity) {
         if (entityType === "entEntity") {
-            Logger.Warning(`${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
+            addWarning(LOGLEVEL_WARN, `${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
         } else if ((ent.components || []).length === 0) {
-            Logger.Info(`${currentFileName} seems to be a root entity, but you don't have any components.`);
+            addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a root entity, but you don't have any components.`);
         }
     } else if (entityType === "gameGarmentItemObject") {
-        Logger.Info(`${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
+        addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
     }
 
     if (visualTagList.some((tag) => tag.startsWith('hide'))) {
-        Logger.Warning('Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
+        addWarning(LOGLEVEL_WARN, 'Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
     }
 
     // validate ent component names
@@ -1148,29 +1223,29 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     if (componentIdErrors.length > 0) {
-        Logger.Warning(`${currentFileName}: Component ID(s) may cause errors with garment support: ${formatArrayForPrint(componentIdErrors)}`);
+        addWarning(LOGLEVEL_WARN, `${currentFileName}: Component ID(s) may cause errors with garment support: ${formatArrayForPrint(componentIdErrors)}`);
     }
 
     const numAmmComponents = allComponentNames.filter((name) => !!name && name.startsWith('amm_prop_slot')).length;
     if (numAmmComponents > 0 && numAmmComponents < 4 && !allComponentNames.includes('amm_prop_slot1')) {
-        Logger.Info('Is this an AMM prop appearance? Only components with the names "amm_prop_slot1" - "amm_prop_slot4" will support scaling.');
+        addWarning(LOGLEVEL_INFO, 'Is this an AMM prop appearance? Only components with the names "amm_prop_slot1" - "amm_prop_slot4" will support scaling.');
     }
 
     isRootEntity = isRootEntity && !entSettings.skipRootEntityCheck;
 
     if (!isRootEntity && _entSettings.checkComponentNameDuplication && duplicateComponentNames.length > 0) {
-        Logger.Warning(`The following components are defined more than once: [ ${duplicateComponentNames.join(', ')} ]`)
+        addWarning(LOGLEVEL_WARN, `The following components are defined more than once: [ ${duplicateComponentNames.join(', ')} ]`)
     }
 
     if (_entSettings.checkForCrashyDependencies) {
         if ((ent.inplaceResources?.length || 0) > 0) {
-            Logger.Error(`Your entity file defines inplaceResources. These might cause crashes due to asynchronous loading. Consider deleting them!`)
+            addWarning(LOGLEVEL_ERROR, `Your entity file defines inplaceResources. These might cause crashes due to asynchronous loading. Consider deleting them!`)
         }
     }
 
     if ((ent.resolvedDependencies?.length || 0) > 0) {
         if (_entSettings.checkForResolvedDependencies) {
-            Logger.Info(`Your entity file defines resolvedDependencies, consider deleting them.`)
+            addWarning(LOGLEVEL_INFO, `Your entity file defines resolvedDependencies, consider deleting them.`)
         } else {
             for (let i = 0; i < ent.resolvedDependencies.length; i++) {
                 checkDepotPath(ent.resolvedDependencies[i].DepotPath, `resolvedDependencies[${i}]`);
@@ -1188,8 +1263,6 @@ export function validateEntFile(ent, _entSettings) {
 
     const entAppearanceNames = [];
 
-
-
     // Check naming pattern
     if (!isDynamicAppearance && ent.appearances.length === 1) {
         const entName = stringifyPotentialCName(ent.appearances[0].name);
@@ -1197,8 +1270,8 @@ export function validateEntFile(ent, _entSettings) {
         isDynamicAppearance ||= (entName.endsWith("_") && (entAppearanceName === entName || entAppearanceNames === ''));
     }
 
-
     const _pathToCurrentFile = pathToCurrentFile;
+    pushCurrentFilePath();
 
     let isUsingSuffixesOnRootEntityNames = false;
 
@@ -1209,15 +1282,18 @@ export function validateEntFile(ent, _entSettings) {
         entAppearanceNames.push(name);
         isUsingSuffixesOnRootEntityNames ||= (stringifyPotentialCName(appearance.appearanceName, '', true) || '').includes('&');
         isUsingSuffixesOnRootEntityNames ||= name.includes('&');
-        pathToCurrentFile = _pathToCurrentFile;
+        // May always be true? Not sure
+        if (pathToCurrentFile !== _pathToCurrentFile) {
+            popCurrentFilePath();
+        }
     }
 
     if (isUsingSuffixesOnRootEntityNames && isDynamicAppearance && isRootEntity) {
-        Logger.Warning('Dynamic appearances: You\'re not supposed to use suffixes (&something) in names or appearance names in your root entity!');
+        addWarning(LOGLEVEL_WARN, 'Dynamic appearances: You\'re not supposed to use suffixes (&something) in names or appearance names in your root entity!');
     }
     if (isRootEntity && isDynamicAppearance && visualTagList.includes('EmptyAppearance:FPP')) {
         const exampleAppearanceName = [...entAppearanceNames].pop() || 'appearance';
-        Logger.Warning(`Dynamic appearances: EmptyAppearance:FPP might be flaky. Rename your appearance(s) in the .app file like ${exampleAppearanceName}&camera:tpp instead.`);
+        addWarning(LOGLEVEL_WARN, `Dynamic appearances: EmptyAppearance:FPP might be flaky. Rename your appearance(s) in the .app file like ${exampleAppearanceName}&camera:tpp instead.`);
     }
 
 
@@ -1231,7 +1307,7 @@ export function validateEntFile(ent, _entSettings) {
     if (isRootEntity && entAppearanceNames.length && !isDynamicAppearance) {
         const defaultAppearance = stringifyPotentialCName(ent.defaultAppearance) || '';
         if ('random' !== defaultAppearance && !entAppearanceNames.includes(defaultAppearance)) {
-            Logger.Info(`Root entity: defaultAppearance ${defaultAppearance} not found. If this is a prop, then it will spawn invisible.`)
+            addWarning(LOGLEVEL_INFO, `Root entity: defaultAppearance ${defaultAppearance} not found. If this is a prop, then it will spawn invisible.`)
         }
     }
 
@@ -1244,7 +1320,7 @@ export function validateEntFile(ent, _entSettings) {
     if (entSettings.checkDynamicAppearanceTag && (hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length) {
         // Do we have a visual tag 'DynamicAppearance'?
         if (!visualTagList.includes('DynamicAppearance')) {
-            Logger.Info('If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
+            addWarning(LOGLEVEL_INFO, 'If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
                 + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
                 ' If everything is fine, ignore this warning.');
         }
@@ -1257,6 +1333,7 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     isDataChangedForWriting = _isDataChangedForWriting;
+    printUserInfo();
 }
 
 //#endregion
@@ -1302,13 +1379,13 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
     switch (key) {
         case "MultilayerSetup":
             if (!materialDepotPath.endsWith(".mlsetup")) {
-                Logger.Error(`${info}${materialDepotPath} doesn't end in .mlsetup. This will cause crashes.`);
+                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .mlsetup. This will cause crashes.`);
                 return;
             }
             break;
         case "MultilayerMask":
             if (!materialDepotPath.endsWith(".mlmask")) {
-                Logger.Error(`${info}${materialDepotPath} doesn't end in .mlmask. This will cause crashes.`);
+                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .mlmask. This will cause crashes.`);
                 return;
             }
             break;
@@ -1318,32 +1395,32 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
         case "Normal":
         case "GlobalNormal":
             if (!materialDepotPath.endsWith(".xbm")) {
-                Logger.Error(`${info}${materialDepotPath} doesn't end in .xbm. This will cause crashes.`);
+                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .xbm. This will cause crashes.`);
                 return;
             }
             break;
         case "IrisColorGradient":
             if (!materialDepotPath.endsWith(".gradient")) {
-                Logger.Error(`${info}${materialDepotPath} doesn't end in .gradient. This will cause crashes.`);
+                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .gradient. This will cause crashes.`);
                 return;
             }
             break;
     }
     if (materialValue.Flags?.includes('Embedded')) {
-        Logger.Info(`${info} is set to Embedded. This might not work as you expect it.`);
+        addWarning(LOGLEVEL_INFO, `${info} is set to Embedded. This might not work as you expect it.`);
     }
 
     // Check if the path should substitute, and if yes, if it's valid
     const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(materialDepotPath);
 
     if ((numOpenBraces > 0 || numClosingBraces) > 0 && !materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        Logger.Warning(`${info} Depot path seems to contain substitutions, but does not start with an *`);
+        addWarning(LOGLEVEL_WARN, `${info} Depot path seems to contain substitutions, but does not start with an *`);
     } else if (numOpenBraces !== numClosingBraces) {
-        Logger.Warning(`${info} Depot path has invalid substitution (uneven number of { and })`);
+        addWarning(LOGLEVEL_WARN, `${info} Depot path has invalid substitution (uneven number of { and })`);
     } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
-        Logger.Warning(`${info} Dynamic material value requires Flags 'Soft'`);
+        addWarning(LOGLEVEL_WARN, `${info} Dynamic material value requires Flags 'Soft'`);
     } else if (!materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && (materialValue.Flags || '').includes('Soft')) {
-        Logger.Warning(`${info} Non-dynamic material value might not work with Flag 'Soft', set to 'Default'`);
+        addWarning(LOGLEVEL_WARN, `${info} Non-dynamic material value might not work with Flag 'Soft', set to 'Default'`);
     }
 
     // Once we've made sure that the file extension is correct, check if the file exists.
@@ -1352,7 +1429,7 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
 
 function meshFile_validatePlaceholderMaterial(material, info) {
     if (meshSettings.validatePlaceholderValues && (material.values || []).length) {
-        Logger.Warning(`Placeholder ${info} defines values. Consider deleting them.`);
+        addWarning(LOGLEVEL_WARN, `Placeholder ${info} defines values. Consider deleting them.`);
     }
 
     if (!meshSettings.validatePlaceholderMaterialPaths) return;
@@ -1360,7 +1437,7 @@ function meshFile_validatePlaceholderMaterial(material, info) {
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
     if (!checkDepotPath(baseMaterial, info, true)) {
-        Logger.Warning(`Placeholder ${info}: invalid base material. Consider deleting it.`);
+        addWarning(LOGLEVEL_WARN, `Placeholder ${info}: invalid base material. Consider deleting it.`);
     }
 }
 
@@ -1382,7 +1459,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
 
     if (!baseMaterial) {
-      Logger.Info(`${materialInfo}: No base material defined. Skipping validation`);
+      addWarning(LOGLEVEL_INFO, `${materialInfo}: No base material defined. Skipping validation`);
       return;
     }
 
@@ -1394,9 +1471,9 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     currentMaterialName = materialName.includes("@") ? materialName : undefined;
 
     if (isUsingSubstitution && !isSoftDependency) {
-        Logger.Warning(`${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
+        addWarning(LOGLEVEL_WARN, `${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
     } else if (!isUsingSubstitution && isSoftDependency) {
-        Logger.Warning(`${materialInfo}: baseMaterial is using Flags.Soft, but doesn't contain substitutions. This will crash your game; use 'Default'!`);
+        addWarning(LOGLEVEL_WARN, `${materialInfo}: baseMaterial is using Flags.Soft, but doesn't contain substitutions. This will crash your game; use 'Default'!`);
     } else if  (isUsingSubstitution) {
         baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
     }
@@ -1407,11 +1484,11 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
         }
 
         if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
-            const _currentFilePath = pathToCurrentFile;
+            pathToParentFile = pathToCurrentFile;
             const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
-            pathToCurrentFile = baseMaterial;
+            pushCurrentFilePath();
             _validateMiFile(miFileContent);
-            pathToCurrentFile = _currentFilePath;
+            popCurrentFilePath();
         }
     });
     // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
@@ -1446,12 +1523,12 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
 function checkMeshMaterialIndices(mesh) {
 
     if (mesh.externalMaterials.length > 0 && mesh.preloadExternalMaterials.length > 0) {
-        Logger.Warning("Your mesh is trying to use both externalMaterials and preloadExternalMaterials. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
+        addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both externalMaterials and preloadExternalMaterials. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
     }
 
     if (mesh.localMaterialBuffer.materials !== null && mesh.localMaterialBuffer.materials.length > 0
         && mesh.preloadLocalMaterialInstances.length > 0) {
-        Logger.Warning("Your mesh is trying to use both localMaterialBuffer.materials and preloadLocalMaterialInstances. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
+        addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both localMaterialBuffer.materials and preloadLocalMaterialInstances. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
     }
 
     let sumOfLocal = mesh.localMaterialInstances.length + mesh.preloadLocalMaterialInstances.length;
@@ -1469,22 +1546,22 @@ function checkMeshMaterialIndices(mesh) {
         let name = stringifyPotentialCName(materialEntry.name);
 
         if (name in materialNames && !PLACEHOLDER_NAME_REGEX.test(name)) {
-            Logger.Warning(`materialEntries[${i}] (${name}) is already defined in materialEntries[${materialNames[name]}]`);
+            addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is already defined in materialEntries[${materialNames[name]}]`);
         } else {
             materialNames[name] = i;
         }
 
         if (materialEntry.isLocalInstance) {
             if (materialEntry.index >= sumOfLocal) {
-                Logger.Warning(`materialEntries[${i}] (${name}) is trying to access a local material with the index ${materialEntry.index}, but there are only ${sumOfLocal} entries. (Array starts counting at 0)`);
+                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is trying to access a local material with the index ${materialEntry.index}, but there are only ${sumOfLocal} entries. (Array starts counting at 0)`);
             }
             if (localIndexList.includes(materialEntry.index)) {
-                Logger.Warning(`materialEntries[${i}] (${name}) is overwriting an already-defined material index: ${materialEntry.index}. Your material assignments might not work as expected.`);
+                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is overwriting an already-defined material index: ${materialEntry.index}. Your material assignments might not work as expected.`);
             }
             localIndexList.push(materialEntry.index);
         } else {
             if (materialEntry.index >= sumOfExternal) {
-                Logger.Warning(`materialEntries[${i}] (${name}) is trying to access an external material with the index ${materialEntry.index}, but there are only ${sumOfExternal} entries.`);
+                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is trying to access an external material with the index ${materialEntry.index}, but there are only ${sumOfExternal} entries.`);
             }
         }
     }
@@ -1511,7 +1588,7 @@ export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
         return;
     }
     if (!meshDepotPath.endsWith('.mesh') && /^\d+$/.test(meshDepotPath)) {
-        Logger.Warning(`baseMesh ${meshDepotPath} does not end in .mesh. This might crash the game.`);
+        addWarning(LOGLEVEL_WARN, `baseMesh ${meshDepotPath} does not end in .mesh. This might crash the game.`);
     }
 
     if (!morphtargetSettings.validateRecursively) return;
@@ -1520,13 +1597,14 @@ export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
     const appearancesInMesh = component_collectAppearancesFromMesh(meshDepotPath) || [];
 
     if (!appearancesInMesh.includes(defaultAppearance)) {
-        Logger.Warning(`Appearance ${defaultAppearance} not found in ${meshDepotPath}. `);
+        addWarning(LOGLEVEL_WARN, `Appearance ${defaultAppearance} not found in ${meshDepotPath}. `);
         if (!appearancesInMesh.length) {
-            Logger.Info(`No appearances could be found. Is something wrong with the path?`);
+            addWarning(LOGLEVEL_INFO, `No appearances could be found. Is something wrong with the path?`);
             return;
         }
-        Logger.Info(`Only the following appearances are defined: \t${appearancesInMesh}`);
+        addWarning(LOGLEVEL_INFO, `Only the following appearances are defined: \t${appearancesInMesh}`);
     }
+    printUserInfo();
 }
 
 function printDuplicateMaterialWarnings() {
@@ -1564,9 +1642,9 @@ function printDuplicateMaterialWarnings() {
     // Print warnings
     const warningEntries = Object.keys(identicalMaterials);
     if (warningEntries.length > 0) {
-        Logger.Info("The following materials seem to be identical:");
+        addWarning(LOGLEVEL_INFO, "The following materials seem to be identical:");
         warningEntries.forEach(key => {
-            Logger.Info(`\t${(identicalMaterials[key] || []).join(', ')}`);
+            addWarning(LOGLEVEL_INFO, `\t${(identicalMaterials[key] || []).join(', ')}`);
         });
     }
 }
@@ -1581,7 +1659,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     if (!JsonStringify(mesh).includes("@")) return;
 
     if (mesh.appearances.length < 2) {
-        Logger.Warning(`You need at least two appearances for dynamic appearances to work!`);
+        addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
     }
 
     const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
@@ -1613,17 +1691,11 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         }
     }
 }
-export function validateMeshFile(mesh, _meshSettings) {
-    // check if settings are enabled
-    if (!_meshSettings?.Enabled) return;
 
+function _validateMeshFile(mesh) {
     // check if file needs to be called recursively or is invalid
-    if (mesh?.Data?.RootChunk) return validateMeshFile(mesh.Data.RootChunk, _meshSettings);
+    if (mesh?.Data?.RootChunk) return _validateMeshFile(mesh.Data.RootChunk);
     if (checkIfFileIsBroken(mesh, 'mesh')) return;
-
-    meshSettings = _meshSettings;
-    resetInternalFlagsAndCaches();
-
     checkMeshMaterialIndices(mesh);
 
     meshFile_collectDynamicChunkMaterials(mesh);
@@ -1633,7 +1705,7 @@ export function validateMeshFile(mesh, _meshSettings) {
     var undefinedDynamicMaterialNames = Object.keys(dynamicMaterials).filter((name) => !definedMaterialNames.includes(name));
 
     if (undefinedDynamicMaterialNames.length > 0) {
-        Logger.Error(`You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
+        addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
     }
 
     if (mesh.localMaterialBuffer.materials !== null) {
@@ -1686,11 +1758,11 @@ export function validateMeshFile(mesh, _meshSettings) {
     if (mesh.renderResourceBlob !== "undefined") {
         numSubMeshes = mesh.renderResourceBlob?.Data?.header?.renderChunkInfos?.length;
     }
-    
+
     if (mesh.appearances.length === 0) return;
     const firstMaterialHasChunks = (mesh.appearances[0].Data.chunkMaterials || []).length >= numSubMeshes;
     const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
-    
+
     for (let i = 0; i < mesh.appearances.length; i++) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
@@ -1699,12 +1771,12 @@ export function validateMeshFile(mesh, _meshSettings) {
         if (firstMaterialHasChunks && numAppearanceChunks === 0) {
             appearance.chunkMaterials = mesh.appearances[0].Data.chunkMaterials;
             for (let j = 0; i < appearance.chunkMaterials.length; i++) {
-                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearanceName); 
+                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearanceName);
             }
             numAppearanceChunks = appearance.chunkMaterials.length;
         }
         if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
-            Logger.Warning(`Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
+            addWarning(LOGLEVEL_INFO, `Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
         }
 
         for (let j = 0; j < numAppearanceChunks; j++) {
@@ -1716,15 +1788,28 @@ export function validateMeshFile(mesh, _meshSettings) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
         }
-        if (invisibleSubmeshes.length && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
-            Logger.Warning(`Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
-            Logger.Warning(`\t${invisibleSubmeshes.join('\n\t')}`);
+        if (invisibleSubmeshes.length > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+            addWarning(LOGLEVEL_WARN, `Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
+            for (var j = 0; j < invisibleSubmeshes.length; j++) {
+                addWarning(LOGLEVEL_WARN, `\tAppearance[${i}] ${invisibleSubmeshes[j]}`);
+            }
         }
     }
 
     printDuplicateMaterialWarnings();
 
     return true;
+}
+export function validateMeshFile(mesh, _meshSettings) {
+    // check if settings are enabled
+    if (!_meshSettings?.Enabled) return;
+
+    meshSettings = _meshSettings;
+    
+    resetInternalFlagsAndCaches();
+
+    _validateMeshFile(mesh);
+    printUserInfo();
 }
 
 //#endregion
@@ -1748,6 +1833,7 @@ export function validateMlTemplateFile(mltemplate, _mlTemplateSettings) {
     if (mltemplate.roughnessTexture?.DepotPath) {
         checkDepotPath(mltemplate.roughnessTexture?.DepotPath, "mltemplate.roughnessTexture");
     }
+    printUserInfo();
 }
 
 //#endregion
@@ -1771,6 +1857,7 @@ export function validateMiFile(mi, _miSettings) {
     miSettings = _miSettings;
     resetInternalFlagsAndCaches();
     _validateMiFile(mi, '');
+    printUserInfo();
 }
 
 function _validateMiFile(mi, debugInfo) {
@@ -1828,15 +1915,16 @@ export function validateCsvFile(csvData, csvSettings) {
             if (!/^(.+)([\/\\])([^\/]+)$/.test(potentialPath)) {
                 potentiallyInvalidFactoryPaths.push(`${potentialName}: ${potentialPath}`);
             } else if (!wkit.FileExists(potentialPath)) {
-                Logger.Warning(`${potentialName}: ${potentialPath} seems to be a file path, but can't be found in project or game files`);
+                addWarning(LOGLEVEL_WARN, `${potentialName}: ${potentialPath} seems to be a file path, but can't be found in project or game files`);
             }
         }
     }
 
     if (csvSettings.warnAboutInvalidDepotPaths && potentiallyInvalidFactoryPaths.length) {
-        Logger.Warning(`One or more entries couldn't be resolved to depot paths. Is this a valid factory? The following elements have warnings:`);
-        Logger.Info(`\t${potentiallyInvalidFactoryPaths.join(',\n\t')}`);
+        addWarning(LOGLEVEL_WARN, `One or more entries couldn't be resolved to depot paths. Is this a valid factory? The following elements have warnings:`);
+        addWarning(LOGLEVEL_INFO, `\t${potentiallyInvalidFactoryPaths.join(',\n\t')}`);
     }
+    printUserInfo();
 }
 
 //#endregion
@@ -1877,12 +1965,12 @@ export function validateJsonFile(jsonData, jsonSettings) {
 
             if (jsonSettings.checkDuplicateTranslations) {
                 if (potentialFemaleVariant && femaleTranslations.includes(potentialFemaleVariant)) {
-                    Logger.Warning(`entry ${i}: ${potentialFemaleVariant} already defined`);
+                    addWarning(LOGLEVEL_WARN, `entry ${i}: ${potentialFemaleVariant} already defined`);
                 } else {
                     femaleTranslations.push(secondaryKey);
                 }
                 if (potentialMaleVariant && maleTranslations.includes(potentialMaleVariant)) {
-                    Logger.Warning(`entry ${i}: ${potentialMaleVariant} already defined`);
+                    addWarning(LOGLEVEL_WARN, `entry ${i}: ${potentialMaleVariant} already defined`);
                 } else {
                     maleTranslations.push(potentialMaleVariant);
                 }
@@ -1896,7 +1984,7 @@ export function validateJsonFile(jsonData, jsonSettings) {
 
     if (jsonSettings.checkDuplicateKeys) {
         if (duplicatePrimaryKeys.length) {
-            Logger.Warning('You have duplicate primary keys in your file. Entries will overwrite each other, '
+            addWarning(LOGLEVEL_WARN, 'You have duplicate primary keys in your file. Entries will overwrite each other, '
                 + 'unless you set this value to 0');
         }
         const duplicateKeys = secondaryKeys
@@ -1904,16 +1992,16 @@ export function validateJsonFile(jsonData, jsonSettings) {
             .filter((path, i, array) => !!path && array.indexOf(path) === i); // filter out duplicates
 
         if (duplicateKeys?.length) {
-            Logger.Warning('You have duplicate secondary keys in your file. The following entries will overwrite each other:'
+            addWarning(LOGLEVEL_WARN, 'You have duplicate secondary keys in your file. The following entries will overwrite each other:'
             + duplicateKeys.length === 1 ? `${duplicateKeys}` : `[ ${duplicateKeys.join(", ")} ]`);
         }
     }
 
     if (jsonSettings.checkEmptyFemaleVariant && emptyFemaleVariants.length > 0) {
-        Logger.Warning(`The following entries have no default value (femaleVariant): [ ${emptyFemaleVariants.join(', ')}]`);
-        Logger.Info('Ignore this if your item is masc V only and you\'re using itemsFactoryAppearanceSuffix.Camera or dynamic appearances.');
-
+        addWarning(LOGLEVEL_WARN, `The following entries have no default value (femaleVariant): [ ${emptyFemaleVariants.join(', ')}]`);
+        addWarning(LOGLEVEL_INFO, 'Ignore this if your item is masc V only and you\'re using itemsFactoryAppearanceSuffix.Camera or dynamic appearances.');
     }
+    printUserInfo();
 }
 
 //#endregion
@@ -1952,7 +2040,7 @@ let usedAnimFiles = [];
 function workspotFile_CollectAnims(filePath) {
     const fileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(filePath, 'json'));
     if (!fileContent) {
-        Logger.Warning(`Failed to collect animations from ${filePath}`);
+        addWarning(LOGLEVEL_WARN, `Failed to collect animations from ${filePath}`);
         return;
     }
 
@@ -1987,9 +2075,9 @@ function workspotFile_CheckFinalAnimSet(idx, animSet) {
     const rigDepotPathValue = animSet.rig && animSet.rig.DepotPath ? stringifyPotentialCName(animSet.rig.DepotPath) : '';
 
     if (!rigDepotPathValue || !rigDepotPathValue.endsWith('.rig')) {
-        Logger.Error(`finalAnimsets[${idx}]: invalid rig: ${rigDepotPathValue}. This will crash your game!`);
+        addWarning(LOGLEVEL_ERROR, `finalAnimsets[${idx}]: invalid rig: ${rigDepotPathValue}. This will crash your game!`);
     } else if (!wkit.FileExists(rigDepotPathValue)) {
-        Logger.Warning(`finalAnimsets[${idx}]: File "${rigDepotPathValue}" not found in game or project files`);
+        addWarning(LOGLEVEL_WARN, `finalAnimsets[${idx}]: File "${rigDepotPathValue}" not found in game or project files`);
     }
 
     if (!animSet.animations) {
@@ -2004,12 +2092,12 @@ function workspotFile_CheckFinalAnimSet(idx, animSet) {
         const nestedAnim = animations[i];
         const filePath = stringifyPotentialCName(nestedAnim.animSet.DepotPath);
         if (filePath && !wkit.FileExists(filePath)) {
-            Logger.Warning(`finalAnimSet[${idx}]animations[${i}]: "${filePath}" not found in game or project files`);
+            addWarning(LOGLEVEL_WARN, `finalAnimSet[${idx}]animations[${i}]: "${filePath}" not found in game or project files`);
         } else if (filePath && !usedAnimFiles.includes(filePath)) {
             usedAnimFiles.push(filePath);
         }
         if (!loadingHandles.find((h) => stringifyPotentialCName(h.DepotPath) === filePath)) {
-            Logger.Warning(`finalAnimSet[${idx}]animations[${i}]: "${filePath}" not found in loadingHandles`);
+            addWarning(LOGLEVEL_WARN, `finalAnimSet[${idx}]animations[${i}]: "${filePath}" not found in loadingHandles`);
         }
     }
 }
@@ -2038,7 +2126,7 @@ function workspotFile_CheckAnimSet(idx, animSet) {
     // TODO: FileValidation block can go after file writing has been implemented
     if (animSetId) {
         if (workspotSettings.checkIdDuplication && !!alreadyUsedIndices[animSetId]) {
-            Logger.Warning(`animSets[${idx}]: id ${animSetId} already used by ${alreadyUsedIndices[animSetId]}`);
+            addWarning(LOGLEVEL_WARN, `animSets[${idx}]: id ${animSetId} already used by ${alreadyUsedIndices[animSetId]}`);
         }
         alreadyUsedIndices[animSetId] = `list[${idx}]`;
     }
@@ -2059,7 +2147,7 @@ function workspotFile_CheckAnimSet(idx, animSet) {
 
         // TODO: FileValidation block can go after file writing has been implemented
         if (workspotSettings.checkIdDuplication && !!alreadyUsedIndices[animSetId]) {
-            Logger.Warning(`animSet[${idx}].list[${i}]: id ${animSetId} already used by ${alreadyUsedIndices[animSetId]}`);
+            addWarning(LOGLEVEL_WARN, `animSet[${idx}].list[${i}]: id ${animSetId} already used by ${alreadyUsedIndices[animSetId]}`);
         }
 
         childItemNames.push(stringifyPotentialCName(childItem.Data.animName));
@@ -2068,7 +2156,7 @@ function workspotFile_CheckAnimSet(idx, animSet) {
 
     // warn user if name of idle animation doesn't match
     if (workspotSettings.checkIdleAnimNames && !childItemNames.includes(idleName)) {
-        Logger.Info(`animSet[${idx}]: idle animation "${idleName}" not matching any of the defined animations [ ${childItemNames.join(",")} ]`);
+        addWarning(LOGLEVEL_INFO, `animSet[${idx}]: idle animation "${idleName}" not matching any of the defined animations [ ${childItemNames.join(",")} ]`);
     }
 }
 /**
@@ -2102,7 +2190,7 @@ function workspotFile_SetIndexOrder(rootEntry) {
     }
 
     if (indexChanged > 0) {
-        Logger.Info(`Fixed up ${indexChanged} indices in your .workspot! Please close and re-open the file!`);
+        addWarning(LOGLEVEL_INFO, `Fixed up ${indexChanged} indices in your .workspot! Please close and re-open the file!`);
     }
 
     isDataChangedForWriting = indexChanged > 0;
@@ -2137,7 +2225,7 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
         if (wkit.FileExists(usedAnimFiles[i])) {
             workspotFile_CollectAnims(usedAnimFiles[i]);
         } else {
-            Logger.Warn(`${usedAnimFiles[i]} not found in project or game files`);
+            addWarning(LOGLEVEL_WARN, `${usedAnimFiles[i]} not found in project or game files`);
         }
     }
 
@@ -2178,20 +2266,23 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
     });
 
     if (workspotSettings.showUnusedAnimsInFiles && unusedAnimNamesFromFiles.length > 0) {
-        Logger.Info(`Items from .anim files not found in .workspot:`);
+        addWarning(LOGLEVEL_INFO, `Items from .anim files not found in .workspot:`);
         Object.keys(animNamesByFile).forEach((fileName) => {
             const unusedAnimsInFile = animNamesByFile[fileName].filter((val) => unusedAnimNamesFromFiles.find((animName) => animName === val));
             if (unusedAnimsInFile.length > 0) {
-                Logger.Info(`${fileName}: [\n\t${unusedAnimsInFile.join(",\n\t")}\t\n]`);
+                addWarning(LOGLEVEL_INFO, `${fileName}: [\n\t${unusedAnimsInFile.join(",\n\t")}\t\n]`);
             }
         });
     }
 
     const unusedAnimSetNames = workspotAnimSetNames.filter((name) => !!name && !allAnimNamesFromAnimFiles.includes(name));
     if (workspotSettings.showUndefinedWorkspotAnims && unusedAnimSetNames.length > 0) {
-        Logger.Info(`Items from .workspot not found in .anim files:`);
-        Logger.Info(unusedAnimSetNames.map((name) => `${workEntryIndicesByAnimName[name]}: ${name}`));
+        addWarning(LOGLEVEL_INFO, `Items from .workspot not found in .anim files:`);
+        addWarning(LOGLEVEL_INFO, unusedAnimSetNames.map((name) => `${workEntryIndicesByAnimName[name]}: ${name}`));
     }
+    
+    printUserInfo();
+    
     return rootEntry;
 }
 //#endregion
