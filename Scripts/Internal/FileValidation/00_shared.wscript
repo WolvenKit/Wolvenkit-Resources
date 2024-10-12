@@ -74,10 +74,15 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
     if (typeof cnameOrString === 'bigint') {
         return `${cnameOrString}`;
     }
-    const ret = !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
+    let ret = !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
+    
+    if (ret == '') {
+     return ret;
+    }
+    
     const info = _info ? `${_info}: '${ret}' ` : `'${ret}' `;
 
-    if (ret && ret.trim && ret.trim() !== ret) {
+    if (ret && ret.trim && ret.trim() !== ret && !!ret.trim()) {
         Logger.Error(`${info}has trailing or leading spaces! Make sure to remove them, or the component might not work!`);
     } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0 && !PLACEHOLDER_NAME_REGEX.test(ret || '')) {
         Logger.Warning(`${info}includes spaces. Please use _ instead.`);
@@ -174,7 +179,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         }
         
         if (!!currentMaterialName) {
-            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It may not be defined yet.`);
+            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It may not be defined yet, or the file is in a different mod.`);
             return;
         }
         Logger.Warning(`${info}${resolvedPath} not found in project or game files`);        

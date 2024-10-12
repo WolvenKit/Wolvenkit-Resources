@@ -86,12 +86,12 @@ function pushCurrentFilePath(path) {
 }
 
 function popCurrentFilePath() {
-    if (pathToParentFile === pathToCurrentFile) {
+    if (pathToParentFile === pathToCurrentFile || !pathToParentFile) {
         pathToParentFile = '';
         return;
     } 
     pathToCurrentFile = pathToParentFile;  
-    
+    pathToParentFile = '';    
 }
 
 const LOGLEVEL_INFO  = 0;
@@ -1008,7 +1008,8 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         }
         
         if (validateRecursively) {
-            const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');
+          try {
+            const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');          
             const mesh = TypeHelper.JsonParse(fileContent);
             
             meshSettings ||= {
@@ -1020,6 +1021,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             pushCurrentFilePath(componentMeshPath);
             _validateMeshFile(mesh)
             popCurrentFilePath();
+          } catch (err) {
+            Logger.Error(`Failed to load ${componentMeshPath}`);
+          }
         }
     });
 }
@@ -1526,13 +1530,13 @@ function checkMeshMaterialIndices(mesh) {
         addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both externalMaterials and preloadExternalMaterials. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
     }
 
-    if (mesh.localMaterialBuffer.materials !== null && mesh.localMaterialBuffer.materials.length > 0
+    if (!!mesh.localMaterialBuffer?.materials && mesh.localMaterialBuffer.materials.length > 0
         && mesh.preloadLocalMaterialInstances.length > 0) {
         addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both localMaterialBuffer.materials and preloadLocalMaterialInstances. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
     }
 
     let sumOfLocal = mesh.localMaterialInstances.length + mesh.preloadLocalMaterialInstances.length;
-    if (mesh.localMaterialBuffer.materials !== null) {
+    if (!!mesh.localMaterialBuffer?.materials) {
         sumOfLocal += mesh.localMaterialBuffer.materials.length;
     }
     let sumOfExternal = mesh.externalMaterials.length + mesh.preloadExternalMaterials.length;
@@ -1708,7 +1712,7 @@ function _validateMeshFile(mesh) {
         addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
     }
 
-    if (mesh.localMaterialBuffer.materials !== null) {
+    if (!!mesh.localMaterialBuffer?.materials) {
         for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
             let material = mesh.localMaterialBuffer.materials[i];
 
@@ -2292,3 +2296,17 @@ export const validateQuestphaseFile = validate_questphase_file;
 export const validateSceneFile = validate_scene_file;
 
 export const validateInkatlasFile = validate_inkatlas_file;
+
+export function validateMlsetupFile(mlsetup, mlsetupSettings) {
+    // check if file is valid/needs to be called recursively
+    if (mlsetup?.Data?.RootChunk) return validateMlsetupFile(mlsetup.Data.RootChunk, _workspotSettings);
+    
+    if (checkIfFileIsBroken(mlsetup, 'mlsetup')) return;
+
+    let layerIdx = 0;
+    mlsetup.layers.forEach((layer) => {
+        checkDepotPath(layer.material.DepotPath, `layer_${layerIdx}.material`);        
+        checkDepotPath(layer.microblend.DepotPath, `layer_${layerIdx}.microblend`);
+        layerIdx++;
+    });
+}

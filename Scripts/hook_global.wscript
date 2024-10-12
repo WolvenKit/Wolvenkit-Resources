@@ -13,7 +13,7 @@ import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidati
  * If this is set to "true" and file validation runs into any errors, then YOUR FILES WILL NO LONGER SAVE.
  * ONLY ENABLE THIS IF YOU KNOW WHAT YOU'RE DOING!
  */
-const isWolvenkitDeveloper = false;
+const isWolvenkitDeveloper = true;
 
 const README_URL = 'https://wiki.redmodding.org/wolvenkit/wolvenkit-app/file-validation';
 
@@ -31,7 +31,7 @@ globalThis.onSave = function (ext, file) {
 export function RunFileValidation(ext, file) {
 
     const fileContent = TypeHelper.JsonParse(file);
-    
+        
     // grab file name from json and inform file validation about it
     const fileName = (fileContent.Header?.ArchiveFileName || '').split('archive\\').pop() || '';
     FileValidation.setPathToCurrentFile(fileName);
@@ -60,6 +60,9 @@ export function RunFileValidation(ext, file) {
             case "morphtarget":
                 FileValidation.validateMorphtargetFile(data, Settings.Morphtarget);
                 break;
+            case "mlsetup":
+                FileValidation.validateMlsetupFile(data, {});
+                break;
             case "mi":
                 FileValidation.validateMiFile(data, Settings.Mi);
                 break;
@@ -84,6 +87,8 @@ export function RunFileValidation(ext, file) {
             case "scene":
                 FileValidation.validateSceneFile(data, Settings.GraphScene);
                 break;
+            default:
+                Logger.Info("File validation not implemented for file type " + ext);
         }
     } catch (err) {
         if (isWolvenkitDeveloper) {
