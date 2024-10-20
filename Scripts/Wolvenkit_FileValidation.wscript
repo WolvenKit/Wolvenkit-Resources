@@ -275,17 +275,17 @@ function printInvalidAppearanceWarningIfFound() {
         const appearanceNames = meshAppearancesNotFound[meshPath] || [];
 
         const definedAppearances = component_collectAppearancesFromMesh(meshPath).join(', ')
-        addWarning(LOGLEVEL_WARN`${meshPath} with the appearances [ ${definedAppearances} }`);
+        addWarning(LOGLEVEL_WARN, `${meshPath} with the appearances [ ${definedAppearances} }`);
 
         // print as table
-        addWarning(LOGLEVEL_WARN`  ${'Source'.padEnd(65, ' ')} | Appearance`);
+        addWarning(LOGLEVEL_WARN, `  ${'Source'.padEnd(65, ' ')} | Appearance`);
         // print table entries
         for (let i = componentNames.length; i > 0; i -= 1) {
             let calledFrom = componentNames.pop();
             // truncate at the beginning if too long
             if (calledFrom.length >= 60) calledFrom = `…${calledFrom.substring(calledFrom.length - 60)}`;
             const appearanceName = appearanceNames.pop();
-            addWarning(LOGLEVEL_WARN`  ${calledFrom.padEnd(65, ' ')} | ${appearanceName}`);
+            addWarning(LOGLEVEL_WARN, `  ${calledFrom.padEnd(65, ' ')} | ${appearanceName}`);
         }
     })
 
@@ -1063,7 +1063,8 @@ const invalidFiles = [];
  */
 function entFile_validateAppearance(appearance) {
     const appearanceName = (stringifyPotentialCName(appearance.name) || '');
-
+    
+    // Logger.Success(`entFile_validateAppearance(${appearanceName})`);
     // ignore separator appearances such as
     // =============================
     // -----------------------------
@@ -1178,6 +1179,7 @@ export function validateEntFile(ent, _entSettings) {
     if (!_entSettings?.Enabled) return;
 
     if (ent?.Data?.RootChunk) return validateEntFile(ent.Data.RootChunk, _entSettings);
+    
     if (checkIfFileIsBroken(ent, 'ent')) return;
 
     entSettings = _entSettings;
@@ -1198,10 +1200,13 @@ export function validateEntFile(ent, _entSettings) {
         isDynamicAppearance = true
     }
 
+    
     isRootEntity = isDynamicAppearance || (ent.appearances?.length || 0) > 0;
 
     // check entity type
     const entityType = ent.entity?.Data?.$type;
+
+    // Logger.Success(`ent ${entityType}, isRootEntity: ${isRootEntity}`);
     if (isRootEntity) {
         if (entityType === "entEntity") {
             addWarning(LOGLEVEL_WARN, `${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
@@ -1237,6 +1242,7 @@ export function validateEntFile(ent, _entSettings) {
 
     isRootEntity = isRootEntity && !entSettings.skipRootEntityCheck;
 
+    
     if (!isRootEntity && _entSettings.checkComponentNameDuplication && duplicateComponentNames.length > 0) {
         addWarning(LOGLEVEL_WARN, `The following components are defined more than once: [ ${duplicateComponentNames.join(', ')} ]`)
     }
@@ -1278,7 +1284,7 @@ export function validateEntFile(ent, _entSettings) {
     pushCurrentFilePath();
 
     let isUsingSuffixesOnRootEntityNames = false;
-
+    
     for (let i = 0; i < ent.appearances.length; i++) {
         const appearance = ent.appearances[i];
         entFile_validateAppearance(appearance, i);
