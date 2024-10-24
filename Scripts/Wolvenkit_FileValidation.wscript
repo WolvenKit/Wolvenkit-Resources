@@ -1708,6 +1708,13 @@ function _validateMeshFile(mesh) {
     if (checkIfFileIsBroken(mesh, 'mesh')) return;
     checkMeshMaterialIndices(mesh);
 
+    if (mesh.appearances.length === 0) {
+        addWarning(LOGLEVEL_INFO, 'This mesh has no appearances. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
+    }
+    if (mesh.materialEntries.length === 0) {
+        addWarning(LOGLEVEL_INFO, 'This mesh has no material definitions. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
+    }
+    
     meshFile_collectDynamicChunkMaterials(mesh);
 
     var definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));
@@ -1772,12 +1779,12 @@ function _validateMeshFile(mesh) {
     if (mesh.appearances.length === 0) return;
     const firstMaterialHasChunks = (mesh.appearances[0].Data.chunkMaterials || []).length >= numSubMeshes;
     const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
-
+    
     for (let i = 0; i < mesh.appearances.length; i++) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
-        let numAppearanceChunks = (appearance.chunkMaterials || []).length
+        let numAppearanceChunks = (appearance.chunkMaterials || []).length;
         if (firstMaterialHasChunks && numAppearanceChunks === 0) {
             appearance.chunkMaterials = mesh.appearances[0].Data.chunkMaterials;
             for (let j = 0; i < appearance.chunkMaterials.length; i++) {
@@ -1806,6 +1813,9 @@ function _validateMeshFile(mesh) {
         }
     }
 
+    if ((mesh.appearances[0].Data.chunkMaterials || []).length === 0) {
+        addWarning(LOGLEVEL_INFO, 'The first appearance has no chunk materials. The mesh will be invisible, and dynamically generated materials will not work!');
+    }
     printDuplicateMaterialWarnings();
 
     return true;
