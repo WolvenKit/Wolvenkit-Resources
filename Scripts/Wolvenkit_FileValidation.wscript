@@ -1672,10 +1672,12 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
     }
 
+    if (mesh.appearances.length === 0) {
+        return;
+    }
+    
     const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
-    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
-    
-    
+    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";    
     
     for (let i = 0; i < mesh.appearances.length; i++) {
         numAppearances += 1;
