@@ -45,8 +45,7 @@ export function RunFileValidation(ext, file) {
                 FileValidation.validateAnimationFile(data, Settings.Anims);
                 break;
             case "app":
-                if ((data.appearances?.length || 0) > 0)
-                    FileValidation.validateAppFile(data, Settings.App);
+                FileValidation.validateAppFile(data, Settings.App);
                 break;
             case "csv":
                 FileValidation.validateCsvFile(data, Settings.Csv);

@@ -162,6 +162,9 @@ function resetInternalFlagsAndCaches() {
     meshAppearancesNotFoundByComponent = {};
 
     currentWarnings = {};
+
+    // if path to current file isn't set, get it from wkit
+    pushCurrentFilePath(getPathToCurrentFile());
 }
 
 //#region animFile
@@ -756,8 +759,11 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
     if (checkIfFileIsBroken(app, 'app')) {
         return;
     }
-
-    pushCurrentFilePath();
+    
+    if (!(app.appearances ?? []).length) {
+        Logger.Warning(`No appearances found in ${pathToCurrentFile}. Not validating...`);
+        return;
+    }
     
     // empty array with name collisions
     componentOverrideCollisions.length = 0;
@@ -780,6 +786,8 @@ function _validateAppFile(app, validateRecursively, calledFromEntFileValidation)
     isWeaponAppFile = (!!baseEntityType && 'None' !== baseEntityType)
         || (!!preset && 'None' !== preset)
         || (!!depotPath && '0' !== depotPath);
+    
+    pushCurrentFilePath();
 
     for (let i = 0; i < app.appearances.length; i++) {
         const appearance = app.appearances[i];

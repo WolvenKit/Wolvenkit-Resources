@@ -147,8 +147,10 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     switch (getPathToCurrentFile().split('.').pop()) {
         case 'ent':
             warnAboutSubstitution = entSettings.warnAboutSubstitution;
+            break;
         case 'mesh':
             warnAboutSubstitution = meshSettings.enabled;
+            break;
         default:
             warnAboutSubstitution = false;
     }
