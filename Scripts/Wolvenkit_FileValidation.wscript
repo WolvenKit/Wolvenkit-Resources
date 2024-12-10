@@ -1718,10 +1718,10 @@ function _validateMeshFile(mesh) {
     if (checkIfFileIsBroken(mesh, 'mesh')) return;
     checkMeshMaterialIndices(mesh);
 
-    if (mesh.appearances.length === 0) {
+    if (mesh.appearances.length === 0 && meshSettings.checkEmptyAppearances) {
         addWarning(LOGLEVEL_INFO, 'This mesh has no appearances. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
     }
-    if (mesh.materialEntries.length === 0) {
+    if (mesh.materialEntries.length === 0 && meshSettings.checkEmptyAppearances) {
         addWarning(LOGLEVEL_INFO, 'This mesh has no material definitions. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
     }
     

@@ -172,6 +172,10 @@ const Settings = {
          * Should file validation verify paths to external materials in your mesh?
          */
         checkExternalMaterialPaths: true,
+        /*
+         * Should file validation check for appearances without submeshes?
+         */
+        checkEmptyAppearances: true,
     },
     Mi: {
         /*
