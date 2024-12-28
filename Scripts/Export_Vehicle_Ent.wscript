@@ -83,6 +83,10 @@ for (const fileName of projectSet) {
     }
     else {
         var file = wkit.GetFileFromBase(fileName);
+        if (file === null) {
+            Logger.Error(fileName + " could not be found");
+            continue;
+        }
         wkit.SaveToProject(fileName, file);
     }
 
