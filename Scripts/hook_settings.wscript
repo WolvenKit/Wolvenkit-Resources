@@ -175,7 +175,7 @@ const Settings = {
         /*
          * Should file validation check for appearances without submeshes?
          */
-        checkEmptyAppearances: true,
+        checkEmptyAppearances: false,
     },
     Mi: {
         /*
