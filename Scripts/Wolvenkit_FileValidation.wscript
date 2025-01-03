@@ -77,8 +77,7 @@ let pathToCurrentFile = '';
 let pathToParentFile = '';
 
 function pushCurrentFilePath(path) {
-    path ||= pathToCurrentFile;
-    if (path === pathToCurrentFile && pathToParentFile === pathToCurrentFile) {
+   if (!path || pathToParentFile === pathToCurrentFile) {
         return;
     }
     pathToParentFile = pathToCurrentFile;
@@ -547,6 +546,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearanceName, validateRecursively) {
     const info = `${appearanceName}.partsValues[${index}]`;
 
+
     if (!checkDepotPath(partsValueEntityDepotPath, info)) {
         return;
     }
@@ -676,7 +676,6 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     for (let i = 0; i < appearance.Data.partsValues.length; i++) {
         const partsValue = appearance.Data.partsValues[i];
         const depotPath = stringifyPotentialCName(partsValue.resource.DepotPath);
-        partsValuePaths.push(depotPath);
         appFile_validatePartsValue(depotPath, i, appearanceName, validateRecursively);
         (meshesByEntityPath[depotPath] || []).forEach((path) => meshPathsFromEntityFiles.push(path));
         if (isDynamicAppearance && depotPath && shouldHaveSubstitution(depotPath)) {
@@ -725,7 +724,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
                 appearanceErrorMessages[appearanceName].push(`ERROR|components.${name}: Incorrect substitution! It's 'gender=w'!`);
             });
     }
-
+    
     for (let i = 0; i < appearance.Data.partsOverrides.length; i++) {
         appFile_validatePartsOverride(appearance.Data.partsOverrides[i], i, appearanceName);
     }
@@ -922,7 +921,8 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     }
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
-   
+
+
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
       addWarning(LOGLEVEL_WARN, `${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
@@ -1031,6 +1031,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             popCurrentFilePath();
           } catch (err) {
             Logger.Error(`Failed to load ${componentMeshPath}`);
+            if (getPathToCurrentFile() === componentMeshPath) {
+                popCurrentFilePath();
+            }
           }
         }
     });
