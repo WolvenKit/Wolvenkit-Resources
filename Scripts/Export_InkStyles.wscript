@@ -1,16 +1,17 @@
-// Export inkstyle files to Json / CSV files.
-// 
 // @author Rayshader
 // @version 1.0
 // 
-// @usage 
+// @description
+// Export inkstyle files to Json / CSV files.
+// 
 // NOTE: it may not be entirely accurate.
 // 
-// - change path of 'jsonExport' and 'csvExport' below if you wish
-// - Open a project
-// - Load assets
-// - Run this script
-// - Find styles in the generated files.
+// @usage
+// 1. Open a project
+// 2. Load assets
+// 3. Optionally change 'jsonExport' and 'csvExport' in the script
+// 4. Run this script
+// 5. Styles are generated in RAW directory.
 
 import * as Logger from 'Logger.wscript';
 
