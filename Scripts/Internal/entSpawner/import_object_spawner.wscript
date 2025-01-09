@@ -1,6 +1,6 @@
 // Imports an entitySpawner json export
 // @author keanuwheeze
-// @version 0.92
+// @version 0.95
 
 //////////////// Modify this //////////////////
 
@@ -36,6 +36,31 @@ const getNewSector = () => {
 	let data = createNewFile("worldStreamingSector")
 	data.Data.RootChunk.nodeData.Type = "WolvenKit.RED4.Archive.Buffer.worldNodeDataBuffer, WolvenKit.RED4, Version=8.13.0.0, Culture=neutral, PublicKeyToken=null"
 	data.Data.RootChunk.nodeData.Data = []
+	return data
+}
+
+const getNewDeviceFile = () => {
+	let data = createNewFile("gameDeviceResource")
+	data.Data.RootChunk.data = { "Data": { "$type": "gameDeviceResourceData", "unk1" : [], "version": 2 } }
+
+	return data
+}
+
+const getNewPSFile = () => {
+	let data = createNewFile("gamePersistentStateDataResource")
+	data.Data.RootChunk.buffer = {
+		"BufferId": "0",
+		"Flags": 4063232,
+        "Type": "WolvenKit.RED4.Archive.Buffer.RedPackage, WolvenKit.RED4, Version=8.15.1.0, Culture=neutral, PublicKeyToken=null",
+        "Data": {
+          "Version": 4,
+          "Sections": 6,
+          "CruidIndex": 0,
+          "CruidDict": {},
+          "Chunks": []
+        }
+	}
+
 	return data
 }
 
@@ -102,8 +127,18 @@ const insertNode = (sector, node) => {
 	nodeData.Orientation.k = node.rotation.k
 	nodeData.Orientation.r = node.rotation.r
 	
-	// Hash for interactivity
-	nodeData.QuestPrefabRefHash.$value = wkit.HashString(JSON.stringify(nodeData), "fnv1a64").toString()
+	// NodeRef
+	if (node.nodeRef !== undefined && node.nodeRef !== "") {
+		nodeData.QuestPrefabRefHash.$storage = "string"
+		nodeData.QuestPrefabRefHash.$value = node.nodeRef
+		sector.Data.RootChunk.nodeRefs.push({
+			"$type": "NodeRef",
+			"$storage": "string",
+			"$value": node.nodeRef
+		})
+	} else {
+		nodeData.QuestPrefabRefHash.$value = wkit.HashString(JSON.stringify(nodeData), "fnv1a64").toString()
+	}
 
 	sector.Data.RootChunk.nodeData.Data.push(nodeData)
 	
@@ -151,6 +186,12 @@ const addSectorToBlock = (block, info, root) => {
 const sortInstanceData = (data) => {
 	if (data["instanceData"]) {
 		const instanceDataSorted = []
+
+		for (const dataEntry of data["instanceData"]["Data"]["buffer"]["Data"]["Chunks"]) {
+			if (dataEntry["id"] == undefined) {
+				instanceDataSorted.push(dataEntry)
+			}
+		}
 
 		for (const dictKey in data["instanceData"]["Data"]["buffer"]["Data"]["CruidDict"]) {
 			for (const dataEntry of data["instanceData"]["Data"]["buffer"]["Data"]["Chunks"]) {
@@ -229,11 +270,53 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 			wkit.SaveToProject(`${data.name}/sectors/${entry.name}.streamingsector`, wkit.JsonToCR2W(JSON.stringify(sector)))
 		})
 
+		let devices = getNewDeviceFile()
+
+		for (const [hash, device] of Object.entries(data.devices)) {
+			devices.Data.RootChunk.data.Data.unk1.push({
+				"$type": "gameDeviceResourceData_Cls1",
+				"children": device.children,
+				"className": {
+					"$type": "CName",
+					"$storage": "string",
+					"$value": device.className
+				},
+				"hash": device.hash,
+				"nodePosition": {
+					"$type": "Vector3",
+					"X": device.nodePosition.x,
+					"Y": device.nodePosition.y,
+					"Z": device.nodePosition.z
+				},
+				"parents": device.parents
+			})
+		}
+		wkit.SaveToProject(`${data.name}/custom_devices.devices`, wkit.JsonToCR2W(JSON.stringify(devices)))
+
+		let ps = getNewPSFile()
+		let index = 0
+		for (const [_, entry] of Object.entries(data.psEntries)) {
+			ps.Data.RootChunk.buffer.Data.Chunks.push(entry.instanceData)
+			ps.Data.RootChunk.buffer.Data.CruidDict[index.toString()] = entry.PSID
+			index++
+		}
+		wkit.SaveToProject(`${data.name}/custom_devices.psrep`, wkit.JsonToCR2W(JSON.stringify(ps)))
+
 		let xl = {
 			streaming: {
 				blocks: [
 					`${data.name}/all.streamingblock`
 				]
+			},
+			resource: {
+				patch : {
+					[`${data.name}/custom_devices.devices`] : [
+						"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.devices"
+					],
+					[`${data.name}/custom_devices.psrep`] : [
+						"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.psrep"
+					]
+				}
 			}
 		}
 		wkit.SaveToResources(`${data.name}.xl`, wkit.JsonToYaml(JSON.stringify(xl)))
