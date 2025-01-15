@@ -1,6 +1,6 @@
 // Imports an entitySpawner json export
 // @author keanuwheeze
-// @version 0.96
+// @version 1.0.0
 
 //////////////// Modify this //////////////////
 
@@ -10,6 +10,7 @@ const inputFilePathInRawFolder = "new_project_exported.json"
 
 import * as Logger from 'Logger.wscript';
 
+const version = "1.0.0"
 const header = {
   "Header": {
     "WolvenKitVersion": "8.14.1",
@@ -245,6 +246,16 @@ const reorderJSONByType = (data) => {
 
 // Main import logic
 export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, calledFromExternal = false) {
+	if (!filePath) {
+		Logger.Error("No file path provided!")
+		return;
+	}
+
+	if (!wkit.FileExistsInRaw(inputFilePathInRawFolder)) {
+		Logger.Error(`File ${inputFilePathInRawFolder} does not exist! Make sure the file sits either in the root of the raw folder, or adjust the inputFilePathInRawFolder variable accordingly.`)
+		return;
+	}
+
 	if (!calledFromExternal && (!filePath || !wkit.FileExistsInRaw(filePath))) {
 		return;
 	}
@@ -257,6 +268,11 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 	if (data == null) {
 		Logger.Error(`File ${inputFilePathInRawFolder} does not exist / wrong format!`)
 	} else {
+		if (data.version && data.version > version) {
+			Logger.Error(`File ${inputFilePathInRawFolder} requires import script version ${data.version} or higher, but script version is ${version}.`)
+			return
+		}
+
 		let block = getNewBlock()
 
 		data.sectors.forEach((entry) => {
@@ -270,7 +286,10 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 			wkit.SaveToProject(`${data.name}/sectors/${entry.name}.streamingsector`, wkit.JsonToCR2W(JSON.stringify(sector)))
 		})
 
-		if (data.devices !== undefined && data.devices !== undefined) {
+		let hasDevices = data.devices !== undefined && Object.keys(data.devices).length > 0
+		let hasPS = data.psEntries !== undefined && Object.keys(data.psEntries).length > 0
+
+		if (hasDevices) {
 			let devices = getNewDeviceFile()
 
 			for (const [hash, device] of Object.entries(data.devices)) {
@@ -293,7 +312,9 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 				})
 			}
 			wkit.SaveToProject(`${data.name}/custom_devices.devices`, wkit.JsonToCR2W(JSON.stringify(devices)))
+		}
 
+		if (hasPS) {
 			let ps = getNewPSFile()
 			let index = 0
 			for (const [_, entry] of Object.entries(data.psEntries)) {
@@ -309,18 +330,25 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 				blocks: [
 					`${data.name}/all.streamingblock`
 				]
-			},
-			resource: {
-				patch : {
-					[`${data.name}/custom_devices.devices`] : [
-						"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.devices"
-					],
-					[`${data.name}/custom_devices.psrep`] : [
-						"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.psrep"
-					]
-				}
 			}
 		}
+
+		if (hasDevices || hasPS) {
+			xl.resource = {
+				patch : {}
+			}
+		}
+		if (hasDevices) {
+			xl.resource.patch[`${data.name}/custom_devices.devices`] = [
+				"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.devices"
+			]
+		}
+		if (hasPS) {
+			xl.resource.patch[`${data.name}/custom_devices.psrep`] = [
+				"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.psrep"
+			]
+		}
+
 		wkit.SaveToResources(`${data.name}.xl`, wkit.JsonToYaml(JSON.stringify(xl)))
 		wkit.SaveToProject(`${data.name}/all.streamingblock`, wkit.JsonToCR2W(JSON.stringify(block)))
 
