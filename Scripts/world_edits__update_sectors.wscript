@@ -27,10 +27,19 @@ let writeFile = false;
 let nodeIndicesToRemove = [];
 
 // loop over every file
-for (let file in files) {
-    Logger.Info(`Parsing resource file...${files[file]}`);
-    currentFile = files[file];
-    ParseFile(files[file]);    
+
+try {
+    for (let file in files) {
+        Logger.Info(`Parsing resource file...${files[file]}`);
+        currentFile = files[file];
+        ParseFile(files[file]);
+    }    
+} catch (Error e) {
+    Logger.Error(e);
+    Logger.Error("");
+    Logger.Error(`Something went wrong! Make sure to update Wolvenkit (install latest Nightly!)`);
+    Logger.Error(`If that does not help, please get in touch!`);
+    return;
 }
 
 for (let file in addedSectorFiles) {
@@ -222,7 +231,7 @@ function CheckNodeValidity(sector, nodeData, nodes) {
 }
 
 function ParseFile(filePath) {
-    const fileContent = wkit.LoadFromResources(filePath);
+    let fileContent = wkit.LoadFromResources(filePath);
     if (!fileContent) {
         Logger.Info(`Could not read ${filePath}`);
         return;
