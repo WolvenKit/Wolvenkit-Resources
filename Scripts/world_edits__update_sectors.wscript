@@ -34,12 +34,11 @@ try {
         currentFile = files[file];
         ParseFile(files[file]);
     }    
-} catch (Error e) {
+} catch (e) {
     Logger.Error(e);
     Logger.Error("");
     Logger.Error(`Something went wrong! Make sure to update Wolvenkit (install latest Nightly!)`);
     Logger.Error(`If that does not help, please get in touch!`);
-    return;
 }
 
 for (let file in addedSectorFiles) {
@@ -162,8 +161,8 @@ function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal) {
         return;
     }    
     
-    const startIndex = Math.max(0, nodeDataItem["NodeIndex"] - trunc(nodeData.length / 6));
-    const endIndex = Math.min(nodeData.length, nodeDataItem["NodeIndex"] + trunc(nodeData.length / 6));
+    const startIndex = Math.max(0, nodeDataItem["NodeIndex"] - Math.trunc(nodeData.length / 6));
+    const endIndex = Math.min(nodeData.length, nodeDataItem["NodeIndex"] + Math.trunc(nodeData.length / 6));
     
     let potentialMatches = findPotentialMatches(removal, nodeData, nodes, debugString, startIndex, endIndex);      
    
