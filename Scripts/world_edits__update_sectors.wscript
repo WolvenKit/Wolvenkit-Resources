@@ -3,11 +3,13 @@ import * as TypeHelper from 'TypeHelper.wscript';
 
 // @author manavortex
 // @version 1.0
+// @description Run this script to update all .xl node removals in your project after a patch. Set the properties below if you don't want automatic changes.
 
 /* ========================================================================
  * Set this to "false" to skip check for debug name
  * ======================================================================== */
 const checkByNodeName = true;
+const removeNodesWithoutMatch = true;
 
 
 const files = [];
@@ -21,12 +23,14 @@ for (let filename of wkit.GetProjectFiles('resources')) {
 }
 
 let currentFile;
+let writeFile = false;
+let nodeIndicesToRemove = [];
 
 // loop over every file
 for (let file in files) {
     Logger.Info(`Parsing resource file...${files[file]}`);
     currentFile = files[file];
-    ParseFile(files[file]);
+    ParseFile(files[file]);    
 }
 
 for (let file in addedSectorFiles) {
@@ -74,34 +78,6 @@ function GetSectorCr2W(relativePath) {
     return TypeHelper.JsonParse(json);
 }
 
-// helper function to turn something like this
-// 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160
-// into this
-// 143-160
-function groupNumbersInRanges(numbers) {
-    if (!numbers || numbers.length === 0) {
-        return [];
-    }
-
-    numbers.sort((a, b) => a - b);
-    const ranges = [];
-    let start = numbers[0];
-    let end = start;
-
-    for (let i = 1; i < numbers.length; i++) {
-        if (numbers[i] === end + 1) {
-            end = numbers[i];
-        } else {
-            ranges.push(start === end ? `${start}` : `${start}-${end}`);
-            start = numbers[i];
-            end = start;
-        }
-    }
-
-    ranges.push(start === end ? `${start}` : `${start}-${end}`);
-    return ranges.join(", ");
-}
-
 function getFromDepotPath(potentialNodeData, jsonKey) {
     if (!potentialNodeData || !potentialNodeData[jsonKey] || !potentialNodeData[jsonKey]["DepotPath"]) {
         return null;
@@ -110,7 +86,7 @@ function getFromDepotPath(potentialNodeData, jsonKey) {
     if (!!depotPath["value"]) {
         return depotPath["value"];
     } 
-    return depotPath;
+    return '';
 }
 
 function getNodeDescriptorString(potentialNodeData) {
@@ -120,10 +96,10 @@ function getNodeDescriptorString(potentialNodeData) {
     let ret = [];
     
     if (!potentialNodeData["debugName"]) {
-        ret.push(potentialNodeData["Name"]);
+        ret.push(potentialNodeData["debugName"]);
     }
 
-    const depotPathProperties = ["data", "entityTemplate", "mesh", "particleSystem", "probeDataRef", "fracturingEffect"];
+    const depotPathProperties = ["mesh", "entityTemplate", "material", "data", "particleSystem", "probeDataRef", "fracturingEffect"];
     for (let i = 0; i < depotPathProperties.length; i++) {
         const depotPath = getFromDepotPath(potentialNodeData, depotPathProperties[i]);
         if (!!depotPath) {
@@ -143,53 +119,84 @@ function resolveDebugName(removal) {
     return debugName
         .replace(/\.\d+/g, '') // strip numeric file types
         .replace('_default', '') // strip _default suffix
+        .split('\\').pop() // if it's a file path: Take only file name
         .split(",")[0] // if it's a list: take the first item
         .split(" ")[0] // if it contains spaces: take the first item
         .split(".")[0]; // if it contains dots (e.g. file extensions): take the first item
 }
-function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal) {
-    // we can't match
-    if (!removal["debugName"]) {
-        return;
-    }    
-    
-    // with sectors of more than 350 nodes, look 75 nodes in both directions 
-    const indexOffset = nodeData.length <= 350 ? 50 : 75;
-    
-    const startIndex = Math.max(0, nodeDataItem["NodeIndex"] - indexOffset);
-    const endIndex = Math.min(nodeData.length, nodeDataItem["NodeIndex"] + indexOffset);
 
-    const debugString = removal["debugName"].split(",")[0].split(".")[0].replace(/\.\d+/, '');
-    
-    const potentialMatches = {};
-    
+// find potentially matching nodes in the list. Factor out as a function so we can run it twice, 
+// once with a limited search, and once with the full list. 
+function findPotentialMatches(removal, nodeData, nodes, debugString, startIndex, endIndex) {   
+    const potentialMatches = [];
     for (let i = startIndex; i < endIndex; i++) {
         const nodeDataEntry = nodeData[i];
-        const potentialNode = nodes[nodeDataItem["NodeIndex"]];
+        const potentialNode = nodes[nodeDataEntry["NodeIndex"]];
+
         if (!potentialNode || potentialNode["Data"]["$type"] !== removal["type"]) {
             continue;
         }
         const nodeDescriptorString = getNodeDescriptorString(potentialNode["Data"]);
-        if (!nodeDescriptorString || !nodeDescriptorString.includes(debugString)) {
+        if (!nodeDescriptorString || nodeDescriptorString !== debugString) {
             continue;
         }
         potentialMatches[nodeDescriptorString] ||= [];
         potentialMatches[nodeDescriptorString].push(i);
     }
+    return potentialMatches;
+}
+function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal) {
+    const debugString = resolveDebugName(removal);
+    
+    // we can't match
+    if (!debugString) {
+        return;
+    }    
+    
+    const startIndex = Math.max(0, nodeDataItem["NodeIndex"] - trunc(nodeData.length / 6));
+    const endIndex = Math.min(nodeData.length, nodeDataItem["NodeIndex"] + trunc(nodeData.length / 6));
+    
+    let potentialMatches = findPotentialMatches(removal, nodeData, nodes, debugString, startIndex, endIndex);      
+   
+    // if we found no matches, search the whole array
     if (Object.keys(potentialMatches).length === 0) {
+        potentialMatches = findPotentialMatches(removal, nodeData, nodes, debugString, 0, nodeData.length -1);
+    } 
+    
+    // if we still found no matches, then the entry should be dropped
+    if (Object.keys(potentialMatches).length === 0) {
+        nodeIndicesToRemove.push(removal["index"]);
+        writeFile = true;
         return;
     } 
+    
+    if (Object.keys(potentialMatches).length === 1) {
+        let values = potentialMatches[Object.keys(potentialMatches)[0]];
+        // if we have more than one match, check if we have an offset of 1
+        if (values.length > 1) {
+            values = values.filter(v => v === removal["index"] -1 || v === removal["index"] +1);
+        }
+        if (values.length === 1) {
+            removal["index"] = values[0];
+            writeFile = true;
+            return;
+        }
+    } 
     Object.keys(potentialMatches).forEach(key => {    
-        setErrorMessage(sector["path"], `\t\t\Potential replacements: ${key} (${groupNumbersInRanges(potentialMatches[key])})`);        
+        setErrorMessage(sector["path"], `\t\t\Potential replacements: ${key} (${potentialMatches[key].join(", ")})`);        
     })
 }
 
-function CheckNodeTypes(sector, nodeData, nodes) {
+function CheckNodeValidity(sector, nodeData, nodes) {
     const sectorPath = sector["path"];
     const nodeRemovals = sector["nodeDeletions"];
     nodeRemovals.forEach((removal) => {
         const removalIdx = removal["index"];         
         const nodeDataItem = nodeData[removalIdx];
+        if (!nodeDataItem) {
+            setErrorMessage(sectorPath, `#${removalIdx}: No node data item found!`);
+            return;
+        }
         
         const node = nodes[nodeDataItem["NodeIndex"]];
         const nodeType = node["Data"]["$type"];
@@ -207,7 +214,7 @@ function CheckNodeTypes(sector, nodeData, nodes) {
             setErrorMessage(sectorPath, `#${removalIdx} (${debugString}): nodes[${nodeDataItem["NodeIndex"]}] seems to point at something else (${nodeDescriptorString})`);
         } else {
             // types are not equal
-            setErrorMessage(sectorPath, `#${removalIdx} (${debugString}): expected ${removal["type"]}, but was ${nodeType}`);
+            setErrorMessage(sectorPath, `#${removalIdx} (${debugString}): mod wants ${removal["type"]}, but it is a ${nodeType}`);
         }
         
         findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal);
@@ -227,8 +234,8 @@ function ParseFile(filePath) {
     }
     
     let sectors = json["streaming"]["sectors"];
-    
-    
+
+    nodeIndicesToRemove = [];
     sectors.forEach((sector) => {
         const sectorPath = sector["path"];
         
@@ -248,6 +255,19 @@ function ParseFile(filePath) {
             setErrorMessage(sectorPath, `Expected ${sector["expectedNodes"]} nodes, found ${nodeData.length}`);
         }
         
-        CheckNodeTypes(sector, nodeData, nodeDataIndexMap);
-    });    
+        CheckNodeValidity(sector, nodeData, nodeDataIndexMap);
+    });
+
+    if (!writeFile) {
+        return;
+    }
+
+    // remove "dead" node removals, then sort by index
+    sectors.forEach((sector) => {
+        sector["nodeDeletions"] = sector["nodeDeletions"]
+            .filter(removal => !removeNodesWithoutMatch || !nodeIndicesToRemove.find(i => i === removal["index"]))
+            .sort((a, b) => a["index"] - b["index"]);
+    });
+    
+    wkit.SaveToResources(filePath, wkit.JsonToYaml(TypeHelper.JsonStringify(json)));
 }
