@@ -1,6 +1,6 @@
 // Imports an entitySpawner json export
 // @author keanuwheeze
-// @version 0.92
+// @version 1.0.0
 
 //////////////// Modify this //////////////////
 
@@ -10,6 +10,7 @@ const inputFilePathInRawFolder = "new_project_exported.json"
 
 import * as Logger from 'Logger.wscript';
 
+const version = "1.0.0"
 const header = {
   "Header": {
     "WolvenKitVersion": "8.14.1",
@@ -36,6 +37,31 @@ const getNewSector = () => {
 	let data = createNewFile("worldStreamingSector")
 	data.Data.RootChunk.nodeData.Type = "WolvenKit.RED4.Archive.Buffer.worldNodeDataBuffer, WolvenKit.RED4, Version=8.13.0.0, Culture=neutral, PublicKeyToken=null"
 	data.Data.RootChunk.nodeData.Data = []
+	return data
+}
+
+const getNewDeviceFile = () => {
+	let data = createNewFile("gameDeviceResource")
+	data.Data.RootChunk.data = { "Data": { "$type": "gameDeviceResourceData", "unk1" : [], "version": 2 } }
+
+	return data
+}
+
+const getNewPSFile = () => {
+	let data = createNewFile("gamePersistentStateDataResource")
+	data.Data.RootChunk.buffer = {
+		"BufferId": "0",
+		"Flags": 4063232,
+        "Type": "WolvenKit.RED4.Archive.Buffer.RedPackage, WolvenKit.RED4, Version=8.13.0.0, Culture=neutral, PublicKeyToken=null",
+        "Data": {
+          "Version": 4,
+          "Sections": 6,
+          "CruidIndex": 0,
+          "CruidDict": {},
+          "Chunks": []
+        }
+	}
+
 	return data
 }
 
@@ -102,8 +128,18 @@ const insertNode = (sector, node) => {
 	nodeData.Orientation.k = node.rotation.k
 	nodeData.Orientation.r = node.rotation.r
 	
-	// Hash for interactivity
-	nodeData.QuestPrefabRefHash.$value = wkit.HashString(JSON.stringify(nodeData), "fnv1a64").toString()
+	// NodeRef
+	if (node.nodeRef !== undefined && node.nodeRef !== "") {
+		nodeData.QuestPrefabRefHash.$storage = "string"
+		nodeData.QuestPrefabRefHash.$value = node.nodeRef
+		sector.Data.RootChunk.nodeRefs.push({
+			"$type": "NodeRef",
+			"$storage": "string",
+			"$value": node.nodeRef
+		})
+	} else {
+		nodeData.QuestPrefabRefHash.$value = wkit.HashString(JSON.stringify(nodeData), "fnv1a64").toString()
+	}
 
 	sector.Data.RootChunk.nodeData.Data.push(nodeData)
 	
@@ -151,6 +187,12 @@ const addSectorToBlock = (block, info, root) => {
 const sortInstanceData = (data) => {
 	if (data["instanceData"]) {
 		const instanceDataSorted = []
+
+		for (const dataEntry of data["instanceData"]["Data"]["buffer"]["Data"]["Chunks"]) {
+			if (dataEntry["id"] == undefined) {
+				instanceDataSorted.push(dataEntry)
+			}
+		}
 
 		for (const dictKey in data["instanceData"]["Data"]["buffer"]["Data"]["CruidDict"]) {
 			for (const dataEntry of data["instanceData"]["Data"]["buffer"]["Data"]["Chunks"]) {
@@ -204,6 +246,16 @@ const reorderJSONByType = (data) => {
 
 // Main import logic
 export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, calledFromExternal = false) {
+	if (!filePath) {
+		Logger.Error("No file path provided!")
+		return;
+	}
+
+	if (!wkit.FileExistsInRaw(inputFilePathInRawFolder)) {
+		Logger.Error(`File ${inputFilePathInRawFolder} does not exist! Make sure the file sits either in the root of the raw folder, or adjust the inputFilePathInRawFolder variable accordingly.`)
+		return;
+	}
+
 	if (!calledFromExternal && (!filePath || !wkit.FileExistsInRaw(filePath))) {
 		return;
 	}
@@ -216,6 +268,11 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 	if (data == null) {
 		Logger.Error(`File ${inputFilePathInRawFolder} does not exist / wrong format!`)
 	} else {
+		if (data.version && data.version > version) {
+			Logger.Error(`File ${inputFilePathInRawFolder} requires import script version ${data.version} or higher, but script version is ${version}.`)
+			return
+		}
+
 		let block = getNewBlock()
 
 		data.sectors.forEach((entry) => {
@@ -229,6 +286,45 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 			wkit.SaveToProject(`${data.name}/sectors/${entry.name}.streamingsector`, wkit.JsonToCR2W(JSON.stringify(sector)))
 		})
 
+		let hasDevices = data.devices !== undefined && Object.keys(data.devices).length > 0
+		let hasPS = data.psEntries !== undefined && Object.keys(data.psEntries).length > 0
+
+		if (hasDevices) {
+			let devices = getNewDeviceFile()
+
+			for (const [hash, device] of Object.entries(data.devices)) {
+				devices.Data.RootChunk.data.Data.unk1.push({
+					"$type": "gameDeviceResourceData_Cls1",
+					"children": device.children,
+					"className": {
+						"$type": "CName",
+						"$storage": "string",
+						"$value": device.className
+					},
+					"hash": device.hash,
+					"nodePosition": {
+						"$type": "Vector3",
+						"X": device.nodePosition.x,
+						"Y": device.nodePosition.y,
+						"Z": device.nodePosition.z
+					},
+					"parents": device.parents
+				})
+			}
+			wkit.SaveToProject(`${data.name}/custom_devices.devices`, wkit.JsonToCR2W(JSON.stringify(devices)))
+		}
+
+		if (hasPS) {
+			let ps = getNewPSFile()
+			let index = 0
+			for (const [_, entry] of Object.entries(data.psEntries)) {
+				ps.Data.RootChunk.buffer.Data.Chunks.push(entry.instanceData)
+				ps.Data.RootChunk.buffer.Data.CruidDict[index.toString()] = entry.PSID
+				index++
+			}
+			wkit.SaveToProject(`${data.name}/custom_devices.psrep`, wkit.JsonToCR2W(JSON.stringify(ps)))
+		}
+
 		let xl = {
 			streaming: {
 				blocks: [
@@ -236,6 +332,23 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 				]
 			}
 		}
+
+		if (hasDevices || hasPS) {
+			xl.resource = {
+				patch : {}
+			}
+		}
+		if (hasDevices) {
+			xl.resource.patch[`${data.name}/custom_devices.devices`] = [
+				"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.devices"
+			]
+		}
+		if (hasPS) {
+			xl.resource.patch[`${data.name}/custom_devices.psrep`] = [
+				"base\\worlds\\03_night_city\\_compiled\\default\\03_night_city.psrep"
+			]
+		}
+
 		wkit.SaveToResources(`${data.name}.xl`, wkit.JsonToYaml(JSON.stringify(xl)))
 		wkit.SaveToProject(`${data.name}/all.streamingblock`, wkit.JsonToCR2W(JSON.stringify(block)))
 
