@@ -1,6 +1,9 @@
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 
+// @author manavortex
+// @version 1.0
+
 /* ========================================================================
  * Set this to "false" to skip check for debug name
  * ======================================================================== */
