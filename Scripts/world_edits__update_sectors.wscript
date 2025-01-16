@@ -9,7 +9,9 @@ import * as TypeHelper from 'TypeHelper.wscript';
  * Set this to "false" to skip check for debug name
  * ======================================================================== */
 const checkByNodeName = true;
-const removeNodesWithoutMatch = true;
+const removeNodesWithoutMatch = false;
+const updateNodeTypes = false;
+
 
 
 const files = [];
@@ -153,7 +155,7 @@ function findPotentialMatches(removal, nodeData, nodes, debugString, startIndex,
     }
     return potentialMatches;
 }
-function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal) {
+function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal, keepNode) {
     const debugString = resolveDebugName(removal);
     
     // we can't match
@@ -172,7 +174,7 @@ function findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal) {
     } 
     
     // if we still found no matches, then the entry should be dropped
-    if (Object.keys(potentialMatches).length === 0) {
+    if (Object.keys(potentialMatches).length === 0 && !keepNode) {
         nodeIndicesToRemove.push(removal["index"]);
         writeFile = true;
         return;
@@ -213,6 +215,7 @@ function CheckNodeValidity(sector, nodeData, nodes) {
         
         const nodeDescriptorString = getNodeDescriptorString(node["Data"]);
         
+        let matchesType = true;
         if (nodeType === removal["type"]) {
             // If we can't compare by string, it's okay
             if (!checkByNodeName || !debugString || !nodeDescriptorString || nodeDescriptorString.includes(debugString)) {
@@ -222,10 +225,15 @@ function CheckNodeValidity(sector, nodeData, nodes) {
             setErrorMessage(sectorPath, `#${removalIdx} (${debugString}): nodes[${nodeDataItem["NodeIndex"]}] seems to point at something else (${nodeDescriptorString})`);
         } else {
             // types are not equal
+            matchesType = false;
+            if (updateNodeTypes) {
+                removal["type"] = nodeType;
+                return;
+            }
             setErrorMessage(sectorPath, `#${removalIdx} (${debugString}): mod wants ${removal["type"]}, but it is a ${nodeType}`);
         }
         
-        findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal);
+        findPotentialMatch(sector, nodeData, nodes, nodeDataItem, removal, !matchesType);
     });
 }
 
