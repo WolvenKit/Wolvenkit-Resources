@@ -196,7 +196,14 @@ const Settings = {
          * Should file validation check materials in inherited meshes? (Only outside of /base) 
          */
         validateRecursively: true,
+    },    
+    InkCC: {
+        /*
+         * Set this to "false" to disable file validation for .inkcc files.
+         */
+        Enabled: true,
     },
+    
     Workspot: {
         /*
          * Set this to "false" to disable file validation for .workspot files.

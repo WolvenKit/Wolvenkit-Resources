@@ -5,6 +5,7 @@ import * as TypeHelper from 'TypeHelper.wscript';
 
 import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
+import { validateInkCCFile as validate_inkcc_file } from "./Internal/FileValidation/inkcc.wscript";
 import * as FileHelper from "./Internal/FileHelper.wscript";
 import {JsonStringify} from "TypeHelper.wscript";
 import {
@@ -2325,6 +2326,8 @@ export const validateQuestphaseFile = validate_questphase_file;
 export const validateSceneFile = validate_scene_file;
 
 export const validateInkatlasFile = validate_inkatlas_file;
+
+export const validateInkCCFile = validate_inkcc_file;
 
 export function validateMlsetupFile(mlsetup, mlsetupSettings) {
     // check if file is valid/needs to be called recursively

@@ -76,6 +76,10 @@ export function RunFileValidation(ext, file) {
                 FileValidation.validateInkatlasFile(data, Settings.Inkatlas);
                 file = TypeHelper.JsonStringify(fileContent);
                 break;
+            case "inkcharcustomization":
+                FileValidation.validateInkCCFile(data, Settings.InkCC);
+                file = TypeHelper.JsonStringify(fileContent);
+                break;
             case "json":
                 FileValidation.validateJsonFile(data, Settings.Json);
                 file = TypeHelper.JsonStringify(fileContent);
