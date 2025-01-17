@@ -148,7 +148,7 @@ function ValidateSectionEvent(event, index, parentNode) {
       const { performerId, targetPerformerId } = event.Data.basicData.basic;
       if (IsInvalidPerformerId(performerId.id)) {
         Logger.Warning(
-          `${eventType} at index ${index} in Node ID${parentNode.Data.nodeId.id} referencing a non-existing ${performerId.id} performerId`
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${performerId.id} performerId`
         );
       }
       if (IsInvalidPerformerId(targetPerformerId.id)) {
