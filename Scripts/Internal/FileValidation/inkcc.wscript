@@ -55,7 +55,7 @@ function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOption
                 }                
             });
             if (!found) {
-                Logger.Error(`${debugText}.options[${i}] includes the name ${name}, which is not defined in any slot group: ${stringifyMap(groups, true)}`)
+                Logger.Error(`${debugText}.options[${i}] includes the name ${name}, which is not defined in any slot group: ${stringifyMap(slotGroupsResolved, true)}`)
             }
         });
         
