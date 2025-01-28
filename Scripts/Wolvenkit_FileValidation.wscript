@@ -924,7 +924,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
 
 
-    if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath)) {
+    if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath, '', false, true)) {
       addWarning(LOGLEVEL_WARN, `${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
     }
@@ -961,7 +961,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             localErrors.push(`name: ${MISSING_PREFIX_WARNING}`);
         }
         
-        if (!pathHasSubstitution && componentMeshPaths.length === 1 && !checkDepotPath(componentMeshPath)) {
+        if (!pathHasSubstitution && componentMeshPaths.length === 1 && !checkDepotPath(componentMeshPath, '', false, true)) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
 
@@ -1335,8 +1335,7 @@ export function validateEntFile(ent, _entSettings) {
 
     ent.inplaceResources ||= [];
     for (let i = 0; i < ent.inplaceResources.length; i++) {
-        checkDepotPath(ent.inplaceResources[i].DepotPath, `
-            inplaceResources[${i}]`);
+        checkDepotPath(ent.inplaceResources[i].DepotPath, `inplaceResources[${i}]`);
     }
 
     if (entSettings.checkDynamicAppearanceTag && (hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length) {
@@ -1446,7 +1445,7 @@ function validateMaterialKeyValuePair(key, materialValue, info) {
     }
 
     // Once we've made sure that the file extension is correct, check if the file exists.
-    checkDepotPath(materialDepotPath, info);
+    checkDepotPath(materialDepotPath, info, info.includes("@context"));
 }
 
 function meshFile_validatePlaceholderMaterial(material, info) {
@@ -1504,7 +1503,8 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
     }
 
     baseMaterialPaths.forEach((path) => {
-        if (checkDepotPath(path, materialInfo)) {
+        const isContext = materialName === "@context";
+        if (checkDepotPath(path, materialInfo, false, isContext)) {
             validateShaderTemplate(path, materialInfo);
         }
 
