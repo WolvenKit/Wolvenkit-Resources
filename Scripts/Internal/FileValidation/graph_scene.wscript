@@ -1,15 +1,23 @@
 // @type lib
 // @name FileValidation_Scene
+// Authors: Seberoth, Sunlive
 
 import { checkIfFileIsBroken } from "./Internal/FileValidation/00_shared.wscript";
 import { getPathToCurrentFile } from "../../Wolvenkit_FileValidation.wscript";
 import * as Logger from "Logger.wscript";
 
 // Basic scene rules
-const DEFAULT_ID_VALUE = 4294967040; // Default ID;
 const START_ID_PERFORMER = 1; // Performer ID starts at 1
 const START_ID_PROP = 2; // PerformerProp ID starts at 2
 const ID_STEP = 256; // ID step size
+const SKIP_PERFORMER_ID_VALIDATION_EVENTS = new Set([
+  "scneventsSocket",
+  "scneventsCameraParamsEvent",
+  "scneventsSetAnimFeatureEvent",
+  "scnDialogLineEvent",
+  "scneventsAttachPropToWorld",
+]); // List of the event types that does not contain a performerId
+const performerIds = new Set(); // collection of defined performerIds
 
 export function validateSceneFile(scene, _sceneSettings) {
   // check if enabled
@@ -43,9 +51,24 @@ export function validateSceneFile(scene, _sceneSettings) {
     }
   }
 
+  CheckForEmptyDebugSymbols(scene);
   CheckForInvalidActorId(scene);
   CheckForInvalidPerformerId(scene);
   CheckForMissingPerformerIdInGraph(scene);
+}
+
+function CheckForEmptyDebugSymbols(scene) {
+  if (!scene.debugSymbols.performersDebugSymbols.length) {
+    Logger.Warning(
+      "Scene performersDebugSymbols are empty. Consider to set them up."
+    );
+
+    return;
+  }
+
+  scene.debugSymbols.performersDebugSymbols.forEach((symbol) =>
+    performerIds.add(symbol.performerId.id)
+  );
 }
 
 function CheckForInvalidActorId(scene) {
@@ -62,18 +85,12 @@ function CheckForInvalidActorId(scene) {
     )
   ) {
     Logger.Warning(
-      "Player actor has the same id as an actor. Update player actorId"
+      "Player actor has the same ID as an actor. Update player actorId"
     );
   }
 }
 
-function CheckForInvalidPerformerId(scene) {
-  const performerIds = new Set(
-    scene.debugSymbols.performersDebugSymbols.map(
-      (symbol) => symbol.performerId
-    )
-  );
-
+function CheckForInvalidPerformerId() {
   for (const { id } of performerIds.values()) {
     if (
       !(
@@ -88,40 +105,136 @@ function CheckForInvalidPerformerId(scene) {
   }
 }
 
-function ValidateSceneNode(node, ids) {
-  if (
-    node.$type === "scnPerformerId" &&
-    !ids.has(node.id) &&
-    node.id !== DEFAULT_ID_VALUE
-  ) {
-    // might be improved
-    // get a parent NodeId later
-    Logger.Warning(
-      `NodeType ${node.$type} referencing non-existing performerId ${node.id}`
+function IsDefaultValue(value, className, propertyName) {
+  const cls = JSON.parse(wkit.CreateInstanceAsJSON(className));
+  if (cls["$type"] !== className) {
+    Logger.Error("Invalid class name!");
+    return;
+  }
+
+  const val = cls[propertyName];
+  if (typeof val === "undefined") {
+    Logger.Error("Invalid property name!");
+    return;
+  }
+
+  return value === val;
+}
+
+function IsInvalidPerformerId(id) {
+  return !performerIds.has(id) && !IsDefaultValue(id, "scnPerformerId", "id");
+}
+
+/**
+ *
+ * @param {{
+ * Data: {
+ *  performerId?: { id: number };
+ *  performer?: { id: number };
+ * }
+ * }} event
+ * @param {number} index
+ * @param {{ Data: { nodeId: { id: number }}}} parentNode
+ * @returns {void}
+ */
+function ValidateSectionEvent(event, index, parentNode) {
+  const eventType = event.Data.$type;
+  if (!eventType || SKIP_PERFORMER_ID_VALIDATION_EVENTS.has(eventType)) {
+    return;
+  }
+
+  switch (eventType) {
+    case "scnLookAtEvent": {
+      const { performerId, targetPerformerId } = event.Data.basicData.basic;
+      if (IsInvalidPerformerId(performerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${performerId.id} performerId`
+        );
+      }
+      if (IsInvalidPerformerId(targetPerformerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${targetPerformerId.id} targetPerformerId`
+        );
+      }
+      break;
+    }
+
+    case "scnUnmountEvent":
+    case "scnPlaySkAnimEvent":
+    case "scnAudioEvent":
+    case "scnChangeIdleAnimEvent":
+    case "scnGameplayTransitionEvent": {
+      const { id } = event.Data.performer;
+      if (IsInvalidPerformerId(id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} performerId`
+        );
+      }
+      break;
+    }
+
+    case "scneventsVFXEvent":
+    case "scnPoseCorrectionEvent":
+    case "scneventsAttachPropToPerformer":
+    case "scneventsUnequipItemFromPerformer": {
+      const { id } = event.Data.performerId;
+      if (IsInvalidPerformerId(id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} performerId`
+        );
+      }
+      break;
+    }
+    case "scnLookAtAdvancedEvent": {
+      const { performerId, targetPerformerId } = event.Data.advancedData.basic;
+      if (IsInvalidPerformerId(performerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} performerId`
+        );
+      }
+      if (IsInvalidPerformerId(targetPerformerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} targetPerformerId`
+        );
+      }
+      break;
+    }
+
+    case "scnIKEvent": {
+      const { performerId, targetPerformerId } = event.Data.ikData.basic;
+      if (IsInvalidPerformerId(performerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${performerId.id} performerId`
+        );
+      }
+      if (IsInvalidPerformerId(targetPerformerId.id)) {
+        Logger.Warning(
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${targetPerformerId.id} targetPerformerId`
+        );
+      }
+      break;
+    }
+    default:
+      Logger.Info(`Validation is not implemented for ${eventType}`);
+      break;
+  }
+}
+
+// TODO:
+// choice
+// quest
+function ValidateSceneNode(node) {
+  if (node.Data.$type === "scnSectionNode") {
+    node.Data.events?.forEach((event, idx) =>
+      ValidateSectionEvent(event, idx, node)
     );
   }
 }
 
-function RecursiveTraverseGraphTree(node, ids) {
-  if (!node || typeof node !== "object") {
-    return;
-  }
-  if (Array.isArray(node)) {
-    node.forEach((node) => RecursiveTraverseGraphTree(node, ids));
-  } else {
-    Object.values(node).forEach((node) => RecursiveTraverseGraphTree(node, ids));
-  }
-  ValidateSceneNode(node, ids);
-}
-
 // It will be improved over time
 function CheckForMissingPerformerIdInGraph(scene) {
-  const performerIds = new Set(
-    scene.debugSymbols.performersDebugSymbols.map(
-      (symbol) => symbol.performerId.id
-    )
-  );
-  scene.sceneGraph.Data.graph.forEach((node) =>
-    RecursiveTraverseGraphTree(node, performerIds)
-  );
+  const { graph } = scene.sceneGraph.Data;
+  for (let index = 0; index < graph.length; index++) {
+    ValidateSceneNode(graph[index]);
+  }
 }
