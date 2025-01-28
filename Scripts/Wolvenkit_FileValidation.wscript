@@ -1476,25 +1476,28 @@ function material_getMaterialPropertyValue(key, materialValue) {
     }
 }
 
+const softMaterialNames = [ "@long", "@short", "@cap" ];
+
 // Dynamic materials need at least two appearances
 function meshFile_CheckMaterialProperties(material, materialName, materialIndex, materialInfo) {
-    const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
-
-    if (!baseMaterial) {
-      addWarning(LOGLEVEL_INFO, `${materialInfo}: No base material defined. Skipping validation`);
-      return;
+    let baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
+   
+    if (!baseMaterial && materialName !== "@context") {
+        addWarning(LOGLEVEL_INFO, `${materialInfo}: No base material defined!`);
+        baseMaterial = "";
     }
-
+    
     const isSoftDependency = material.baseMaterial?.Flags === "Soft";
-    const isUsingSubstitution = baseMaterial.includes("{") || baseMaterial.includes("}")
+    const isUsingSubstitution = !!baseMaterial.includes && (baseMaterial.includes("{") || baseMaterial.includes("}"))
 
-    var baseMaterialPaths = [ baseMaterial ];
+    let baseMaterialPaths = [ baseMaterial ];
 
     currentMaterialName = materialName.includes("@") ? materialName : undefined;
 
+
     if (isUsingSubstitution && !isSoftDependency) {
         addWarning(LOGLEVEL_WARN, `${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    } else if (!isUsingSubstitution && isSoftDependency) {
+    } else if (!isUsingSubstitution && isSoftDependency && !softMaterialNames.includes(materialName)) {
         addWarning(LOGLEVEL_WARN, `${materialInfo}: baseMaterial is using Flags.Soft, but doesn't contain substitutions. This will crash your game; use 'Default'!`);
     } else if  (isUsingSubstitution) {
         baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
@@ -1677,15 +1680,17 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     // null-safety
     if (!mesh || typeof mesh === 'bigint') return;
 
-    // it's not dynamic
-    if (!JsonStringify(mesh).includes("@")) return;
-
-    if (mesh.appearances.length < 2) {
-        addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
-    }
-
     if (mesh.appearances.length === 0) {
         return;
+    }
+
+    const meshAsString = JsonStringify(mesh);
+    
+    // it's not dynamic
+    if (!meshAsString.includes("@")) return;
+
+    if (!meshAsString.includes("@context") && mesh.appearances.length < 2) {
+        addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
     }
     
     const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;

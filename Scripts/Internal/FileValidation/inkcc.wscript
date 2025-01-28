@@ -20,7 +20,7 @@ const validTags = {
 const validLinks = {
     head: [
         // hair
-        "hairstyle_cyberware", "hairstyle"
+        "hairstyle_cyberware", "hairstyle", "hair color"
     ],
 }
 
