@@ -91,7 +91,7 @@ function CheckForInvalidActorId(scene) {
 }
 
 function CheckForInvalidPerformerId() {
-  for (const { id } of performerIds.values()) {
+  for (const id of performerIds.values()) {
     if (
       !(
         id === START_ID_PERFORMER ||
