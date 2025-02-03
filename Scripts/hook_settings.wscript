@@ -1,5 +1,6 @@
 // @version 1.0
 // @type hook
+// @hook_type none
 // @hook_extension settings
 // ^^^ Just so it's in the hooks tab
 
