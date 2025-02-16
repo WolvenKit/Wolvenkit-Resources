@@ -1,5 +1,5 @@
 // @author Seberoth
-// @version 1.0
+// @version 1.1
 // @type lib
 
 class HashValue {
@@ -119,6 +119,10 @@ function reviver(key, value) {
                     throw new Error(`Unknown value type "${value['$type']}"`);
             }
         }
+
+        if (value['$type'] === 'BigInt' && value.hasOwnProperty('$storage') && value.hasOwnProperty('$value')) {
+            return BigInt(value['$value']);
+        }
     }
 
     return value;
@@ -159,6 +163,15 @@ function replacer(key, value) {
 
         return dict;
     }
+
+    if (typeof value == 'bigint') {
+        return {
+            '$type': 'BigInt',
+            '$storage': 'uint64',
+            '$value': value.toString()
+        };
+    }
+
     return value;
 }
 

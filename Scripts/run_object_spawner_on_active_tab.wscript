@@ -1,4 +1,3 @@
-import {RunFileValidation} from "hook_global.wscript";
 import * as Logger from 'Logger.wscript';
 import {RunEntitySpawnerImport} from "./Internal/entSpawner/import_object_spawner.wscript";
 
@@ -9,7 +8,7 @@ import {RunEntitySpawnerImport} from "./Internal/entSpawner/import_object_spawne
 RunEntitySpawnerImport(GetActiveFileRelativePath(), true);
 
 function GetActiveFileRelativePath() {
-	let absolutePath =  wkit.GetActiveDocument()?.FilePath;
+	let absolutePath = wkit.GetActiveDocument()?.FilePath;
 	if (!absolutePath) return null;
 
 	const relativePath = absolutePath.split('raw\\').pop();
