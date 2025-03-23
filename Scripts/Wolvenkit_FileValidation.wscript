@@ -1338,13 +1338,17 @@ export function validateEntFile(ent, _entSettings) {
         checkDepotPath(ent.inplaceResources[i].DepotPath, `inplaceResources[${i}]`);
     }
 
-    if (entSettings.checkDynamicAppearanceTag && (hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length) {
-        // Do we have a visual tag 'DynamicAppearance'?
-        if (!visualTagList.includes('DynamicAppearance')) {
-            addWarning(LOGLEVEL_INFO, 'If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
-                + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
-                ' If everything is fine, ignore this warning.');
+    if (entSettings.checkDynamicAppearanceTag) {
+            // Do we have a visual tag 'DynamicAppearance'?
+        if ((hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length  && !visualTagList.includes('DynamicAppearance')) {
+                addWarning(LOGLEVEL_INFO, 'If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
+                    + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
+                    ' If everything is fine, ignore this warning.');         
         }
+        if (!visualTagList.includes('DynamicAppearance') && visualTagList.find((e) => e.toLowerCase().includes('dynamic'))) {
+            addWarning(LOGLEVEL_INFO, 'Did you mean to use the "DynamicAppearance" tag?');
+        }
+        
     }
 
     if (entSettings.validateRecursively) {
