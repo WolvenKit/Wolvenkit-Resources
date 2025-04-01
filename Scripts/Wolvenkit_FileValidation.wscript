@@ -1495,8 +1495,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
 
     let baseMaterialPaths = [ baseMaterial ];
 
-    currentMaterialName = materialName.includes("@") ? materialName : undefined;
-
+    currentMaterialName = materialName.includes("@") ? materialName : undefined;    
 
     if (isUsingSubstitution && !isSoftDependency) {
         addWarning(LOGLEVEL_WARN, `${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
@@ -1599,7 +1598,8 @@ function checkMeshMaterialIndices(mesh) {
 function ignoreChunkMaterialName(materialName) {
     if (!materialName || !materialName.endsWith) return false;
     const name = materialName.toLowerCase();
-    return name.includes("none") || name.includes("invis") || name.includes("hide") || name.includes("hidden") || name.includes("blank");
+    return name.includes("none") || name.includes("invis") || name.includes("hide") || name.includes("hidden") || name.includes("blank") 
+        || (name.materialName("eye") && name.includes("mat"));
 }
 
 export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
