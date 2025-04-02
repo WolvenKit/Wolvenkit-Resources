@@ -1599,7 +1599,7 @@ function ignoreChunkMaterialName(materialName) {
     if (!materialName || !materialName.endsWith) return false;
     const name = materialName.toLowerCase();
     return name.includes("none") || name.includes("invis") || name.includes("hide") || name.includes("hidden") || name.includes("blank") 
-        || (name.materialName("eye") && name.includes("mat"));
+        || (name.materialName.includes("eye") && name.includes("mat"));
 }
 
 export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
