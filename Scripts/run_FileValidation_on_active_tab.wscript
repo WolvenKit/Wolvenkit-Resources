@@ -5,36 +5,45 @@ import * as Logger from 'Logger.wscript';
 // @version 1.0
 // @type hook
 
-RunFileValidation(GetActiveFileExtension(), ReadActiveFile());
-
-function GetActiveFileRelativePath() {
-    let absolutePath =  wkit.GetActiveDocument()?.FilePath;
-    if (!absolutePath) return null; 
+Run();
+function Run() {
+    const activeDocument = wkit.GetActiveDocument();
+    if (!activeDocument) {
+        Logger.Error('Failed to find active document');
+        return;
+    }
+    
+    let absolutePath =  activeDocument.FilePath;
+    if (!absolutePath) {
+        Logger.Error('No file path in active document. Did you add this file to your project?');
+        return;        
+    }
     
     const relativePath = absolutePath.split('archive\\').pop();
+    
     if (!relativePath || !wkit.FileExists(relativePath)) {
-        Logger.Error(`No open file found.`);
-        return null;
+        if (!relativePath.includes('\\') && !relativePath.includes('/')) {
+            Logger.Error(`Can't parse files directly below 'archive'. Please put the file into a subfolder: ${relativePath}`);
+        } else {
+            Logger.Error(`No open file found: ${relativePath}`);            
+        }
+        return;
     }
-    return relativePath;
-}
+    
+    const activeFile = wkit.LoadGameFileFromProject(relativePath, 'json');
 
-
-function ReadActiveFile() {
-    const currentFileRelativePath = GetActiveFileRelativePath();
-    if (!currentFileRelativePath || !wkit.FileExists(currentFileRelativePath)) {
-        Logger.Error(`No open file found. Please switch to your currently-active file and try again!`);
-        return null;
+    const fileName = relativePath.split('archive\\').pop();
+    const fileExtension = (!fileName || !fileName.includes(".")) ? null :  fileName.substring(fileName.indexOf('.')+1);
+    
+    if (!activeFile) {
+        Logger.Error(`Failed to load file from project: ${relativePath}`);
+        return;
     }
 
-    return wkit.LoadGameFileFromProject(currentFileRelativePath, 'json');
-}
-
-
-export function GetActiveFileExtension() {
-    const relativePath = wkit.GetActiveDocument()?.FilePath;
-    if (!relativePath) return null;
-    const fileName = relativePath.split('archive\\').pop()
-    if (!fileName || !fileName.includes(".")) return null;
-    return fileName.substring(fileName.indexOf('.')+1);
+    if (!fileExtension) {
+        Logger.Error(`Failed to find file extension in: ${relativePath}`);
+        return;
+    }
+    
+    RunFileValidation(fileExtension, activeFile);    
 }
