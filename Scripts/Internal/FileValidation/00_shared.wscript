@@ -5,13 +5,13 @@ import {
     getPathToCurrentFile,
     hasUppercasePaths,
     currentMaterialName,
-    isDynamicAppearance,
     entSettings,
     meshSettings,
     PLACEHOLDER_NAME_REGEX
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
-import * as Logger from 'Logger.wscript';
+import * as Logger from '../../Logger.wscript';
+import * as Wolvenkit from "../WolvenkitBridge.wscript";
 
 
 /**
@@ -19,7 +19,7 @@ import * as Logger from 'Logger.wscript';
  * and caused exceptions in file validation because certain values weren't set. This method fixes the structure
  * and prints warnings.
  *
- * @param data the file's data
+ * @param {{ entity, components, appearances }} data the file's data
  * @param fileType for the switch case.
  * @param _info Optional: information for the debug output
  */
@@ -76,7 +76,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
     }
     let ret = !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
     
-    if (ret == '') {
+    if (ret === '') {
      return ret;
     }
     
@@ -98,6 +98,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
  * @param suppressLogOutput suppress log output (because they'll be gathered in other places)
+ * @param isSoft It's okay if soft references start with an * and don't contain substitution
  *
  * @return true if the depot path exists and can be resolved.
  */
@@ -164,7 +165,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             return;
         }
         // all fine
-        if (wkit.FileExists(resolvedPath)) {
+        if (Wolvenkit.FileExists(resolvedPath)) {
             return;
         }
 

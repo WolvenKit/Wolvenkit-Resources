@@ -3,14 +3,25 @@
 
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath
-} from "./Internal/FileValidation/00_shared.wscript";
-import * as Logger from 'Logger.wscript';
+} from "00_shared.wscript";
+import * as Logger from '../../Logger.wscript';
 
 //#region inkatlas
+/**
+ * @param {{
+ *  Data: { RootChunk: any | undefined }
+ *  dynamicTexture: { DepotPath } | undefined;
+ *  dynamicTextureSlot: { texture: { DepotPath } } | undefined;
+ *  texture: { DepotPath } | undefined;
+ * }} inkatlas
+ * @param {{ texture: { DepotPath } | undefined, parts: { partName } }} inkatlas.slots.Elements[]
+ * @param _inkatlasSettings
+ * @returns {*}
+ */
 export function validateInkatlasFile(inkatlas, _inkatlasSettings) {
     if (!_inkatlasSettings?.Enabled) return;
     if (inkatlas["Data"] && inkatlas["Data"]["RootChunk"]) {
-        return validateInkatlasFile(workspot["Data"]["RootChunk"], _inkatlasSettings);
+        return validateInkatlasFile(inkatlas["Data"]["RootChunk"], _inkatlasSettings);
     }
     if (checkIfFileIsBroken(inkatlas, 'inkatlas')) {
         return;
@@ -46,7 +57,7 @@ export function validateInkatlasFile(inkatlas, _inkatlasSettings) {
             }
         });
 
-        var errorMessages = Object.keys(seen).filter((key) => seen[key].includes(',')).map((key) => `${key}: ${seen[key]}`);
+        const errorMessages = Object.keys(seen).filter((key) => seen[key].includes(',')).map((key) => `${key}: ${seen[key]}`);
 
         if (errorMessages.length > 0) {
             Logger.Warning(`inkatlas: Slot ${index} has duplicate part names:`);

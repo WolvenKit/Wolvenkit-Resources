@@ -2,9 +2,11 @@
 // @name FileValidation_Scene
 // Authors: Seberoth, Sunlive
 
-import { checkIfFileIsBroken } from "./Internal/FileValidation/00_shared.wscript";
+import { checkIfFileIsBroken } from "00_shared.wscript";
 import { getPathToCurrentFile } from "../../Wolvenkit_FileValidation.wscript";
-import * as Logger from "Logger.wscript";
+import * as Logger from "../../Logger.wscript";
+import * as Wolvenkit from "../WolvenkitBridge.wscript";
+import {validateQuestphaseFile} from "./graph_questphase.wscript";
 
 // Basic scene rules
 const START_ID_PERFORMER = 1; // Performer ID starts at 1
@@ -19,12 +21,18 @@ const SKIP_PERFORMER_ID_VALIDATION_EVENTS = new Set([
 ]); // List of the event types that does not contain a performerId
 const performerIds = new Set(); // collection of defined performerIds
 
+/**
+ * @param scene {{ sceneGraph: { Data: { graph: [] } }, actors: [], playerActors: [] }}
+ * @param scene.Data {{ RootChunk, questNode: any | undefined, debugSymbols }}
+ * @param _sceneSettings
+ * @returns {*}
+ */
 export function validateSceneFile(scene, _sceneSettings) {
   // check if enabled
   if (!_sceneSettings?.Enabled) return;
 
   if (scene?.Data?.RootChunk)
-    return validateQuestphaseFile(scene.Data.RootChunk, _entSettings);
+    return validateQuestphaseFile(scene.Data.RootChunk, _sceneSettings);
   if (checkIfFileIsBroken(scene, "scene")) return;
 
   const nodeIDs = new Set();
@@ -41,9 +49,9 @@ export function validateSceneFile(scene, _sceneSettings) {
       nodeIDs.add(nodeID);
     }
 
-    if (node.Data.questNode != undefined) {
+    if (node.Data.questNode !== undefined) {
       const questNodeID = node.Data.questNode.Data.id;
-      if (questNodeID != nodeID) {
+      if (questNodeID !== nodeID) {
         Logger.Warning(
           `Node ID doesn't match with quest node definition in node: ${nodeID}. File ${getPathToCurrentFile()}`
         );
@@ -57,6 +65,11 @@ export function validateSceneFile(scene, _sceneSettings) {
   CheckForMissingPerformerIdInGraph(scene);
 }
 
+/**
+ * 
+ * @param scene
+ * @param {{ performerId: { id } }} scene.debugSymbols.performersDebugSymbols[]
+ */
 function CheckForEmptyDebugSymbols(scene) {
   if (!scene.debugSymbols.performersDebugSymbols.length) {
     Logger.Warning(
@@ -71,6 +84,12 @@ function CheckForEmptyDebugSymbols(scene) {
   );
 }
 
+/**
+ *
+ * @param scene
+ * @param {{ actorId: { id } }} scene.actors[]
+ * @param {{ actorId: { id } }} scene.playerActors[]
+ */
 function CheckForInvalidActorId(scene) {
   const actorIds = new Set(scene.actors.map((actor) => actor.actorId.id));
   if (scene.actors.length !== actorIds.size) {
@@ -106,7 +125,7 @@ function CheckForInvalidPerformerId() {
 }
 
 function IsDefaultValue(value, className, propertyName) {
-  const cls = JSON.parse(wkit.CreateInstanceAsJSON(className));
+  const cls = JSON.parse(Wolvenkit.CreateInstanceAsJSON(className));
   if (cls["$type"] !== className) {
     Logger.Error("Invalid class name!");
     return;
@@ -129,8 +148,14 @@ function IsInvalidPerformerId(id) {
  *
  * @param {{
  * Data: {
+ *  $type;
  *  performerId?: { id: number };
  *  performer?: { id: number };
+ *  basicData: {}
+ *  events: any []
+ *  advancedData: { basic: { performerId, targetPerformerId } }
+ *  ikData: { basic: { performerId, targetPerformerId } }
+ *  sceneGraph: { Data: { nodeId: { id: number } } }
  * }
  * }} event
  * @param {number} index
@@ -189,12 +214,12 @@ function ValidateSectionEvent(event, index, parentNode) {
       const { performerId, targetPerformerId } = event.Data.advancedData.basic;
       if (IsInvalidPerformerId(performerId.id)) {
         Logger.Warning(
-          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} performerId`
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${performerId.id} performerId`
         );
       }
       if (IsInvalidPerformerId(targetPerformerId.id)) {
         Logger.Warning(
-          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${id} targetPerformerId`
+          `${eventType} at index ${index} in Node ID ${parentNode.Data.nodeId.id} referencing a non-existing ${targetPerformerId.id} targetPerformerId`
         );
       }
       break;

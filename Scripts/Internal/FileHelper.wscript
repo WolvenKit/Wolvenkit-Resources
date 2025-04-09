@@ -4,14 +4,15 @@
 
 import * as Logger from "../Logger.wscript";
 import * as TypeHelper from "../TypeHelper.wscript";
+import * as Wolvenkit from "./WolvenkitBridge.wscript";
 export function WriteToActiveFile(jsonData, reopenFile=true) {
-    let activeDocument = wkit.GetActiveDocument();
+    let activeDocument = Wolvenkit.GetActiveDocument();
     if (activeDocument === null) {
         Logger.Error("No active document…")
         return;
     }
     if (activeDocument.IsDirty) {
-        const response = wkit.ShowMessageBox(`"${activeDocument.FileName}" has unsaved changes - are you sure you want to reopen this file?`, "Confirm", WMessageBoxImage.Question, WMessageBoxButtons.YesNo);
+        const response = Wolvenkit.ShowMessageBox(`"${activeDocument.FileName}" has unsaved changes - are you sure you want to reopen this file?`, "Confirm", WMessageBoxImage.Question, WMessageBoxButtons.YesNo);
         if (response === WMessageBoxResult.No) {
             return;
         }
@@ -28,7 +29,7 @@ export function WriteToActiveFile(jsonData, reopenFile=true) {
     } 
     let cr2wContent = null;
     try {
-        cr2wContent = wkit.JsonToCR2W(jsonString)
+        cr2wContent = Wolvenkit.JsonToCR2W(jsonString)
     } catch (err) {
         Logger.Error(`Couldn't parse active file content to cr2w:`);
         Logger.Error(err);
@@ -36,7 +37,7 @@ export function WriteToActiveFile(jsonData, reopenFile=true) {
     }
 
     try {
-        wkit.SaveToProject(activeFilePath, cr2wContent); 
+        Wolvenkit.SaveToProject(activeFilePath, cr2wContent); 
     } catch (err) {
         Logger.Error(`Couldn't save ${activeFilePath}:`);
         Logger.Error(err);
@@ -47,14 +48,14 @@ export function WriteToActiveFile(jsonData, reopenFile=true) {
     
     try {
         activeDocument.Close();
-        wkit.OpenDocument(activeDocument.FilePath);
+        Wolvenkit.OpenDocument(activeDocument.FilePath);
     } catch (err) {
         Logger.Error(`Failed re-opening the active file! Automatic changes won't be applied until you close and re-open your file!`);
     }
 }
 
 export function GetActiveFileAbsolutePath() {
-    return wkit.GetActiveDocument()?.FilePath;
+    return Wolvenkit.GetActiveDocument()?.FilePath;
 }
     
 export function GetActiveFileRelativePath() {
@@ -62,7 +63,7 @@ export function GetActiveFileRelativePath() {
     if (!absolutePath) return null; 
     
     const relativePath = absolutePath.split('archive\\').pop();
-    if (!relativePath || !wkit.FileExists(relativePath)) {
+    if (!relativePath || !Wolvenkit.FileExists(relativePath)) {
         Logger.Error(`No open file found.`);
         return null;
     }
@@ -76,20 +77,21 @@ export function GetActiveFileExtension() {
     return fileName.substring(fileName.indexOf('.'));
 }
 
-export function ReadActiveFileAsJson(expectedFileExtension) {
-    if (!wkit.GetActiveDocument() || !!expectedFileExtension && !wkit.GetActiveDocument()?.FilePath?.endsWith(expectedFileExtension)) {
-        Logger.Error(`Please run with a ${expectedFileExtension} file open in Wolvenkit!`);
+export function ReadActiveFileAsJson(expectedFileExtension, suppressLogOutput = false) {
+    const activeDocument = Wolvenkit.GetActiveDocument(); 
+    if (!activeDocument || !!expectedFileExtension && !activeDocument.FilePath?.endsWith(expectedFileExtension)) {
+        if (!suppressLogOutput) Logger.Error(`Please run with a ${expectedFileExtension} file open in Wolvenkit!`);
         return null;
     }
 
     const currentFileRelativePath = GetActiveFileRelativePath();
-    if (!currentFileRelativePath || !wkit.FileExists(currentFileRelativePath)) {
-        Logger.Error(`No open file found. Please switch to your currently-active ${expectedFileExtension} and run this script from the menu!`);
+    if (!currentFileRelativePath || !Wolvenkit.FileExists(currentFileRelativePath)) {
+        if (!suppressLogOutput) Logger.Error(`No open file found. Please switch to your currently-active ${expectedFileExtension} and run this script from the menu!`);
         return null;
     }
 
     try {
-        const fileContent = wkit.LoadGameFileFromProject(currentFileRelativePath, 'json');
+        const fileContent = Wolvenkit.LoadGameFileFromProject(currentFileRelativePath, 'json');
         return TypeHelper.JsonParse(fileContent);
     } catch (err) {
         Logger.Error(`failed to parse ${expectedFileExtension} file at ${currentFileRelativePath}. Make sure the path is correct.`);

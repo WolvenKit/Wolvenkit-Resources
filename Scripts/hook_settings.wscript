@@ -81,11 +81,17 @@ const Settings = {
          * Set this to "false" to disable file validation for .ent files.
          */
         Enabled: true,
+        
         /*
-         * Set this to "false" to disable recursive verification of linked .app files and meshes
-         * (e.g. if this is taking too long for your liking)
+         * Set this to "false" to disable recursive verification of linked .app files
          */
-        validateRecursively: true,
+        validateAppsRecursively: true,
+
+        /*
+         * Set this to "false" to disable recursive verification of meshes found in linked .app files.
+         * This will have no effect if validateAppsRecursively is set to "false"
+         */
+        validateMeshesRecursively: false,
 
         /*
          * Set this to "false" to disable warnings about duplicate component names,

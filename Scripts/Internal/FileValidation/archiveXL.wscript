@@ -10,6 +10,7 @@ import * as Logger from 'Logger.wscript';
 export const ARCHIVE_XL_VARIANT_INDICATOR = '*';
 
 const archiveXLVarsAndValues = {
+    '{sleeves}': ['part', 'full'], // sleeves exist, I forgot these
     '{camera}': ['fpp', 'tpp'],
     '{feet}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
     '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
