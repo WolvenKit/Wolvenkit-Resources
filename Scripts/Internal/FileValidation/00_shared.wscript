@@ -156,6 +156,10 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             warnAboutSubstitution = false;
     }
 
+    if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => Wolvenkit.FileExists(p) && p.includes("base"))) {
+        return;
+    }
+    
     archiveXlResolvedPaths.forEach((resolvedPath) => {
         if (getPathToCurrentFile() === resolvedPath) {
             if (!suppressLogOutput) {

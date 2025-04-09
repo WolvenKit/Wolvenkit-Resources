@@ -974,7 +974,6 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
 
-
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath, '', false, true)) {
       addWarning(LOGLEVEL_WARN, `${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
@@ -1040,7 +1039,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
             localErrors.push(`${info}: path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
-
+        
         if (localErrors.length) {
             addWarning(LOGLEVEL_INFO, `${info}: DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
             localErrors.length = 0;
