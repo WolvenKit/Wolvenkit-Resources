@@ -213,7 +213,7 @@ function ParseFile(fileName, parentFile) {
 
                 	// add nested file to export list
                 	    
-	                if (jsonExtensions.includes(extension)) jsonSet.add(fileName);
+	                if (jsonExtensions.includes(embextension)) jsonSet.add(fileName);
 	                if (exportEmbeddedExtensions.includes(embextension)) exportSet.add(fileName);
 				}
                 return;
