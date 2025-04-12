@@ -1,6 +1,6 @@
 // Exports StreamingSector files and all referenced files (recursively)
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.8
+// @version 1.9
 // Requires 8.14 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
@@ -11,9 +11,10 @@ const add_from_project = true;
 
 // Set to true to disable warnings about failed meshes
 const suppressLogFileOutput = false;
+const suppressHashLogFileOutput = true;
 
 // If you dont want mats then set this to false
-const withmats=true;
+const withmats=false;
 
 // If you only want files that are new exporting set this to true
 const only_new=true
@@ -109,6 +110,17 @@ for (let sect in sectors) {
     Logger.Info(`Parsing sector...\n${sectors[sect]}`);
     ParseFile(sectors[sect], null);
 }
+
+Logger.Info("List of filenames in jsonSet:");
+for (const fileName of jsonSet) {
+    Logger.Info(fileName);
+}
+
+Logger.Info("List of filenames in projectSet:");
+for (const fileName of projectSet) {
+    Logger.Info(fileName);
+}
+
 
 // save all our files to the project
 Logger.Info(`Exporting ${projectSet.size} files to JSON. This might take a while...`);
@@ -213,8 +225,14 @@ function ParseFile(fileName, parentFile) {
 
                 	// add nested file to export list
                 	    
-	                if (jsonExtensions.includes(embextension)) jsonSet.add(fileName);
-	                if (exportEmbeddedExtensions.includes(embextension)) exportSet.add(fileName);
+	                if (jsonExtensions.includes(embextension)) {
+                        jsonSet.add(fileName);
+                        projectSet.add(fileName);
+                    }
+	                if (exportEmbeddedExtensions.includes(embextension)){                        
+                        projectSet.add(fileName);
+                        exportSet.add(fileName);
+                    }
 				}
                 return;
             }
