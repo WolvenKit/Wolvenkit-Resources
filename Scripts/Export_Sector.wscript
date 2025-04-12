@@ -14,7 +14,7 @@ const suppressLogFileOutput = false;
 const verboseLogging = true;
 
 // If you dont want mats then set this to false
-const withmats=false;
+const withmats=true;
 
 // If you only want files that are new exporting set this to true
 const only_new=true
