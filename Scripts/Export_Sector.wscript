@@ -11,7 +11,7 @@ const add_from_project = true;
 
 // Set to true to disable warnings about failed meshes
 const suppressLogFileOutput = false;
-const suppressHashLogFileOutput = true;
+const verboseLogging = true;
 
 // If you dont want mats then set this to false
 const withmats=false;
@@ -111,16 +111,17 @@ for (let sect in sectors) {
     ParseFile(sectors[sect], null);
 }
 
-Logger.Info("List of filenames in jsonSet:");
-for (const fileName of jsonSet) {
-    Logger.Info(fileName);
+if (verboseLogging){
+	Logger.Info("List of filenames in jsonSet:");
+	for (const fileName of jsonSet) {
+	    Logger.Info(fileName);
+	}
+	
+	Logger.Info("List of filenames in projectSet:");
+	for (const fileName of projectSet) {
+	    Logger.Info(fileName);
+	}
 }
-
-Logger.Info("List of filenames in projectSet:");
-for (const fileName of projectSet) {
-    Logger.Info(fileName);
-}
-
 
 // save all our files to the project
 Logger.Info(`Exporting ${projectSet.size} files to JSON. This might take a while...`);
