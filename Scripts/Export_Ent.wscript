@@ -90,7 +90,10 @@ for (const fileName of projectSet) {
 // export all of our files with the default export settings
 wkit.ExportFiles([...exportSet]);
 
-Logger.Info("Finished Exporting Entities")
+Logger.Success("")
+Logger.Success("=====================================================")
+Logger.Success("============ Finished Exporting Entities ============")
+Logger.Success("=====================================================")
 
 // begin helper functions
 function* GetPaths(jsonData) {
