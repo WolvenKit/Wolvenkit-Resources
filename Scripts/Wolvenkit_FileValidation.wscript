@@ -7,7 +7,6 @@ import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubs
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
 import { validateInkCCFile as validate_inkcc_file } from "./Internal/FileValidation/inkcc.wscript";
 import * as FileHelper from "./Internal/FileHelper.wscript";
-import * as Wolvenkit from "./Internal/WolvenkitBridge.wscript";
 
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, checkCurlyBraces, isNumericHash, formatArrayForPrint
@@ -330,7 +329,7 @@ function printInvalidAppearanceWarningIfFound() {
     }
 
     warningKeys = (Object.keys(entAppearancesNotFoundByFile) || [])
-        .filter((depotPath) => !!depotPath && Wolvenkit.FileExists(depotPath) && !invalidFiles.includes(depotPath));
+        .filter((depotPath) => !!depotPath && wkit.FileExists(depotPath) && !invalidFiles.includes(depotPath));
 
     if (warningKeys.length) {
         addWarning(LOGLEVEL_WARN, 'Appearances not found in files. Here\'s a list:');
@@ -434,10 +433,10 @@ let usedAppearanceTags = []
 let appFileSettings = {};
 
 function component_collectAppearancesFromMesh(componentMeshPath) {
-    if (!componentMeshPath || /^\d+$/.test(componentMeshPath) || !Wolvenkit.FileExists(componentMeshPath)) return;
+    if (!componentMeshPath || /^\d+$/.test(componentMeshPath) || !wkit.FileExists(componentMeshPath)) return;
     if (undefined === appearanceNamesByMeshFile[componentMeshPath]) {
         try {
-            const fileContent = Wolvenkit.LoadGameFileFromProject(componentMeshPath, 'json');
+            const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');
             const mesh = TypeHelper.JsonParse(fileContent);
             if (!mesh || !mesh.Data || !mesh.Data.RootChunk) {
                 return;
@@ -454,7 +453,7 @@ function component_collectAppearancesFromMesh(componentMeshPath) {
 }
 
 function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursively, info) {
-    if (!Wolvenkit.FileExists(entityDepotPath)) {
+    if (!wkit.FileExists(entityDepotPath)) {
         addWarning(LOGLEVEL_WARN, `Trying to check on partsValue '${entityDepotPath}', but it doesn't exist in game or project files`);
         return;
     }
@@ -468,7 +467,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     const componentsInEntityFile = [];
     if (validateRecursively) {
         try {
-            const fileContent = Wolvenkit.LoadGameFileFromProject(entityDepotPath, 'json');
+            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
 
             // fileExists has been checked in validatePartsOverride
             const entity = TypeHelper.JsonParse(fileContent);
@@ -1031,7 +1030,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
         // if we're resolving paths: check if the files exists
         // Skip refit check if user doesn't want refit check
-        if (componentMeshPaths.length > 1 && !Wolvenkit.FileExistsInProject(componentMeshPath.replace("*", ""))
+        if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))
             && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
         ) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
@@ -1069,7 +1068,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         
         if (validateRecursively) {
           try {
-            const fileContent = Wolvenkit.LoadGameFileFromProject(componentMeshPath, 'json');          
+            const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');          
             const mesh = TypeHelper.JsonParse(fileContent);
 
               meshSettings ||= {
@@ -1100,11 +1099,11 @@ function getAppearanceNamesInAppFile(_depotPath) {
         hasUppercasePaths = true;
         return;
     }
-    if (!depotPath.endsWith('.app') || !Wolvenkit.FileExists(depotPath)) {
+    if (!depotPath.endsWith('.app') || !wkit.FileExists(depotPath)) {
         appearanceNamesByAppFile[depotPath] = [];
     }
     if (!appearanceNamesByAppFile[depotPath]) {
-        const fileContent = Wolvenkit.LoadGameFileFromProject(depotPath, 'json');
+        const fileContent = wkit.LoadGameFileFromProject(depotPath, 'json');
         const appFile = TypeHelper.JsonParse(fileContent);
         if (null !== appFile) {
             appearanceNamesByAppFile[depotPath] = (appFile.Data.RootChunk.appearances || [])
@@ -1188,7 +1187,7 @@ function entFile_validateAppearance(appearance, appearanceIdx) {
     alreadyVerifiedAppFiles.push(appFilePath);
 
     if (isRootEntity) {
-        const fileContent = Wolvenkit.LoadGameFileFromProject(appFilePath, 'json');
+        const fileContent = wkit.LoadGameFileFromProject(appFilePath, 'json');
         const appFile = TypeHelper.JsonParse(fileContent);
         if (null === appFile && !invalidFiles.includes(appFilePath)) {
             addWarning(LOGLEVEL_WARN, `${info}: File ${appFilePath} exists, but couldn't be parsed. If everything works, you can ignore this warning.`);
@@ -1594,7 +1593,7 @@ export function validateCsvFile(csvData, csvSettings) {
         if (potentialPath) {
             if (!/^(.+)([\/\\])([^\/]+)$/.test(potentialPath)) {
                 potentiallyInvalidFactoryPaths.push(`${potentialName}: ${potentialPath}`);
-            } else if (!Wolvenkit.FileExists(potentialPath)) {
+            } else if (!wkit.FileExists(potentialPath)) {
                 addWarning(LOGLEVEL_WARN, `${potentialName}: ${potentialPath} seems to be a file path, but can't be found in project or game files`);
             }
         }
@@ -1718,7 +1717,7 @@ let usedAnimFiles = [];
  * @param {string} filePath - The path to the file
  */
 function workspotFile_CollectAnims(filePath) {
-    const fileContent = TypeHelper.JsonParse(Wolvenkit.LoadGameFileFromProject(filePath, 'json'));
+    const fileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(filePath, 'json'));
     if (!fileContent) {
         addWarning(LOGLEVEL_WARN, `Failed to collect animations from ${filePath}`);
         return;
@@ -1757,7 +1756,7 @@ function workspotFile_CheckFinalAnimSet(idx, animSet) {
 
     if (!rigDepotPathValue || !rigDepotPathValue.endsWith('.rig')) {
         addWarning(LOGLEVEL_ERROR, `finalAnimsets[${idx}]: invalid rig: ${rigDepotPathValue}. This will crash your game!`);
-    } else if (!Wolvenkit.FileExists(rigDepotPathValue)) {
+    } else if (!wkit.FileExists(rigDepotPathValue)) {
         addWarning(LOGLEVEL_WARN, `finalAnimsets[${idx}]: File "${rigDepotPathValue}" not found in game or project files`);
     }
 
@@ -1772,7 +1771,7 @@ function workspotFile_CheckFinalAnimSet(idx, animSet) {
     for (let i = 0; i < animations.length; i++) {
         const nestedAnim = animations[i];
         const filePath = stringifyPotentialCName(nestedAnim.animSet.DepotPath);
-        if (filePath && !Wolvenkit.FileExists(filePath)) {
+        if (filePath && !wkit.FileExists(filePath)) {
             addWarning(LOGLEVEL_WARN, `finalAnimSet[${idx}]animations[${i}]: "${filePath}" not found in game or project files`);
         } else if (filePath && !usedAnimFiles.includes(filePath)) {
             usedAnimFiles.push(filePath);
@@ -1914,7 +1913,7 @@ export function validateWorkspotFile(workspot, _workspotSettings) {
     }
 
     for (let i = 0; i < usedAnimFiles.length; i++) {
-        if (Wolvenkit.FileExists(usedAnimFiles[i])) {
+        if (wkit.FileExists(usedAnimFiles[i])) {
             workspotFile_CollectAnims(usedAnimFiles[i]);
         } else {
             addWarning(LOGLEVEL_WARN, `${usedAnimFiles[i]} not found in project or game files`);
