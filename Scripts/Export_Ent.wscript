@@ -10,15 +10,15 @@ const exportExtensions = [".mesh"];
 const exportEmbeddedExtensions = [".mesh", ".xbm", ".mlmask"];
 
 //list of ent files (paths need double slashes)
-var ents = [];
+let ent_files = [];
 
 // if you dont want to process any sectors already in the project set this to false
-var add_from_project = true;
+let add_from_project = true;
 
-// Set these to true if you want proxys/shadow meshes
-var include_proxys = false;
-var include_shadows = false;
-var include_fx = false;
+// Set these to true if you want proxies/shadow meshes
+let include_proxies = false;
+let include_shadows = false;
+let include_fx = false;
 
 
 // sets of files that are parsed for processing
@@ -28,47 +28,52 @@ const exportSet = new Set();
 const jsonSet = new Set();
 
 if (add_from_project) {
-    for (var filename of wkit.GetProjectFiles('archive')) {
+    for (let filename of wkit.GetProjectFiles('archive')) {
         //Logger.Info(filename);
-        var ext = filename.split('.').pop();
+        let ext = filename.split('.').pop();
         if (ext === "ent") {
-            ents.push(filename);
+            ent_files.push(filename);
         }
     }
 }
 
-// loop over every entity in `ents`
-for (var ent in ents) {
-    Logger.Info(ents[ent]);
-    ParseFile(ents[ent], null);
+// loop over every entity in `ent_files`
+for (let ent in ent_files) {
+    Logger.Info(ent_files[ent]);
+    ParseFile(ent_files[ent], null);
 }
 
 // save all our files to the project and export JSONs
 for (const fileName of projectSet) {
     // skip shadows if the variable is set
-    if ((include_shadows == false) && (fileName.includes("shadow"))) {
+    if ((include_shadows === false) && (fileName.includes("shadow"))) {
         continue;
     }
     // skip proxies if the variable is set
-    if ((include_proxys == false) && (fileName.includes("proxy"))) {
+    if ((include_proxies === false) && (fileName.includes("proxy"))) {
         continue;
     }
     // skip fx bodies if the variable is set
-    if ((include_fx == false) && (fileName.includes("fx"))) {
+    if ((include_fx === false) && (fileName.includes("fx"))) {
         continue;
     }
 
-    // Load project vesion if it exists, otherwise add to the project
+    let file = null;
+    // Load project version if it exists, otherwise add to the project
     if (wkit.FileExistsInProject(fileName)) {
-        var file = wkit.GetFileFromProject(fileName, OpenAs.GameFile);
+        file = wkit.GetFileFromProject(fileName, OpenAs.GameFile);
     }
     else {
-        var file = wkit.GetFileFromBase(fileName);
+        file = wkit.GetFileFromBase(fileName);
         wkit.SaveToProject(fileName, file);
+    }
+    
+    if (!file) {
+        continue;
     }
 
     if (jsonSet.has(fileName)) {
-        var path = "";
+        let path = "";
         if (file.Extension === ".ent") {
             path = wkit.ChangeExtension(file.Name, ".ent.json");
         }
@@ -76,7 +81,7 @@ for (const fileName of projectSet) {
             path = wkit.ChangeExtension(file.Name, ".app.json");
         }
         if (path.length > 0) {
-            var json = wkit.GameFileToJson(file);
+            let json = wkit.GameFileToJson(file);
             wkit.SaveToRaw(path, json);
         }
     }
@@ -89,7 +94,7 @@ Logger.Info("Finished Exporting Entities")
 
 // begin helper functions
 function* GetPaths(jsonData) {
-    for (let [key, value] of Object.entries(jsonData || {})) {
+    for (let [_, value] of Object.entries(jsonData || {})) {
         if (value instanceof TypeHelper.ResourcePath && !value.isEmpty()) {
             yield value.value;
         }
@@ -151,12 +156,13 @@ function ParseFile(fileName, parentFile) {
         return;
     }
 
-    // Load project vesion if it exists, otherwise get the basegamefile
+    let file;
+    // Load project version if it exists, otherwise get the base game file
     if (wkit.FileExistsInProject(fileName)) {
-        var file = wkit.GetFileFromProject(fileName, OpenAs.GameFile);
+        file = wkit.GetFileFromProject(fileName, OpenAs.GameFile);
     }
     else {
-        var file = wkit.GetFileFromBase(fileName);
+        file = wkit.GetFileFromBase(fileName);
     }
     if (file === null) {
         Logger.Error(fileName + " could not be found");
@@ -174,7 +180,7 @@ function ParseFile(fileName, parentFile) {
     }
 
     // now check if there are referenced files and parse them
-    var json = TypeHelper.JsonParse(wkit.GameFileToJson(file));
+    let json = TypeHelper.JsonParse(wkit.GameFileToJson(file));
     for (let path of GetPaths(json["Data"]["RootChunk"])) {
         ParseFile(path, json);
     }
