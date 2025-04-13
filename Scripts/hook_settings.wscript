@@ -176,6 +176,10 @@ const Settings = {
          */
         checkDuplicateMlSetupFilePaths: true,
         /*
+         * Should file validation warn you if you define a material (by name) twice?
+         */
+        checkDuplicateMaterialDefinitions: true,
+        /*
          * Should file validation verify paths to external materials in your mesh?
          */
         checkExternalMaterialPaths: true,

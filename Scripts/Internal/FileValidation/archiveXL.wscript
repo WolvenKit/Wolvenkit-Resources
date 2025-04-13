@@ -70,7 +70,6 @@ export function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
 /**
  *
  * @param paths An array of paths to fix substitutions in
- * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
  * @returns {{length}|*|[]|*[]}
  */
 export function resolveSubstitution(paths) {

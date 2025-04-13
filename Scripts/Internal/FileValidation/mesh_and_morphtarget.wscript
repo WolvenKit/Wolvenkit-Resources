@@ -8,7 +8,7 @@ import {
     addWarning,
     LOGLEVEL_ERROR,
     LOGLEVEL_INFO,
-    LOGLEVEL_WARN, meshSettings, PLACEHOLDER_NAME_REGEX, SetCurrentMaterialName, SetNumAppearances, SetPathToParentFile
+    LOGLEVEL_WARN, meshSettings, PLACEHOLDER_NAME_REGEX
 } from "../../Wolvenkit_FileValidation.wscript";
 import * as FileValidation from "../../Wolvenkit_FileValidation.wscript";
 import * as TypeHelper from '../../TypeHelper.wscript';
