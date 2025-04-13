@@ -11,8 +11,6 @@ import {
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from '../../Logger.wscript';
-import * as Wolvenkit from "../WolvenkitBridge.wscript";
-
 
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
@@ -156,7 +154,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             warnAboutSubstitution = false;
     }
 
-    if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => Wolvenkit.FileExists(p) && p.includes("base"))) {
+    if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => wkit.FileExists(p) && p.includes("base"))) {
         return;
     }
     
@@ -169,7 +167,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             return;
         }
         // all fine
-        if (Wolvenkit.FileExists(resolvedPath)) {
+        if (wkit.FileExists(resolvedPath)) {
             return;
         }
 
@@ -181,7 +179,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         ret = false;
 
         if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath, true)) {
-            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
+            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in wkit.`);
             return;
         }
         

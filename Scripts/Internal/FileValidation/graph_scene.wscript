@@ -5,7 +5,6 @@
 import { checkIfFileIsBroken } from "00_shared.wscript";
 import { getPathToCurrentFile } from "../../Wolvenkit_FileValidation.wscript";
 import * as Logger from "../../Logger.wscript";
-import * as Wolvenkit from "../WolvenkitBridge.wscript";
 import {validateQuestphaseFile} from "./graph_questphase.wscript";
 
 // Basic scene rules
@@ -125,7 +124,7 @@ function CheckForInvalidPerformerId() {
 }
 
 function IsDefaultValue(value, className, propertyName) {
-  const cls = JSON.parse(Wolvenkit.CreateInstanceAsJSON(className));
+  const cls = JSON.parse(wkit.CreateInstanceAsJSON(className));
   if (cls["$type"] !== className) {
     Logger.Error("Invalid class name!");
     return;

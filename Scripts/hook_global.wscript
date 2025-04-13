@@ -93,6 +93,9 @@ export function RunFileValidation(ext, file) {
             case "scene":
                 FileValidation.validateSceneFile(data, Settings.GraphScene);
                 break;
+            case "yaml":
+                FileValidation.validateYamlFile(data, {});
+                break;
             default:
                 Logger.Info("File validation not implemented for file type " + ext);
         }

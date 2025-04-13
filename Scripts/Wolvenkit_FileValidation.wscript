@@ -17,6 +17,7 @@ import { validateSceneFile as validate_scene_file } from "./Internal/FileValidat
 import {_validateMeshFile} from "./Internal/FileValidation/mesh_and_morphtarget.wscript";
 import Settings from "./hook_settings.wscript";
 import {validateMaterialKeyValuePair} from "./Internal/FileValidation/material_and_shaders.wscript";
+import {validate_yaml_file} from "./Internal/FileValidation/yaml.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -1985,6 +1986,8 @@ export const validateSceneFile = validate_scene_file;
 export const validateInkatlasFile = validate_inkatlas_file;
 
 export const validateInkCCFile = validate_inkcc_file;
+
+export const validateYamlFile = validate_yaml_file;
 
 /**
  * @param mlsetup {{ Data: {RootChunk} }}

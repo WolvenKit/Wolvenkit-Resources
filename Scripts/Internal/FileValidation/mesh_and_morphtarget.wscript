@@ -13,7 +13,6 @@ import {
 import * as FileValidation from "../../Wolvenkit_FileValidation.wscript";
 import * as TypeHelper from '../../TypeHelper.wscript';
 import {getArchiveXlResolvedPaths} from "./archiveXL.wscript";
-import * as Wolvenkit from "../WolvenkitBridge.wscript";
 import {material_getMaterialPropertyValue, validateMaterialKeyValuePair} from "./material_and_shaders.wscript";
 import {JsonStringify} from "../../TypeHelper.wscript";
 
@@ -75,7 +74,7 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
 
         if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
             FileValidation.SetPathToParentFile(FileValidation.pathToCurrentFile);
-            const miFileContent = TypeHelper.JsonParse(Wolvenkit.LoadGameFileFromProject(baseMaterial, 'json'));
+            const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
             FileValidation.pushCurrentFilePath();
             FileValidation._validateMiFile(miFileContent);
             FileValidation.popCurrentFilePath();
