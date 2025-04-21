@@ -242,10 +242,9 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         FileValidation.SetNumAppearances(FileValidation.numAppearances + 1);
         let appearance = mesh.appearances[i].Data;
         if (appearance.chunkMaterials.length === 0) {
-            for (let j = 0; i < firstAppearanceChunks.length; i++) {
-                appearance.chunkMaterials[j] = {... firstAppearanceChunks[j] };
-                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearance.name);
-            }
+            appearance.chunkMaterials = firstAppearanceChunks.map((material) => ({
+                "$value": material.value.replaceAll(firstAppearanceName,  appearance.name)
+            }));            
         }
         for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
@@ -354,19 +353,12 @@ export function _validateMeshFile(mesh) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
-        let numAppearanceChunks = (appearance.chunkMaterials || []).length;
-        if (firstMaterialHasChunks && numAppearanceChunks === 0) {
-            appearance.chunkMaterials = mesh.appearances[0].Data.chunkMaterials;
-            for (let j = 0; i < appearance.chunkMaterials.length; i++) {
-                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearanceName);
-            }
-            numAppearanceChunks = appearance.chunkMaterials.length;
-        }
-        if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
+
+        if (appearanceName && appearance.chunkMaterials > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > appearance.chunkMaterials) {
             addWarning(LOGLEVEL_INFO, `Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
         }
 
-        for (let j = 0; j < numAppearanceChunks; j++) {
+        for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
             if (!ignoreChunkMaterialName(chunkMaterialName)
                 && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
