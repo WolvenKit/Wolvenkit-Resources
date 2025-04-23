@@ -1024,14 +1024,14 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (pathHasSubstitution && !checkCurlyBraces(componentMeshPath)) {
             localErrors.push(`path: ${CURLY_BRACES_WARNING}`);
         }
-        if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
+        if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !componentMeshPath.includes("variant")) {
             localErrors.push(`path: ${MISSING_PREFIX_WARNING}`);
         }
 
         // if we're resolving paths: check if the files exists
         // Skip refit check if user doesn't want refit check
         if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))
-            && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
+            && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body') && !componentMeshPath.includes('variant'))
         ) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
