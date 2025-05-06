@@ -1267,17 +1267,24 @@ export function validateEntFile(ent, _entSettings) {
     if (visualTagList.includes('DynamicAppearance')) {
         isDynamicAppearance = true
     }
-
     
     isRootEntity = isDynamicAppearance || (ent.appearances?.length || 0) > 0;
 
     // check entity type
-    const entityType = ent.entity?.Data?.$type;
+    const entityType = ent.entity?.Data?.$type ?? '';
 
     // Logger.Success(`ent ${entityType}, isRootEntity: ${isRootEntity}`);
     if (isRootEntity) {
+        // vehicleArmedCarBaseObject, vehicleBaseObject etc
+        if (entityType.startsWith("vehicle") && entityType.endsWith("BaseObject")) {
+            Logger.Info("This is a vehicle root entity!")
+        } else if (entityType === "gameGarmentItemObject") {
+            Logger.Info("This is a garment item root entity!")
+        }
+        
         if (entityType === "entEntity") {
             addWarning(LOGLEVEL_WARN, `${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
+            addWarning(LOGLEVEL_WARN, `To fix that, switch the editor mode to "Advanced" and change the value of the entity's handle type to "entEntity".`);
         } else if ((ent.components || []).length === 0) {
             addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a root entity, but you don't have any components.`);
         }
@@ -1286,7 +1293,7 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     if (visualTagList.some((tag) => tag.startsWith('hide'))) {
-        addWarning(LOGLEVEL_WARN, 'Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
+        addWarning(LOGLEVEL_WARN, 'Your .ent file has visual tags to hide chunkmasks, but these should go into the .app file!');
     }
 
     const validateEntRecursively = _entSettings.validateMeshesRecursively || _entSettings.validateAppsRecursively;
