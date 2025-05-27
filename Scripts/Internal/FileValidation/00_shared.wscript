@@ -178,6 +178,10 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         // File does not exist
         ret = false;
 
+        if (resolvedPath.startsWith("archive_xl\\characters\\common\\hair\\textures\\hair_profiles")) {
+            ret = true;
+            return;
+        }
         if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath, true)) {
             Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in wkit.`);
             return;
