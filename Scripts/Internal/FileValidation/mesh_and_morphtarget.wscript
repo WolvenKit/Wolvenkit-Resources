@@ -5,7 +5,7 @@ import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath
 } from "./00_shared.wscript";
 import {
-    addWarning,
+    addWarning, getPathToCurrentFile,
     LOGLEVEL_ERROR,
     LOGLEVEL_INFO,
     LOGLEVEL_WARN, meshSettings, PLACEHOLDER_NAME_REGEX
@@ -205,11 +205,11 @@ function printDuplicateMaterialWarnings() {
             }
         }
     }
-
+    
     // Print warnings
     const warningEntries = Object.keys(identicalMaterials);
     if (warningEntries.length > 0) {
-        addWarning(LOGLEVEL_INFO, "The following materials seem to be identical:");
+        addWarning(LOGLEVEL_INFO, `${getPathToCurrentFile()}: The following materials seem to be identical:`);
         warningEntries.forEach(key => {
             addWarning(LOGLEVEL_INFO, `\t${(identicalMaterials[key] || []).join(', ')}`);
         });
