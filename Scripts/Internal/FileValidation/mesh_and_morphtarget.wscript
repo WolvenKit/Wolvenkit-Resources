@@ -367,8 +367,14 @@ export function _validateMeshFile(mesh) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
             }
         }
+        
+        
         if (invisibleSubmeshes.length > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
-            addWarning(LOGLEVEL_WARN, `Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
+            let filePrefix = "";
+            if (getPathToCurrentFile().endsWith('.mesh')) {
+                filePrefix = `${getPathToCurrentFile()}: `;
+            }
+            addWarning(LOGLEVEL_WARN, `${filePrefix}Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
             for (let j = 0; j < invisibleSubmeshes.length; j++) {
                 addWarning(LOGLEVEL_WARN, `\tAppearance[${i}] ${invisibleSubmeshes[j]}`);
             }
