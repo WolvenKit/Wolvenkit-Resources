@@ -76,15 +76,16 @@ export function GetActiveFileExtension() {
     return fileName.substring(fileName.indexOf('.'));
 }
 
-export function ReadActiveFileAsJson(expectedFileExtension) {
-    if (!wkit.GetActiveDocument() || !!expectedFileExtension && !wkit.GetActiveDocument()?.FilePath?.endsWith(expectedFileExtension)) {
-        Logger.Error(`Please run with a ${expectedFileExtension} file open in Wolvenkit!`);
+export function ReadActiveFileAsJson(expectedFileExtension, suppressLogOutput = false) {
+    const activeDocument = wkit.GetActiveDocument(); 
+    if (!activeDocument || !!expectedFileExtension && !activeDocument.FilePath?.endsWith(expectedFileExtension)) {
+        if (!suppressLogOutput) Logger.Error(`Please run with a ${expectedFileExtension} file open in Wolvenkit!`);
         return null;
     }
 
     const currentFileRelativePath = GetActiveFileRelativePath();
     if (!currentFileRelativePath || !wkit.FileExists(currentFileRelativePath)) {
-        Logger.Error(`No open file found. Please switch to your currently-active ${expectedFileExtension} and run this script from the menu!`);
+        if (!suppressLogOutput) Logger.Error(`No open file found. Please switch to your currently-active ${expectedFileExtension} and run this script from the menu!`);
         return null;
     }
 

@@ -7,14 +7,16 @@ import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubs
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
 import { validateInkCCFile as validate_inkcc_file } from "./Internal/FileValidation/inkcc.wscript";
 import * as FileHelper from "./Internal/FileHelper.wscript";
-import {JsonStringify} from "TypeHelper.wscript";
+
 import {
-    checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, hasUppercase,
-    getNumCurlyBraces, checkCurlyBraces, isNumericHash, formatArrayForPrint
+    checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, checkCurlyBraces, isNumericHash, formatArrayForPrint
 } from "./Internal/FileValidation/00_shared.wscript";
 import { validateQuestphaseFile as validate_questphase_file } from "./Internal/FileValidation/graph_questphase.wscript"
 import { validateSceneFile as validate_scene_file } from "./Internal/FileValidation/graph_scene.wscript"
-import {GetActiveFileRelativePath} from "./Internal/FileHelper.wscript";
+import {_validateMeshFile} from "./Internal/FileValidation/mesh_and_morphtarget.wscript";
+import Settings from "./hook_settings.wscript";
+import {validateMaterialKeyValuePair} from "./Internal/FileValidation/material_and_shaders.wscript";
+import {validate_yaml_file} from "./Internal/FileValidation/yaml.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -31,7 +33,7 @@ import {GetActiveFileRelativePath} from "./Internal/FileHelper.wscript";
 
 
 const validMaterialFileExtensions = [ '.mi', '.mt', '.remt' ];
-function validateShaderTemplate(depotPath, _info) {
+export function validateShaderTemplate(depotPath, _info) {
     if (!checkDepotPath(depotPath, _info)) {
         return;
     }
@@ -74,10 +76,13 @@ let isUsingSubstitution = false;
 export const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
 
 /** Warn about self-referencing resources */
-let pathToCurrentFile = '';
-let pathToParentFile = '';
+export let pathToCurrentFile = '';
+export let pathToParentFile = '';
+export function SetPathToParentFile(value) {
+    pathToParentFile = value;
+}
 
-function pushCurrentFilePath(path) {
+export function pushCurrentFilePath(path) {
    if (!path || pathToParentFile === pathToCurrentFile) {
         return;
     }
@@ -85,7 +90,7 @@ function pushCurrentFilePath(path) {
     pathToCurrentFile = path;
 }
 
-function popCurrentFilePath() {
+export function popCurrentFilePath() {
     if (pathToParentFile === pathToCurrentFile || !pathToParentFile) {
         pathToParentFile = '';
         return;
@@ -94,10 +99,10 @@ function popCurrentFilePath() {
     pathToParentFile = '';    
 }
 
-const LOGLEVEL_INFO  = 0;
-const LOGLEVEL_WARN  = 1;
-const LOGLEVEL_ERROR = 2;
-const LOGLEVEL_SUCCESS = 3;
+export const LOGLEVEL_INFO  = 0;
+export const LOGLEVEL_WARN  = 1;
+export const LOGLEVEL_ERROR = 2;
+export const LOGLEVEL_SUCCESS = 3;
 
 // Internal dictionary: 
 // {
@@ -109,7 +114,7 @@ const LOGLEVEL_SUCCESS = 3;
 // }
 let currentWarnings = {};
 
-function addWarning(loglevel, text) {
+export function addWarning(loglevel, text) {
     if (!currentWarnings[getPathToCurrentFile()]) {
         currentWarnings[getPathToCurrentFile()] = {};            
     }
@@ -141,7 +146,7 @@ export function setPathToCurrentFile(path) {
 export function getPathToCurrentFile() {
     return pathToCurrentFile || FileHelper.GetActiveFileRelativePath();
 }
-function resetInternalFlagsAndCaches() {
+export function resetInternalFlagsAndCaches() {
  
     isDataChangedForWriting = false;
     hasUppercasePaths = false;
@@ -203,6 +208,10 @@ function animFile_CheckForDuplicateNames() {
     });
 }
 
+/**
+ * @param {{ Data: {RootChunk}, animations:any[]}} animAnimSet
+ * @param _animAnimSettings
+ */
 export function validateAnimationFile(animAnimSet, _animAnimSettings) {
     if (!_animAnimSettings?.Enabled) return;
     if (animAnimSet["Data"] && animAnimSet["Data"]["RootChunk"]) {
@@ -333,8 +342,8 @@ function printInvalidAppearanceWarningIfFound() {
         const data = entAppearancesNotFoundByFile[appFilePath] || {};
         if (!Object.keys(data)?.length) return;
 
-        Object.keys(data).forEach((appearancName) => {
-            addWarning(LOGLEVEL_WARN, `  ${appearancName.padEnd(50, ' ')} | ${data[appearancName]}`);
+        Object.keys(data).forEach((appearanceName) => {
+            addWarning(LOGLEVEL_WARN, `  ${appearanceName.padEnd(50, ' ')} | ${data[appearanceName]}`);
         })
     });
 }
@@ -433,7 +442,7 @@ function component_collectAppearancesFromMesh(componentMeshPath) {
                 return;
             }
             hasGarmentSupportByMeshFile[componentMeshPath] = !!(mesh.Data.RootChunk.parameters || []).find((p) => p.Data?.$type === "meshMeshParamGarmentSupport");
-            appearanceNamesByMeshFile[componentMeshPath] = (mesh.Data.RootChunk.appearances || [])
+            appearanceNamesByMeshFile[componentMeshPath] = (mesh.Data.RootChunk["appearances"] || [])
                 .map((appearance) => stringifyPotentialCName(appearance.Data.name));
         } catch (err) {
             addWarning(LOGLEVEL_WARN, `Couldn't parse ${componentMeshPath}`);
@@ -462,7 +471,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
 
             // fileExists has been checked in validatePartsOverride
             const entity = TypeHelper.JsonParse(fileContent);
-            const components = entity && entity.Data && entity.Data.RootChunk ? entity.Data.RootChunk.components || [] : [];
+            const components = entity && entity.Data && entity.Data.RootChunk ? entity.Data.RootChunk["components"] || [] : [];
             isInvalidVariantComponent = false;
             const _componentIds = componentIds;
             componentIds.length = 0;
@@ -498,6 +507,12 @@ function appearanceNotFound(meshPath, meshAppearanceName, calledFrom) {
     meshAppearancesNotFoundByComponent[meshPath] ||= [];
     meshAppearancesNotFoundByComponent[meshPath].push(calledFrom);
 }
+
+/**
+ * @param {{partResource:any, componentsOverrides:any}} override
+ * @param index
+ * @param appearanceName
+ */
 function appFile_validatePartsOverride(override, index, appearanceName) {
 
     let info = `${appearanceName}.partsOverride[${index}]`;
@@ -524,13 +539,13 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 
     for (let i = 0; i < override.componentsOverrides.length; i++) {
         const componentOverride = override.componentsOverrides[i];
-        const componentName = componentOverride.componentName.value || '';
+        const componentName = componentOverride["componentName"].value || '';
         overriddenComponents.push(componentName);
 
         const meshPath = componentName && meshesByComponentName[componentName] ? meshesByComponentName[componentName] : '';
         if (meshPath && !checkDepotPath(meshPath, info)) {
             const appearanceNames = component_collectAppearancesFromMesh(meshPath);
-            const meshAppearanceName = stringifyPotentialCName(componentOverride.meshAppearance);
+            const meshAppearanceName = stringifyPotentialCName(componentOverride["meshAppearance"]);
             if (isDynamicAppearance) {
                 // TODO: Not implemented yet
             } else if ((appearanceNames || []).length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName)
@@ -578,7 +593,7 @@ const forcingTags = [
 
 /**
  *
- * @param appearance
+ * @param appearance {{ Data: {visualTags: {tags: []}} }}
  * @param appearanceName Name of appearance (for debug output)
  * @param partsValuePaths If we have certain hiding tags, we need to warn the user about potentially hiding their own components.
  */
@@ -620,6 +635,18 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
         appearanceErrorMessages[appearanceName].push(`INFO|has components hidden by your .app file: [${hiddenComponentNames.join(', ')}]`)
     })
 }
+
+/**
+ * @param appearance
+ * @param appearance.Data.name
+ * @param appearance.Data.components
+ * @param appearance.Data.partsValues
+ * @param appearance.Data.partsOverrides
+ * @param appearance.Data.visualTags.tags
+ * @param index
+ * @param validateRecursively
+ * @param validateComponentCollision
+ */
 function appFile_validateAppearance(appearance, index, validateRecursively, validateComponentCollision) {
     // Don't validate if uppercase file names are present
     if (hasUppercasePaths) {
@@ -747,6 +774,12 @@ export function validateAppFile(app, _appFileSettings) {
     printUserInfo();
 }
 
+
+/**
+ * @param {{ appearances, baseEntityType, preset, baseEntity, Data: {RootChunk} }} app 
+ * @param validateRecursively
+ * @param calledFromEntFileValidation
+ */
 function _validateAppFile(app, validateRecursively, calledFromEntFileValidation) {
     // invalid app file - not found
     if (!app) {
@@ -808,17 +841,22 @@ function getVariantsFromYaml() {
     const variants = [];
 }
 
-function getArchiveXLVariantComponentNames() {
+// Exports as readonly, hence the setter
+export let numAppearances = 0;
 
+export function SetNumAppearances(number) {
+    numAppearances = number;
 }
 
-// ArchiveXL: Collect dynamic materials, group them by
-let numAppearances = 0;
-export let dynamicMaterials = {};
+export let dynamicMaterials = new Set();
 export var currentMaterialName = "";
 
+export function SetCurrentMaterialName(newValue) {
+    currentMaterialName = newValue;
+}
+
 //#region entFile
-export let entSettings = {};
+export let entSettings = {...Settings.Ent};
 
 /**
  * Will be used as a dynamic variant check
@@ -839,7 +877,20 @@ const WITH_DEPOT_PATH = 'withMesh';
 
 const depotPathSubkeys = [ 'mesh', 'morphtarget', 'morphResource', 'facialSetup', 'graph', 'rig' ];
 
-// For different component types, check DepotPath property
+
+/**
+ * @param component
+ * @param component.$type
+ * @param component.workspotResource
+ * @param component.name
+ * @param component.id
+ * @param component.meshAppearance
+ * @param _index
+ * @param validateRecursively
+ * @param info
+ * 
+ * For different component types, check DepotPath property
+ */
 function entFile_appFile_validateComponent(component, _index, validateRecursively, info) {
     let type = component.$type || '';
     const isDebugComponent = type.toLowerCase().includes('debug');
@@ -923,7 +974,6 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     const componentMeshPaths = getArchiveXlResolvedPaths(meshDepotPath) || []
 
-
     if (componentMeshPaths.length === 1 && !isNumericHash(meshDepotPath) && !checkDepotPath(meshDepotPath, '', false, true)) {
       addWarning(LOGLEVEL_WARN, `${info}: ${meshDepotPath} not found in game or project files. This can crash your game.`);
       return;
@@ -974,14 +1024,14 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (pathHasSubstitution && !checkCurlyBraces(componentMeshPath)) {
             localErrors.push(`path: ${CURLY_BRACES_WARNING}`);
         }
-        if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
+        if (pathHasSubstitution && !componentMeshPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !componentMeshPath.includes("variant")) {
             localErrors.push(`path: ${MISSING_PREFIX_WARNING}`);
         }
 
         // if we're resolving paths: check if the files exists
         // Skip refit check if user doesn't want refit check
         if (componentMeshPaths.length > 1 && !wkit.FileExistsInProject(componentMeshPath.replace("*", ""))
-            && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body'))
+            && (entSettings.warnAboutMissingRefits || componentMeshPath.includes('base_body') && !componentMeshPath.includes('variant'))
         ) {
             localErrors.push(`${info}: ${componentMeshPath} not found in game or project files`);
         }
@@ -989,7 +1039,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         if (nameHasSubstitution && componentMeshPath.includes('gender=f')) {
             localErrors.push(`${info}: path: ${INVALID_GENDER_SUBSTITUTION}`);
         }
-
+        
         if (localErrors.length) {
             addWarning(LOGLEVEL_INFO, `${info}: DepotPath: ${componentMeshPath}: ${localErrors.join(',')}`);
             localErrors.length = 0;
@@ -1020,8 +1070,8 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
           try {
             const fileContent = wkit.LoadGameFileFromProject(componentMeshPath, 'json');          
             const mesh = TypeHelper.JsonParse(fileContent);
-            
-            meshSettings ||= {
+
+              meshSettings ||= {
                 validateMaterialsRecursively: true,
                 checkDuplicateMlSetupFilePaths: true,
                 checkExternalMaterialPaths: true,
@@ -1071,9 +1121,10 @@ const alreadyDefinedAppearanceNames = [];
 const invalidFiles = [];
 
 /**
- * @param appearance the appearance object
+ * @param {{ appearanceName: string, name: string, appearanceResource: { DepotPath: string } }} appearance the appearance object
+ * @param appearanceIdx
  */
-function entFile_validateAppearance(appearance) {
+function entFile_validateAppearance(appearance, appearanceIdx) {
     const appearanceName = (stringifyPotentialCName(appearance.name) || '');
     
     // Logger.Success(`entFile_validateAppearance(${appearanceName})`);
@@ -1184,7 +1235,12 @@ function resetInternalErrorMaps() {
 
 /**
  *
- * @param {*} ent The entity file as read from WKit
+ * @param ent {{ entity: any, defaultAppearance: string, components: [], resolvedDependencies: [] }} The entity file as read from WKit
+ * @param ent.Data {{ RootChunk: any }}
+ * @param ent.visualTagsSchema {{ Data: { visualTags: { tags: [] } } }}
+ * @param ent.components {{ Data: { visualTags: { tags: [] } } }}
+ * @param ent.appearances[].appearanceName {{ string }}
+ 
  * @param {*} _entSettings Settings object
  */
 export function validateEntFile(ent, _entSettings) {
@@ -1211,17 +1267,24 @@ export function validateEntFile(ent, _entSettings) {
     if (visualTagList.includes('DynamicAppearance')) {
         isDynamicAppearance = true
     }
-
     
     isRootEntity = isDynamicAppearance || (ent.appearances?.length || 0) > 0;
 
     // check entity type
-    const entityType = ent.entity?.Data?.$type;
+    const entityType = ent.entity?.Data?.$type ?? '';
 
     // Logger.Success(`ent ${entityType}, isRootEntity: ${isRootEntity}`);
     if (isRootEntity) {
+        // vehicleArmedCarBaseObject, vehicleBaseObject etc
+        if (entityType.startsWith("vehicle") && entityType.endsWith("BaseObject")) {
+            Logger.Info("This is a vehicle root entity!")
+        } else if (entityType === "gameGarmentItemObject") {
+            Logger.Info("This is a garment item root entity!")
+        }
+        
         if (entityType === "entEntity") {
             addWarning(LOGLEVEL_WARN, `${currentFileName} is used as a root entity, but seems to be copied from a mesh entity template!`);
+            addWarning(LOGLEVEL_WARN, `To fix that, switch the editor mode to "Advanced" and change the value of the entity's handle type to "entEntity".`);
         } else if ((ent.components || []).length === 0) {
             addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a root entity, but you don't have any components.`);
         }
@@ -1230,15 +1293,17 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     if (visualTagList.some((tag) => tag.startsWith('hide'))) {
-        addWarning(LOGLEVEL_WARN, 'Your .ent file has visual tags to hide chunkmasks, but these will only work inside the .app file!');
+        addWarning(LOGLEVEL_WARN, 'Your .ent file has visual tags to hide chunkmasks, but these should go into the .app file!');
     }
 
+    const validateEntRecursively = _entSettings.validateMeshesRecursively || _entSettings.validateAppsRecursively;
+    
     // validate ent component names
     for (let i = 0; i < (ent.components.length || 0); i++) {
         const component = ent.components[i];
         const isDebugComponent = (component?.$type || '').toLowerCase().includes('debug');
         const componentName = stringifyPotentialCName(component.name, `ent.components[${i}]`, (isRootEntity || isDebugComponent)) || `${i}`;
-        entFile_appFile_validateComponent(component, i, _entSettings.validateRecursively, `ent.components.${componentName}`);
+        entFile_appFile_validateComponent(component, i, validateEntRecursively, `ent.components.${componentName}`);
         // put its name into the correct map
         (allComponentNames.includes(componentName) ? duplicateComponentNames : allComponentNames).push(componentName);
     }
@@ -1289,7 +1354,7 @@ export function validateEntFile(ent, _entSettings) {
     if (!isDynamicAppearance && ent.appearances.length === 1) {
         const entName = stringifyPotentialCName(ent.appearances[0].name);
         const entAppearanceName = stringifyPotentialCName(ent.appearances[0].appearanceName)
-        isDynamicAppearance ||= (entName.endsWith("_") && (entAppearanceName === entName || entAppearanceNames === ''));
+        isDynamicAppearance ||= (entName.endsWith("_") && (entAppearanceName === entName || !entAppearanceNames.length));
     }
 
     const _pathToCurrentFile = pathToCurrentFile;
@@ -1338,16 +1403,20 @@ export function validateEntFile(ent, _entSettings) {
         checkDepotPath(ent.inplaceResources[i].DepotPath, `inplaceResources[${i}]`);
     }
 
-    if (entSettings.checkDynamicAppearanceTag && (hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length) {
-        // Do we have a visual tag 'DynamicAppearance'?
-        if (!visualTagList.includes('DynamicAppearance')) {
-            addWarning(LOGLEVEL_INFO, 'If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
-                + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
-                ' If everything is fine, ignore this warning.');
+    if (entSettings.checkDynamicAppearanceTag) {
+            // Do we have a visual tag 'DynamicAppearance'?
+        if ((hasEmptyAppearanceName || isUsingSubstitution) && ent.appearances?.length  && !visualTagList.includes('DynamicAppearance')) {
+                addWarning(LOGLEVEL_INFO, 'If you are using dynamic appearances, you need to add the "DynamicAppearance" visualTag to the root entity.'
+                    + ' If you don\'t know what that means, check if your appearance names are empty or "None".' +
+                    ' If everything is fine, ignore this warning.');         
         }
+        if (!visualTagList.includes('DynamicAppearance') && visualTagList.find((e) => e.toLowerCase().includes('dynamic'))) {
+            addWarning(LOGLEVEL_INFO, 'Did you mean to use the "DynamicAppearance" tag?');
+        }
+        
     }
 
-    if (entSettings.validateRecursively) {
+    if (entSettings.validateAppsRecursively || entSettings.validateMeshesRecursively) {
         printInvalidAppearanceWarningIfFound();
         printSubstitutionWarningsIfFound();
         printComponentWarningsIfFound();
@@ -1359,7 +1428,6 @@ export function validateEntFile(ent, _entSettings) {
 
 //#endregion
 
-
 //#region meshFile
 /*
  * ===============================================================================================================
@@ -1367,237 +1435,30 @@ export function validateEntFile(ent, _entSettings) {
  * ===============================================================================================================
  */
 
-export let meshSettings = {};
-let morphtargetSettings = {};
+export let meshSettings = Settings.Mesh;
+export let morphtargetSettings = Settings.Morphtarget;
 
-// scan materials, save for the next function
-let materialNames = {};
-let localIndexList = [];
+export function validateMeshFile(mesh, _meshSettings) {
+    // check if settings are enabled
+    if (!_meshSettings?.Enabled) return;
 
-// if checkDuplicateMaterialDefinitions is used: warn user if duplicates exist in list
-let listOfMaterialProperties = {};
+    meshSettings = _meshSettings;
 
+    resetInternalFlagsAndCaches();
+
+    _validateMeshFile(mesh);
+    printUserInfo();
+}
 
 
 /**
- * Shared for .mesh and .mi files: will validate an entry of the values array of a material definition
- *
- * @param key Key of array, e.g. BaseColor, Normal, MultilayerSetup
- * @param materialValue The material value definition contained within
- * @param info String for debugging, e.g. name of material and index of value
+ * @param morphtarget {{ Data: {RootChunk}, baseMesh, baseMeshAppearance }}
+ * @param morphtarget.colorTexture
+ * @param morphtarget.metalnessTexture
+ * @param morphtarget.normalTexture
+ * @param morphtarget.roughnessTexture
+ * @param _morphargetSettings
  */
-function validateMaterialKeyValuePair(key, materialValue, info) {
-    if (key === "$type" || hasUppercasePaths) {
-        return;
-    }
-
-    const materialDepotPath = stringifyPotentialCName(materialValue.DepotPath);
-
-    if (!materialDepotPath || hasUppercase(materialDepotPath) || isNumericHash(materialDepotPath) || "none" === materialDepotPath.toLowerCase()) {
-        return;
-    }
-
-    switch (key) {
-        case "MultilayerSetup":
-            if (!materialDepotPath.endsWith(".mlsetup")) {
-                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .mlsetup. This will cause crashes.`);
-                return;
-            }
-            break;
-        case "MultilayerMask":
-            if (!materialDepotPath.endsWith(".mlmask")) {
-                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .mlmask. This will cause crashes.`);
-                return;
-            }
-            break;
-        case "BaseColor":
-        case "Metalness":
-        case "Roughness":
-        case "Normal":
-        case "GlobalNormal":
-            if (!materialDepotPath.endsWith(".xbm")) {
-                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .xbm. This will cause crashes.`);
-                return;
-            }
-            break;
-        case "IrisColorGradient":
-            if (!materialDepotPath.endsWith(".gradient")) {
-                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .gradient. This will cause crashes.`);
-                return;
-            }
-            break;
-    }
-    if (materialValue.Flags?.includes('Embedded')) {
-        addWarning(LOGLEVEL_INFO, `${info} is set to Embedded. This might not work as you expect it.`);
-    }
-
-    // Check if the path should substitute, and if yes, if it's valid
-    const [numOpenBraces, numClosingBraces] = getNumCurlyBraces(materialDepotPath);
-
-    if ((numOpenBraces > 0 || numClosingBraces) > 0 && !materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR)) {
-        addWarning(LOGLEVEL_WARN, `${info} Depot path seems to contain substitutions, but does not start with an *`);
-    } else if (numOpenBraces !== numClosingBraces) {
-        addWarning(LOGLEVEL_WARN, `${info} Depot path has invalid substitution (uneven number of { and })`);
-    } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
-        addWarning(LOGLEVEL_WARN, `${info} Dynamic material value requires Flags 'Soft'`);
-    } else if (!materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && (materialValue.Flags || '').includes('Soft')) {
-        addWarning(LOGLEVEL_WARN, `${info} Non-dynamic material value might not work with Flag 'Soft', set to 'Default'`);
-    }
-
-    // Once we've made sure that the file extension is correct, check if the file exists.
-    checkDepotPath(materialDepotPath, info, info.includes("@context"));
-}
-
-function meshFile_validatePlaceholderMaterial(material, info) {
-    if (meshSettings.validatePlaceholderValues && (material.values || []).length) {
-        addWarning(LOGLEVEL_WARN, `Placeholder ${info} defines values. Consider deleting them.`);
-    }
-
-    if (!meshSettings.validatePlaceholderMaterialPaths) return;
-
-    const baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
-
-    if (!checkDepotPath(baseMaterial, info, true)) {
-        addWarning(LOGLEVEL_WARN, `Placeholder ${info}: invalid base material. Consider deleting it.`);
-    }
-}
-
-function material_getMaterialPropertyValue(key, materialValue) {
-    if (materialValue.DepotPath) return stringifyPotentialCName(materialValue.DepotPath);
-    if (materialValue[key]) return stringifyPotentialCName(materialValue["key"]);
-    switch (key) {
-        case "DiffuseColor":
-            return `RGBA: ${materialValue.Red}, ${materialValue.Green}, ${materialValue.Blue}, ${materialValue.Alpha}`
-        case "BaseColorScale":
-            return `RGBA: ${materialValue.W}, ${materialValue.X}, ${materialValue.Y}, ${materialValue.Z}`
-        default:
-            return `${materialValue}`;
-    }
-}
-
-const softMaterialNames = [ "@long", "@short", "@cap" ];
-
-// Dynamic materials need at least two appearances
-function meshFile_CheckMaterialProperties(material, materialName, materialIndex, materialInfo) {
-    let baseMaterial = stringifyPotentialCName(material.baseMaterial.DepotPath);
-   
-    if (!baseMaterial && materialName !== "@context") {
-        addWarning(LOGLEVEL_INFO, `${materialInfo}: No base material defined!`);
-        baseMaterial = "";
-    }
-    
-    const isSoftDependency = material.baseMaterial?.Flags === "Soft";
-    const isUsingSubstitution = !!baseMaterial.includes && (baseMaterial.includes("{") || baseMaterial.includes("}"))
-
-    let baseMaterialPaths = [ baseMaterial ];
-
-    currentMaterialName = materialName.includes("@") ? materialName : undefined;
-
-
-    if (isUsingSubstitution && !isSoftDependency) {
-        addWarning(LOGLEVEL_WARN, `${materialInfo}: seems to be an ArchiveXL dynamic material, but the dependency is '${material.baseMaterial?.Flags}' instead of 'Soft'`);
-    } else if (!isUsingSubstitution && isSoftDependency && !softMaterialNames.includes(materialName)) {
-        addWarning(LOGLEVEL_WARN, `${materialInfo}: baseMaterial is using Flags.Soft, but doesn't contain substitutions. This will crash your game; use 'Default'!`);
-    } else if  (isUsingSubstitution) {
-        baseMaterialPaths = getArchiveXlResolvedPaths(baseMaterial);
-    }
-
-    baseMaterialPaths.forEach((path) => {
-        const isContext = materialName === "@context";
-        if (checkDepotPath(path, materialInfo, false, isContext)) {
-            validateShaderTemplate(path, materialInfo);
-        }
-
-        if (meshSettings.validateMaterialsRecursively && baseMaterial.endsWith && baseMaterial.endsWith('.mi') && !baseMaterial.startsWith('base')) {
-            pathToParentFile = pathToCurrentFile;
-            const miFileContent = TypeHelper.JsonParse(wkit.LoadGameFileFromProject(baseMaterial, 'json'));
-            pushCurrentFilePath();
-            _validateMiFile(miFileContent);
-            popCurrentFilePath();
-        }
-    });
-    // for meshSettings.checkDuplicateMaterialDefinitions - will be ignored otherwise
-    listOfMaterialProperties[materialIndex] = {
-        'materialName': materialName,
-        'baseMaterial': baseMaterial,
-        'numProperties': material.values.length,
-    }
-
-    for (let i = 0; i < material.values.length; i++) {
-        let tmp = material.values[i];
-
-        const type = tmp["$type"] || tmp["type"] || '';
-
-        if (!type.startsWith("rRef:") && !meshSettings.checkDuplicateMaterialDefinitions) {
-            continue;
-        }
-
-        Object.entries(tmp).forEach(([key, definedMaterial]) => {
-            if (type.startsWith("rRef:")) {
-                validateMaterialKeyValuePair(key, definedMaterial, `[${materialIndex}]${materialName}.Values[${i}]`);
-            }
-            if (meshSettings.checkDuplicateMaterialDefinitions && !key.endsWith("type")) {
-                listOfMaterialProperties[materialIndex][key] = material_getMaterialPropertyValue(key, definedMaterial);
-            }
-        });
-    }
-
-    currentMaterialName = null;
-}
-
-function checkMeshMaterialIndices(mesh) {
-
-    if (mesh.externalMaterials.length > 0 && mesh.preloadExternalMaterials.length > 0) {
-        addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both externalMaterials and preloadExternalMaterials. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
-    }
-
-    if (!!mesh.localMaterialBuffer?.materials && mesh.localMaterialBuffer.materials.length > 0
-        && mesh.preloadLocalMaterialInstances.length > 0) {
-        addWarning(LOGLEVEL_WARN, "Your mesh is trying to use both localMaterialBuffer.materials and preloadLocalMaterialInstances. To avoid unspecified behaviour, use only one of the lists. Material validation will abort.");
-    }
-
-    let sumOfLocal = mesh.localMaterialInstances.length + mesh.preloadLocalMaterialInstances.length;
-    if (!!mesh.localMaterialBuffer?.materials) {
-        sumOfLocal += mesh.localMaterialBuffer.materials.length;
-    }
-    let sumOfExternal = mesh.externalMaterials.length + mesh.preloadExternalMaterials.length;
-
-    materialNames = {};
-    localIndexList = [];
-
-    for (let i = 0; i < mesh.materialEntries.length; i++) {
-        let materialEntry = mesh.materialEntries[i];
-        // Put all material names into a list - we'll use it to verify the appearances later
-        let name = stringifyPotentialCName(materialEntry.name);
-
-        if (name in materialNames && !PLACEHOLDER_NAME_REGEX.test(name)) {
-            addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is already defined in materialEntries[${materialNames[name]}]`);
-        } else {
-            materialNames[name] = i;
-        }
-
-        if (materialEntry.isLocalInstance) {
-            if (materialEntry.index >= sumOfLocal) {
-                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is trying to access a local material with the index ${materialEntry.index}, but there are only ${sumOfLocal} entries. (Array starts counting at 0)`);
-            }
-            if (localIndexList.includes(materialEntry.index)) {
-                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is overwriting an already-defined material index: ${materialEntry.index}. Your material assignments might not work as expected.`);
-            }
-            localIndexList.push(materialEntry.index);
-        } else {
-            if (materialEntry.index >= sumOfExternal) {
-                addWarning(LOGLEVEL_WARN, `materialEntries[${i}] (${name}) is trying to access an external material with the index ${materialEntry.index}, but there are only ${sumOfExternal} entries.`);
-            }
-        }
-    }
-}
-
-function ignoreChunkMaterialName(materialName) {
-    if (!materialName || !materialName.endsWith) return false;
-    const name = materialName.toLowerCase();
-    return name.includes("none") || name.includes("invis") || name.includes("hide") || name.includes("hidden") || name.includes("blank");
-}
-
 export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
     // check if settings are enabled
     if (!_morphargetSettings?.Enabled) return;
@@ -1632,232 +1493,13 @@ export function validateMorphtargetFile(morphtarget, _morphargetSettings) {
     printUserInfo();
 }
 
-function printDuplicateMaterialWarnings() {
-    // If we want to check material for duplication
-    if (!meshSettings.checkDuplicateMaterialDefinitions) return;
-
-    // Collect and filter entries
-    const identicalMaterials = {};
-    const foundDuplicates = [];
-
-    for (const key1 in listOfMaterialProperties) {
-        for (const key2 in listOfMaterialProperties) {
-            if (key1 !== key2 && !foundDuplicates.includes(key1)) {
-                const entry1 = listOfMaterialProperties[key1];
-                const entry2 = listOfMaterialProperties[key2];
-
-                // Check if entries have identical properties (excluding materialName)
-                const isIdentical = Object.keys(entry1).every(property => property === "materialName" || entry1[property] === entry2[property]);
-                if (isIdentical) {
-
-                    const buffer1 = entry1.materialName.split('.')[0];
-                    const buffer2 = entry2.materialName.split('.')[0];
-
-                    if (!identicalMaterials[key1]) {
-                        identicalMaterials[key1] = [];
-                        identicalMaterials[key1].push(`${buffer1}[${key1}]`);
-                    }
-                    identicalMaterials[key1].push(`${buffer2}[${key2}]`);
-                    foundDuplicates.push(key2);
-                }
-            }
-        }
-    }
-
-    // Print warnings
-    const warningEntries = Object.keys(identicalMaterials);
-    if (warningEntries.length > 0) {
-        addWarning(LOGLEVEL_INFO, "The following materials seem to be identical:");
-        warningEntries.forEach(key => {
-            addWarning(LOGLEVEL_INFO, `\t${(identicalMaterials[key] || []).join(', ')}`);
-        });
-    }
-}
-
-function meshFile_collectDynamicChunkMaterials(mesh) {
-    numAppearances = 0;
-    dynamicMaterials = {};
-    // null-safety
-    if (!mesh || typeof mesh === 'bigint') return;
-
-    if (mesh.appearances.length === 0) {
-        return;
-    }
-
-    const meshAsString = JsonStringify(mesh);
-    
-    // it's not dynamic
-    if (!meshAsString.includes("@")) return;
-
-    if (!meshAsString.includes("@context") && mesh.appearances.length < 2) {
-        addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
-    }
-    
-    const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
-    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";    
-    
-    for (let i = 0; i < mesh.appearances.length; i++) {
-        numAppearances += 1;
-        let appearance = mesh.appearances[i].Data;
-        if (appearance.chunkMaterials.length === 0) {
-            for (let j = 0; i < firstAppearanceChunks.length; i++) {
-                appearance.chunkMaterials[j] = {... firstAppearanceChunks[j] };
-                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearance.name);
-            }            
-        }
-        for (let j = 0; j < appearance.chunkMaterials.length; j++) {
-            const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
-            if (ignoreChunkMaterialName(chunkMaterialName) || !chunkMaterialName.includes("@")) {
-                continue;
-            }
-            const nameParts = chunkMaterialName.split("@");
-            const dynamicMaterialName = `@${nameParts[(nameParts.length -1)]}`;
-            dynamicMaterials[dynamicMaterialName] = dynamicMaterials[dynamicMaterialName] || [];
-
-            if (!dynamicMaterials[dynamicMaterialName].includes(nameParts[0])) {
-                dynamicMaterials[dynamicMaterialName].push(nameParts[0]);
-            }
-        }
-    }
-}
-
-function _validateMeshFile(mesh) {
-    // check if file needs to be called recursively or is invalid
-    if (mesh?.Data?.RootChunk) return _validateMeshFile(mesh.Data.RootChunk);
-    if (checkIfFileIsBroken(mesh, 'mesh')) return;
-    checkMeshMaterialIndices(mesh);
-
-    if (mesh.appearances.length === 0 && meshSettings.checkEmptyAppearances) {
-        addWarning(LOGLEVEL_INFO, 'This mesh has no appearances. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
-    }
-    if (mesh.materialEntries.length === 0 && meshSettings.checkEmptyAppearances) {
-        addWarning(LOGLEVEL_INFO, 'This mesh has no material definitions. Unless it is intended for ArchiveXL resource patching, it will be invisible!'); 
-    }
-    
-    meshFile_collectDynamicChunkMaterials(mesh);
-
-    var definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));
-
-    var undefinedDynamicMaterialNames = Object.keys(dynamicMaterials).filter((name) => !definedMaterialNames.includes(name));
-
-    if (undefinedDynamicMaterialNames.length > 0) {
-        addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
-    }
-
-    if (!!mesh.localMaterialBuffer?.materials) {
-        for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
-            let material = mesh.localMaterialBuffer.materials[i];
-
-            let materialName =  `localMaterialBuffer.materials[${i}]`;
-
-            // Add a warning here?
-            if (i < mesh.materialEntries.length) {
-                materialName = stringifyPotentialCName(mesh.materialEntries[i].name) || materialName;
-            }
-
-            if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
-                meshFile_validatePlaceholderMaterial(material, `localMaterialBuffer.materials[${i}]`);
-            } else {
-                meshFile_CheckMaterialProperties(material, materialName, i, `localMaterialBuffer.${materialName}`);
-            }
-        }
-    }
-
-    for (let i = 0; i < mesh.preloadLocalMaterialInstances.length; i++) {
-        let material = mesh.preloadLocalMaterialInstances[i];
-
-        let materialName =  `preloadLocalMaterials[${i}]`;
-
-        // Add a warning here?
-        if (i < mesh.materialEntries.length) {
-            materialName = stringifyPotentialCName(mesh.materialEntries[i].name) || materialName;
-        }
-
-        if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
-            meshFile_validatePlaceholderMaterial(material, `preloadLocalMaterials[${i}]`);
-        } else {
-            meshFile_CheckMaterialProperties(material.Data, materialName, i, `preloadLocalMaterials.${materialName}`);
-        }
-    }
-
-    if (meshSettings.checkExternalMaterialPaths) {
-        mesh.externalMaterials ||= [];
-        for (let i = 0; i < mesh.externalMaterials.length; i++) {
-            const material = mesh.externalMaterials[i];
-            checkDepotPath(material?.DepotPath, `externalMaterials[${i}]`);
-        }
-    }
-
-    let numSubMeshes = 0;
-
-    // Create RenderResourceBlob if it doesn't exist?
-    if (mesh.renderResourceBlob !== "undefined") {
-        numSubMeshes = mesh.renderResourceBlob?.Data?.header?.renderChunkInfos?.length;
-    }
-
-    if (mesh.appearances.length === 0) return;
-    const firstMaterialHasChunks = (mesh.appearances[0].Data.chunkMaterials || []).length >= numSubMeshes;
-    const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
-    
-    for (let i = 0; i < mesh.appearances.length; i++) {
-        let invisibleSubmeshes = [];
-        let appearance = mesh.appearances[i].Data;
-        const appearanceName = stringifyPotentialCName(appearance.name);
-        let numAppearanceChunks = (appearance.chunkMaterials || []).length;
-        if (firstMaterialHasChunks && numAppearanceChunks === 0) {
-            appearance.chunkMaterials = mesh.appearances[0].Data.chunkMaterials;
-            for (let j = 0; i < appearance.chunkMaterials.length; i++) {
-                appearance.chunkMaterials[j].value = appearance.chunkMaterials[j].value.replaceAll(firstAppearanceName, appearanceName);
-            }
-            numAppearanceChunks = appearance.chunkMaterials.length;
-        }
-        if (appearanceName && numAppearanceChunks > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > numAppearanceChunks) {
-            addWarning(LOGLEVEL_INFO, `Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
-        }
-
-        for (let j = 0; j < numAppearanceChunks; j++) {
-            const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
-            if (!ignoreChunkMaterialName(chunkMaterialName)
-                && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
-                && !(chunkMaterialName in materialNames)
-            ) {
-                invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
-            }
-        }
-        if (invisibleSubmeshes.length > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
-            addWarning(LOGLEVEL_WARN, `Appearance[${i}] ${appearanceName}: Invalid material assignments found. The following submeshes will render as invisible:`);
-            for (var j = 0; j < invisibleSubmeshes.length; j++) {
-                addWarning(LOGLEVEL_WARN, `\tAppearance[${i}] ${invisibleSubmeshes[j]}`);
-            }
-        }
-    }
-
-    if ((mesh.appearances[0].Data.chunkMaterials || []).length === 0) {
-        addWarning(LOGLEVEL_INFO, 'The first appearance has no chunk materials. The mesh will be invisible, and dynamically generated materials will not work!');
-    }
-    printDuplicateMaterialWarnings();
-
-    return true;
-}
-export function validateMeshFile(mesh, _meshSettings) {
-    // check if settings are enabled
-    if (!_meshSettings?.Enabled) return;
-
-    meshSettings = _meshSettings;
-    
-    resetInternalFlagsAndCaches();
-
-    _validateMeshFile(mesh);
-    printUserInfo();
-}
-
 //#endregion
 
 
 //#region mlTemplate
 
 export function validateMlTemplateFile(mltemplate, _mlTemplateSettings) {
-    if (mltemplate["Data"] && mi["Data"]["RootChunk"]) {
+    if (mltemplate["Data"] && mltemplate["Data"]["RootChunk"]) {
         return validateMlTemplateFile(mltemplate["Data"]["RootChunk"]);
     }
     if (mltemplate.colorTexture?.DepotPath) {
@@ -1899,7 +1541,7 @@ export function validateMiFile(mi, _miSettings) {
     printUserInfo();
 }
 
-function _validateMiFile(mi, debugInfo) {
+export function _validateMiFile(mi, debugInfo) {
     if (!mi) return;
     if (mi["Data"] && mi["Data"]["RootChunk"]) {
         return _validateMiFile(mi["Data"]["RootChunk"]);
@@ -1930,6 +1572,11 @@ function _validateMiFile(mi, debugInfo) {
  * ===============================================================================================================
  */
 
+
+/**
+ * @param csvData {{ Data: {RootChunk}, compiledData: {} }}
+ * @param csvSettings
+ */
 export function validateCsvFile(csvData, csvSettings) {
     // check if enabled in settings
     if (!csvSettings.Enabled) return;
@@ -2032,7 +1679,7 @@ export function validateJsonFile(jsonData, jsonSettings) {
 
         if (duplicateKeys?.length) {
             addWarning(LOGLEVEL_WARN, 'You have duplicate secondary keys in your file. The following entries will overwrite each other:'
-            + duplicateKeys.length === 1 ? `${duplicateKeys}` : `[ ${duplicateKeys.join(", ")} ]`);
+            + (duplicateKeys.length === 1 ? `${duplicateKeys}` : `[ ${duplicateKeys.join(", ")}`));
         }
     }
 
@@ -2101,10 +1748,11 @@ function workspotFile_CollectAnims(filePath) {
 /**
  * FileValidation checks the finalAnimaSet (the object assigning an .anims file to a .rig):
  * - Is a .rig file in the expected slot?
- * - Do all paths exist in the fils?
+ * - Do all paths exist in the files?
  *
  * @param {number} idx - Numeric index for debug output
- * @param {object} animSet - The object to analyse
+ * @param {{ rig: {DepotPath}, animations: object[], loadingHandles, cinematics }} animSet - The object to analyse
+  * @param {{ cinematics: any[], animSet: { DepotPath, Data: {idleAnim} } }} animSet.animations
  */
 function workspotFile_CheckFinalAnimSet(idx, animSet) {
     if (!animSet || !workspotSettings.checkFilepaths) {
@@ -2147,7 +1795,8 @@ function workspotFile_CheckFinalAnimSet(idx, animSet) {
  * - is the idle animation name the same as the animation name? (disable via checkIdleAnims flag)
  *
  * @param {number} idx - Numeric index for debug output
- * @param {object} animSet - The object to analyse
+ * @param {{ Data: { idleAnim } }} animSet - The object to analyse
+ * @param {{ Data: {animName: { Value } } }} animSet.Data.list[]
  */
 function workspotFile_CheckAnimSet(idx, animSet) {
     if (!animSet || !animSet.Data) {
@@ -2199,7 +1848,7 @@ function workspotFile_CheckAnimSet(idx, animSet) {
     }
 }
 /**
- * Make sure that all indices under workspot's rootentry are numbered in ascending order
+ * Make sure that all indices under workspot's root entry are numbered in ascending order
  *
  * @param rootEntry Root entry of workspot file.
  * @returns The root entry, all of its IDs in ascending numerical order
@@ -2237,6 +1886,16 @@ function workspotFile_SetIndexOrder(rootEntry) {
     return rootEntry;
 }
 
+/**
+ * FileValidation checks the workspot file:
+ * - are the indices unique? (disable via checkIdDuplication flag)
+ * - are the animation names unique? (disable via checkAnimNameDuplication flag)
+ * - are the animation names defined in the .anim files? (disable via checkAnimNameDuplication flag)
+ * - are the animation names defined in the .workspot file? (disable via checkAnimNameDuplication flag)
+ *
+ * @param workspot {{ Data: { RootChunk, finalAnimsets: any[] }, workspotTree: { rootEntry: {}} }}
+ * @param _workspotSettings
+ */
 export function validateWorkspotFile(workspot, _workspotSettings) {
     // check if enabled
     if (!_workspotSettings?.Enabled) return;
@@ -2334,9 +1993,17 @@ export const validateInkatlasFile = validate_inkatlas_file;
 
 export const validateInkCCFile = validate_inkcc_file;
 
+export const validateYamlFile = validate_yaml_file;
+
+/**
+ * @param mlsetup {{ Data: {RootChunk} }}
+ * @param mlsetup.layers[] {{ material: {DepotPath}, microblend: {DepotPath} }}
+ * 
+ * @param mlsetupSettings
+ */
 export function validateMlsetupFile(mlsetup, mlsetupSettings) {
     // check if file is valid/needs to be called recursively
-    if (mlsetup?.Data?.RootChunk) return validateMlsetupFile(mlsetup.Data.RootChunk, _workspotSettings);
+    if (mlsetup?.Data?.RootChunk) return validateMlsetupFile(mlsetup.Data.RootChunk, mlsetupSettings);
     
     if (checkIfFileIsBroken(mlsetup, 'mlsetup')) return;
 

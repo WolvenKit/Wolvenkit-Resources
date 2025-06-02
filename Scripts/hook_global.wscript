@@ -4,16 +4,14 @@
 
 import * as FileValidation from 'Wolvenkit_FileValidation.wscript';
 import * as Logger from 'Logger.wscript';
-import {GetActiveFileRelativePath, GetActiveFileExtension} from "Internal/FileHelper.wscript";
 import * as TypeHelper from 'TypeHelper.wscript';
 import Settings from 'hook_settings.wscript';
-import {hasUppercasePaths, isDataChangedForWriting} from "Wolvenkit_FileValidation.wscript";
 
 /**
  * If this is set to "true" and file validation runs into any errors, then YOUR FILES WILL NO LONGER SAVE.
  * ONLY ENABLE THIS IF YOU KNOW WHAT YOU'RE DOING!
  */
-const isWolvenkitDeveloper = true;
+const isWolvenkitDeveloper = false;
 
 const README_URL = 'https://wiki.redmodding.org/wolvenkit/wolvenkit-app/file-validation';
 
@@ -25,13 +23,18 @@ globalThis.onSave = function (ext, file) {
         }
     }
     return RunFileValidation(ext, file);
-
 }
 
 export function RunFileValidation(ext, file) {
-
+    if (!file) { // Something went wrong when passing the file from WKit
+        return;
+    }
     const fileContent = TypeHelper.JsonParse(file);
-        
+
+    if (!fileContent) {
+        Logger.Error(`Failed to read file ${file}. Skipping file validation.`)
+        return;
+    }
     // grab file name from json and inform file validation about it
     const fileName = (fileContent.Header?.ArchiveFileName || '').split('archive\\').pop() || '';
     FileValidation.setPathToCurrentFile(fileName);
@@ -90,6 +93,9 @@ export function RunFileValidation(ext, file) {
             case "scene":
                 FileValidation.validateSceneFile(data, Settings.GraphScene);
                 break;
+            case "yaml":
+                FileValidation.validateYamlFile(data, {});
+                break;
             default:
                 Logger.Info("File validation not implemented for file type " + ext);
         }
@@ -97,7 +103,7 @@ export function RunFileValidation(ext, file) {
         if (isWolvenkitDeveloper) {
             throw err;
         }
-        Logger.Warning(`Could not verify the file you just saved due to an error in Wolvenkit.`);
+        Logger.Warning(`Could not verify the file you just saved due to an error in wkit.`);
         Logger.Info('\tYou can ignore this warning or help us fix the problem: get in touch on Discord or create a ticket under https://github.com/WolvenKit/Wolvenkit/issues');
         Logger.Info('\tPlease include the necessary files from your project\'s source folder.')
         Logger.Info(`\tFor more information, check ${README_URL}#there-was-an-error`)
@@ -118,13 +124,13 @@ export function RunFileValidation(ext, file) {
     // either we have nothing to write or we aren't supposed to write => abort
     if (!FileValidation.isDataChangedForWriting || Settings.DisableAutofix) return retSuccess;
 
-    const filePath = wkit.GetActiveDocument().FilePath;
+    const filePath = wkit.GetActiveDocument()?.FilePath ?? '';
 
     // unless it's a workspot, automatically close and re-open it
     if (!fileName.endsWith('workspot') || Settings.Workspot.autoReopenFile) {
         try {
-            Logger.Info(`Filevalidation: Reopening ${filePath} for you…`);
-            wkit.GetActiveDocument().Close();
+            Logger.Info(`FileValidation: Reopening ${filePath} for you…`);
+            wkit.GetActiveDocument()?.Close();
             wkit.OpenDocument(filePath);
         } catch (err) {
             Logger.Error(`Failed! Automatic changes won't be applied until you close and re-open your file!`);

@@ -20,7 +20,7 @@ const validTags = {
 const validLinks = {
     head: [
         // hair
-        "hairstyle_cyberware", "hairstyle", "hair color"
+        "hairstyle_cyberware", "hairstyle", "hair color", "hairstyle color"
     ],
 }
 
@@ -88,7 +88,7 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
 
         const validLinksForGroup = validLinks[groupKey] ?? [];
         if (link !== "None" && !validLinksForGroup.includes(link)) {
-            Logger.Warning(`${groupKey}: option[${i}] links to '${link}' (we only know ${validLinksForGroup.join(", ")})`);
+            Logger.Warning(`${groupKey}: option[${i}] links to '${link}' (we only know ${validLinksForGroup.join(", ")}). Ignore this if everything works.`);
         }
 
         

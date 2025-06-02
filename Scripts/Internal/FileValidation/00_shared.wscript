@@ -5,21 +5,19 @@ import {
     getPathToCurrentFile,
     hasUppercasePaths,
     currentMaterialName,
-    isDynamicAppearance,
     entSettings,
     meshSettings,
     PLACEHOLDER_NAME_REGEX
  } from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
-import * as Logger from 'Logger.wscript';
-
+import * as Logger from '../../Logger.wscript';
 
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
  * and caused exceptions in file validation because certain values weren't set. This method fixes the structure
  * and prints warnings.
  *
- * @param data the file's data
+ * @param {{ entity, components, appearances }} data the file's data
  * @param fileType for the switch case.
  * @param _info Optional: information for the debug output
  */
@@ -76,7 +74,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
     }
     let ret = !!cnameOrString.$value ? cnameOrString.$value : cnameOrString.value;
     
-    if (ret == '') {
+    if (ret === '') {
      return ret;
     }
     
@@ -98,6 +96,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
  * @param suppressLogOutput suppress log output (because they'll be gathered in other places)
+ * @param isSoft It's okay if soft references start with an * and don't contain substitution
  *
  * @return true if the depot path exists and can be resolved.
  */
@@ -155,6 +154,10 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
             warnAboutSubstitution = false;
     }
 
+    if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => wkit.FileExists(p) && p.includes("base"))) {
+        return;
+    }
+    
     archiveXlResolvedPaths.forEach((resolvedPath) => {
         if (getPathToCurrentFile() === resolvedPath) {
             if (!suppressLogOutput) {
@@ -175,8 +178,12 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         // File does not exist
         ret = false;
 
+        if (resolvedPath.startsWith("archive_xl\\characters\\common\\hair\\textures\\hair_profiles")) {
+            ret = true;
+            return;
+        }
         if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath, true)) {
-            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in Wolvenkit.`);
+            Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in wkit.`);
             return;
         }
         

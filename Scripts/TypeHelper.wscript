@@ -128,6 +128,10 @@ function reviver(key, value) {
     return value;
 }
 
+/**
+ * @param value
+ * @returns {any}
+ */
 export function JsonParse(value) {
     return JSON.parse(value, reviver);
 }

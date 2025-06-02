@@ -10,8 +10,10 @@ import * as Logger from 'Logger.wscript';
 export const ARCHIVE_XL_VARIANT_INDICATOR = '*';
 
 const archiveXLVarsAndValues = {
+    '{sleeves}': ['part', 'full'], // sleeves exist, I forgot these
     '{camera}': ['fpp', 'tpp'],
     '{feet}': ['lifted', 'flat', 'high_heels', 'flat_shoes'],
+    '{arms}': ['base_arms', 'mantis_blades', 'monowire', 'projectile_launcher'],
     '{gender}': ['m', 'w'], // has to come BEFORE body, or file path validation will break
     '{body}': ArchiveXLConstants.allPotentialBodies, // import from helper file
 }
@@ -68,7 +70,6 @@ export function shouldHaveSubstitution(inputString, ignoreAsterisk = false) {
 /**
  *
  * @param paths An array of paths to fix substitutions in
- * @param dynamicMaterialSubstitution optional: Is this for material substitution in a mesh file?
  * @returns {{length}|*|[]|*[]}
  */
 export function resolveSubstitution(paths) {
