@@ -1,6 +1,7 @@
 // @author spirit
 // @version 1.1
 // @description
+// It is recommended to use VolumetricSelection2077 (v1000.0.0-beta8+) or RedHotTools (v1.3.0-beta.7+) as both offer a more refined, precise and easier way of removing occlusion nodes.
 // This script generates an .xl file that removes all occluder nodes from all sectors in the project. 
 // Does not include occlusion that is caused by collision nodes.
 // Special thanks to Simarilius for helping with the foundation of this script.
