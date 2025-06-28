@@ -13,27 +13,34 @@ function Run() {
         return;
     }
     
-    let absolutePath =  activeDocument.FilePath;
+    let absolutePath = `${activeDocument.FilePath}`;
     if (!absolutePath) {
         Logger.Error('No file path in active document. Did you add this file to your project?');
         return;        
     }
     
-    const relativePath = absolutePath.split('archive\\').pop();
+    let activeFile, relativePath, fileExtension;
     
-    if (!relativePath || !wkit.FileExists(relativePath)) {
-        if (!relativePath.includes('\\') && !relativePath.includes('/')) {
-            Logger.Error(`Can't parse files directly below 'archive'. Please put the file into a subfolder: ${relativePath}`);
-        } else {
-            Logger.Error(`No open file found: ${relativePath}`);            
+    
+    if (absolutePath.endsWith(".xl")) {
+        relativePath = absolutePath.split('resources\\').pop();
+        activeFile = wkit.YamlToJson( wkit.LoadFromResources(relativePath));
+    } else if (absolutePath.includes('.archive\\')) {
+        relativePath = absolutePath.split('archive\\').pop();
+
+        if (!relativePath || !wkit.FileExists(relativePath)) {
+            Logger.Error(`No open file found: ${relativePath}`);
+            return;
         }
-        return;
+
+        activeFile = wkit.LoadGameFileFromProject(relativePath, 'json');
+
+    } else {
+        Logger.Error(`Can't parse files directly below 'archive'. Please put the file into a subfolder: ${absolutePath}`);        
     }
     
-    const activeFile = wkit.LoadGameFileFromProject(relativePath, 'json');
 
-    const fileName = relativePath.split('archive\\').pop();
-    const fileExtension = (!fileName || !fileName.includes(".")) ? null :  fileName.substring(fileName.indexOf('.')+1);
+    fileExtension = (!relativePath || !relativePath.includes(".")) ? null :  relativePath.substring(relativePath.indexOf('.')+1);
     
     if (!activeFile) {
         Logger.Error(`Failed to load file from project: ${relativePath}`);

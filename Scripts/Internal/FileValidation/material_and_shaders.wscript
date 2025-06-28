@@ -12,7 +12,7 @@ import {
     isNumericHash,
     stringifyPotentialCName
 } from "./00_shared.wscript";
-import {ARCHIVE_XL_VARIANT_INDICATOR} from "./archiveXL.wscript";
+import {ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution} from "./archiveXL.wscript";
 
 /**
  * Shared for .mesh and .mi files: will validate an entry of the values array of a material definition
@@ -50,13 +50,13 @@ export function validateMaterialKeyValuePair(key, materialValue, info) {
         case "Roughness":
         case "Normal":
         case "GlobalNormal":
-            if (!materialDepotPath.endsWith(".xbm")) {
+            if (!materialDepotPath.endsWith(".xbm") && !shouldHaveSubstitution(materialDepotPath)) {
                 addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .xbm. This will cause crashes.`);
                 return;
             }
             break;
         case "IrisColorGradient":
-            if (!materialDepotPath.endsWith(".gradient")) {
+            if (!materialDepotPath.endsWith(".gradient") && !shouldHaveSubstitution(materialDepotPath)) {
                 addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .gradient. This will cause crashes.`);
                 return;
             }
@@ -76,7 +76,7 @@ export function validateMaterialKeyValuePair(key, materialValue, info) {
     } else if (materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && !(materialValue.Flags || '').includes('Soft')) {
         addWarning(LOGLEVEL_WARN, `${info} Dynamic material value requires Flags 'Soft'`);
     } else if (!materialDepotPath.startsWith(ARCHIVE_XL_VARIANT_INDICATOR) && (materialValue.Flags || '').includes('Soft')) {
-        addWarning(LOGLEVEL_WARN, `${info} Non-dynamic material value might not work with Flag 'Soft', set to 'Default'`);
+        addWarning(LOGLEVEL_WARN, `${info} Non-dynamic material value may not work with Flag 'Soft', set it to 'Default'`);
     }
 
     // Once we've made sure that the file extension is correct, check if the file exists.

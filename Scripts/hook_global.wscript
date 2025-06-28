@@ -25,11 +25,28 @@ globalThis.onSave = function (ext, file) {
     return RunFileValidation(ext, file);
 }
 
+const yamlExtensions = ['yaml', 'yml', 'xl', 'archive.xl'];
+
 export function RunFileValidation(ext, file) {
     if (!file) { // Something went wrong when passing the file from WKit
         return;
     }
-    const fileContent = TypeHelper.JsonParse(file);
+    
+    let fileContent;
+    
+    const isYamlFile = yamlExtensions.includes(ext);
+    if (isYamlFile) {
+        try {
+            fileContent = TypeHelper.JsonParse(wkit.YamlToJson(file));            
+        } catch {
+            if (!file.includes("[object Object]")) {
+                Logger.Error(`${file} contains invalid YAML. Use www.yamllint.com to fix your syntax errors.`);                
+            }
+            return;
+        }
+    } else {
+        fileContent = TypeHelper.JsonParse(file);        
+    }
 
     if (!fileContent) {
         Logger.Error(`Failed to read file ${file}. Skipping file validation.`)
@@ -42,7 +59,12 @@ export function RunFileValidation(ext, file) {
     wkit.SuspendFileWatcher(true);
     let success = true;
     try {
-        const data = fileContent["Data"]["RootChunk"];
+        let data;
+        if (isYamlFile) {
+            data = fileContent;
+        } else {
+            data = fileContent["Data"]["RootChunk"];            
+        }
         switch (ext) {
             case "anims":
                 FileValidation.validateAnimationFile(data, Settings.Anims);
@@ -93,8 +115,11 @@ export function RunFileValidation(ext, file) {
             case "scene":
                 FileValidation.validateSceneFile(data, Settings.GraphScene);
                 break;
+            case "archive.xl":
+            case "xl":
+            case "yml":
             case "yaml":
-                FileValidation.validateYamlFile(data, {});
+                FileValidation.validateYamlFile(data, {}, ext.endsWith('xl'));
                 break;
             default:
                 Logger.Info("File validation not implemented for file type " + ext);
@@ -102,12 +127,12 @@ export function RunFileValidation(ext, file) {
     } catch (err) {
         if (isWolvenkitDeveloper) {
             throw err;
+        } else {            
+            Logger.Warning(`Could not verify the file you just saved due to an error in wkit.`);
+            Logger.Info('\tYou can ignore this warning or help us fix the problem: get in touch on Discord or create a ticket under https://github.com/WolvenKit/Wolvenkit/issues');
+            Logger.Info('\tPlease include the necessary files from your project\'s source folder.')
+            Logger.Info(`\tFor more information, check ${README_URL}#there-was-an-error`)
         }
-        Logger.Warning(`Could not verify the file you just saved due to an error in wkit.`);
-        Logger.Info('\tYou can ignore this warning or help us fix the problem: get in touch on Discord or create a ticket under https://github.com/WolvenKit/Wolvenkit/issues');
-        Logger.Info('\tPlease include the necessary files from your project\'s source folder.')
-        Logger.Info(`\tFor more information, check ${README_URL}#there-was-an-error`)
-
     }
     if (FileValidation.hasUppercasePaths) {
         Logger.Error(`You have uppercase characters in your file paths. File validation will not work.`);
