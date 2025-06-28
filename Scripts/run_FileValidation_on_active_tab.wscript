@@ -25,7 +25,7 @@ function Run() {
     if (absolutePath.endsWith(".xl")) {
         relativePath = absolutePath.split('resources\\').pop();
         activeFile = wkit.YamlToJson( wkit.LoadFromResources(relativePath));
-    } else if (absolutePath.includes('.archive\\')) {
+    } else if (absolutePath.includes('archive\\')) {
         relativePath = absolutePath.split('archive\\').pop();
 
         if (!relativePath || !wkit.FileExists(relativePath)) {
