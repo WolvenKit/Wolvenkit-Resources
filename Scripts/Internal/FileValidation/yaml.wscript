@@ -23,9 +23,9 @@ function collectFilePaths(data, filePaths = []) {
 
 function verifyYamlFilePaths(data) {
     const filePaths = collectFilePaths(data);
-    const projectFiles = TypeHelper.JsonParse(wkit.GetProjectFiles('archive'));
+    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
 
-    const filesNotFound = filePaths.filter(p => !projectFiles.includes(p));
+    const filesNotFound = filePaths.filter(p => !projectFiles.find(str => str === p));
 
     if (filesNotFound.length > 0) {
         Logger.Error(`The following files were not found in the project:\n\t${filesNotFound.join('\n\t')}`);

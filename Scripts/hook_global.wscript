@@ -11,7 +11,7 @@ import Settings from 'hook_settings.wscript';
  * If this is set to "true" and file validation runs into any errors, then YOUR FILES WILL NO LONGER SAVE.
  * ONLY ENABLE THIS IF YOU KNOW WHAT YOU'RE DOING!
  */
-const isWolvenkitDeveloper = false;
+const isWolvenkitDeveloper = true;
 
 const README_URL = 'https://wiki.redmodding.org/wolvenkit/wolvenkit-app/file-validation';
 
