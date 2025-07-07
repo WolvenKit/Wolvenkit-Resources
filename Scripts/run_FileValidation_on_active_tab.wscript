@@ -18,13 +18,17 @@ function Run() {
         Logger.Error('No file path in active document. Did you add this file to your project?');
         return;        
     }
+        
+    let activeFile, relativePath, fileExtension;    
     
-    let activeFile, relativePath, fileExtension;
-    
-    
-    if (absolutePath.endsWith(".xl")) {
-        relativePath = absolutePath.split('resources\\').pop();
-        activeFile = wkit.YamlToJson( wkit.LoadFromResources(relativePath));
+    if (absolutePath.includes("resources\\")) {
+        try {
+            relativePath = absolutePath.split('resources\\').pop();
+            activeFile = wkit.YamlToJson( wkit.LoadFromResources(relativePath));            
+        } catch {
+            Logger.Error(`Failed to parse resource file: ${absolutePath}`);
+            return;
+        }
     } else if (absolutePath.includes('archive\\')) {
         relativePath = absolutePath.split('archive\\').pop();
 
@@ -36,7 +40,7 @@ function Run() {
         activeFile = wkit.LoadGameFileFromProject(relativePath, 'json');
 
     } else {
-        Logger.Error(`Can't parse files directly below 'archive'. Please put the file into a subfolder: ${absolutePath}`);        
+        Logger.Info(`Ignoring file (not sure what to do with it) ${absolutePath}`);        
     }
     
 
