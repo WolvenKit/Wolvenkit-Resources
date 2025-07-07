@@ -15,6 +15,14 @@ export function stringifyMap(map, oneLine = false) {
     }
     return ret.join("\n");
 }
+
+export function stringifyArray(ary) {
+    let ret = [];
+    if (ary.length === 1) { 
+        return `[ ${ary[0]} ]`;
+    }
+    return `[\n  ${ary.join(",\n  ")}\n]`;    
+}
 export function stringifyMapWithCNames(map, oneLine = false) {
     let ret = [];
     Object.keys(map).forEach(key => {

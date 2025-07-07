@@ -2,6 +2,8 @@ import * as Logger from '../../Logger.wscript';
 import * as Csv from './csv.wscript';
 import * as Ent from './ent.wscript';
 import * as StringHelper from "../StringHelper.wscript";
+import {ArchiveXLConstants} from "./archiveXL_gender_and_body_types.wscript";
+import {stringifyArray} from "../StringHelper.wscript";
 
 // read root entity info only once per run
 let rootEntityCache = {};
@@ -15,6 +17,9 @@ let entFileInfo = [];
 // all factory info, read once
 let factoryInfo = [];
 
+// all factory info, read once
+let entFactoryMapping = {};
+
 // all tweak records, read from wkit
 let validRecords = [];
 
@@ -23,6 +28,9 @@ let invalidBases = {};
 
 // Collect entityName errors  
 let invalidEntityNames = {};
+
+// Collect appearance name errors  
+let invalidAppearanceNames = {};
 
 let itemDefinitionNames = [];
 
@@ -65,8 +73,9 @@ function verifyYamlFilePaths(data) {
 
 function getRootEntityInfo() {
     let ret = {};
-    const projectFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.ent'));
-    projectFiles.forEach((filePath) => {
+    const rootEntityFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.ent'));
+    
+    rootEntityFiles.forEach((filePath) => {
         if (rootEntityCache[filePath]) {
             return rootEntityCache[filePath];
         }
@@ -94,6 +103,20 @@ function getFactoryInfo() {
     return ret;
 }
 
+function mapFactoriesToEntFiles() {
+    if (Object.keys(entFactoryMapping).length > 0) {
+        return;
+    }
+    
+    Object.keys(entFileInfo).forEach((entName) => {
+       const entInfo = entFileInfo[entName];
+       if (!entInfo?.filePath) {
+           return;
+       }
+        entFactoryMapping[entName] = entInfo.filePath;
+    });    
+}
+
 function getValidRecords() {
     if (!validRecords.length) {
         Array.from(wkit.GetRecords()).forEach(val => validRecords.push(val));        
@@ -105,36 +128,43 @@ function getValidRecords() {
 function verifyItemDefinition(recordData, recordName) {
     // currently only implemented for clothing items
     if (!recordData?.entityName) {
-        Logger.Success(JSON.stringify(recordData, null, 2));
         return;
     }
 
     const base = recordData["$base"];
     if (!base) {
         invalidBases[recordName] = 'No $base attribute found';
-    } else if (!itemDefinitionNames.includes(base) && !getValidRecords().includes(base)) {
+    } else if (!itemDefinitionNames.includes(base) 
+        && !ArchiveXLConstants.validClothingBaseTypes.includes(base)
+        && !getValidRecords().includes(base)) {
         invalidBases[recordName] = `${base}`;
-    } else {
-        Logger.Success(`base ${base} found for ${recordName}`);
-    }
+    } 
     
     const entityName = recordData.entityName;
     if (!entityName && !itemDefinitionNames.includes(recordName)) {
         invalidEntityNames[recordName] = `Record has no entityName - it will not spawn`;
     }
-    if (!Object.keys(entFileInfo).includes(entityName)) {
-        invalidEntityNames[recordName] = `${entityName} not registered`;
+    if (!Object.keys(factoryInfo).includes(entityName)) {
+        invalidEntityNames[recordName] = `${entityName} not registered in any factory.csv`;
+        return;
     }
+    
+    const appearanceName = recordData.appearanceName?.split("!")[0] ?? '';
+    if (!appearanceName) {
+        invalidAppearanceNames[recordName] = `No appearanceName found`;
+    } else if (!Object.keys(entFactoryMapping).includes(appearanceName)) {
+        invalidAppearanceNames[recordName] = `appearanceName name ${appearanceName} not found (expected: ${entityName})`;
+    }    
 }
 
 function verifyTweakXlFile(data) {
     factoryInfo = getFactoryInfo();
     entFileInfo = getRootEntityInfo();
+    mapFactoriesToEntFiles();
     
     Object.keys(data).forEach(key => itemDefinitionNames.push(key));
     
     itemDefinitionNames.forEach((name) => {
-        Logger.Success(`Validating item definition: ${name}`);
         verifyItemDefinition(data[name], name);
     });
 
@@ -152,6 +182,11 @@ function verifyTweakXlFile(data) {
             + StringHelper.stringifyMap(invalidEntityNames).replaceAll("\n", "\n\t")
         );
     }
+    if (Object.keys(invalidAppearanceNames).length > 0) {
+        Logger.Warning("Your items seem to have invalid appearance names (ignore this if everything works):\n\t"
+            + StringHelper.stringifyMap(invalidAppearanceNames).replaceAll("\n", "\n\t"));
+        Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`)
+    }
 }
 
 function reset_caches() {
@@ -159,6 +194,8 @@ function reset_caches() {
     rootEntityCache = {};
     invalidBases = {};
     invalidEntityNames = {};
+    invalidAppearanceNames = {};
+    entFactoryMapping = {};
 
     factoryInfo = {};
     entFileInfo = {};

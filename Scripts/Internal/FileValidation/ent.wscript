@@ -13,7 +13,11 @@ export function Get_Entity_Appearances(filePath)
              return ret;
         }
         (data.appearances ?? {}).forEach((item) => {
-           ret[item.name ?? ""] = `${item.appearanceResource?.DepotPath?.value}`;
+           ret[item.name ?? ""] = {
+               appFile: `${item.appearanceResource?.DepotPath?.value}`,
+               appName: (item.appearanceName || item.name).value,
+               filePath: filePath,
+           };
         });
     } catch (e) {
         Logger.Error(`Error while parsing ${filePath}: ${e.message}`);

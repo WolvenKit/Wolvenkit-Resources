@@ -22,4 +22,17 @@ export class ArchiveXLConstants {
             'lush',
         ],
     }
+    
+    static validClothingBaseTypes = [
+        "Items.GenericHeadClothing",
+        "Items.Glasses",
+        "Items.Visor",
+        "Items.GenericFaceClothing",
+        "Items.GenericInnerChestClothing",
+        "Items.GenericOuterChestClothing",
+        "Items.GenericLegClothing",
+        "Items.Skirt",
+        "Items.GenericFootClothing",
+        "Items.Outfit"
+    ];
 }
