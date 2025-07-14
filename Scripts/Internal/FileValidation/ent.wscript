@@ -1,6 +1,29 @@
 import * as Logger from '../../Logger.wscript';
 import * as TypeHelper from '../../TypeHelper.wscript';
 
+/**
+ * @typedef {Object} EntityInfo
+ * @property {string} appFile
+ * @property {string} appName
+ * @property {string} filePath
+ */
+
+/**
+ * returns a map entity appearance info from the file
+ * <pre>
+ * {
+ *     "name": {  
+ *       "appFile": "path_to_file.app",
+ *       "appName": "path_to_file.app",
+ *       "filePath": "path_to_file.ent"
+ *     },
+ * }
+ * </pre>
+ * @param filePath
+ * @returns {{
+ *     [key: string]: { appFile: string, appName: string, filePath: string }
+ * }}
+ */
 export function Get_Entity_Appearances(filePath)
 {
     const ret = {};

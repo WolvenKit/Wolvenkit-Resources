@@ -16,6 +16,10 @@ export function stringifyMap(map, oneLine = false) {
     return ret.join("\n");
 }
 
+export function stringifyMapIndent(map) {
+    return stringifyMap(map).replaceAll("\n", "\n\t");
+}
+
 export function stringifyArray(ary) {
     let ret = [];
     if (ary.length === 1) { 

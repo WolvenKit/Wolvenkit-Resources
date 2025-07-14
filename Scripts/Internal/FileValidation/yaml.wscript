@@ -3,25 +3,71 @@ import * as Csv from './csv.wscript';
 import * as Ent from './ent.wscript';
 import * as StringHelper from "../StringHelper.wscript";
 import {ArchiveXLConstants} from "./archiveXL_gender_and_body_types.wscript";
-import {stringifyArray} from "../StringHelper.wscript";
+import {stringifyArray, stringifyMapIndent} from "../StringHelper.wscript";
 
-// read root entity info only once per run
+/**
+ * read factory info only once per run
+ * @type {Object.<string, Object.<string, EntityInfo>>} 
+ * <pre>
+ *     {
+ *          filePath: {
+ *              "entityName": Object.<EntityInfo>,
+ *              "entityName2": Object.<EntityInfo>,
+ *          }
+ *     } 
+ * </pre>
+ */
 let rootEntityCache = {};
 
-// read factory info only once per run
+/**
+ * read factory info only once per run
+ * @type {Object.<string, Object.<string, string>>}
+ * <pre>
+ *     {
+ *          filePath: {
+ *              "entityName": "filePath",
+ *              "entityName2": "filePath",
+ *          }
+ *     } 
+ * </pre>
+ */
 let factoryInfoCache = {};
 
-// all root entity info, read once
-let entFileInfo = [];
+/**
+ * all root entity info, read once. Group by entity name (key from csv)
+ * @type {Object.<string, EntityInfo>}
+ */
+let entFileInfo = {};
 
-// all factory info, read once
-let factoryInfo = [];
+/**
+ * all factory info, read once.
+ * @type {Object.<string, string>} 
+ * <pre>
+ *     { `entityName` => `rootEntityPath` }
+ *</pre>
+ */
+let factoryInfo = {};
 
-// all factory info, read once
+/**
+ * Maps entity to factory files
+ * @type {Object.<string, EntityInfo>}
+ * <pre>
+ *     { `appearanceName` => Object.<EntityInfo> }
+ *</pre>
+ */
 let entFactoryMapping = {};
 
-// all tweak records, read from wkit
+/**
+ * all tweak records, read from wkit
+ * @type {Array<string>}
+ */
 let validRecords = [];
+
+/**
+ * Array of all records defined in the tweak file - those are valid as $base 
+ * @type {Array<string>}
+ */
+let itemDefinitionNames = [];
 
 // Collect $base errors
 let invalidBases = {};
@@ -31,8 +77,6 @@ let invalidEntityNames = {};
 
 // Collect appearance name errors  
 let invalidAppearanceNames = {};
-
-let itemDefinitionNames = [];
 
 function collectFilePaths(data, filePaths = []) {
     if (!data) {
@@ -124,8 +168,45 @@ function getValidRecords() {
     return validRecords;
 }
 
+const instancePartRegex = /\$\(([^)]+)\)/g;
 
-function verifyItemDefinition(recordData, recordName) {
+/**
+ * Generate all possible appearance names by resolving substitution
+ * @param {string} appearanceName (already cut off at !)
+ * @param  {Object.<string, string>} instances
+ * @returns {string[]} 
+ */
+function GenerateAppearanceNames(appearanceName, instances) {
+    if (!appearanceName) {
+        return [];
+    }
+    
+    appearanceName = appearanceName.split("+")[0].replaceAll('{', '(').replaceAll('}', ')');
+    
+    if (!instances) {
+        return [appearanceName];
+    }
+
+    const names = new Set();
+
+    for (const instance of instances) {
+        let name = appearanceName.replace(instancePartRegex, (_, key) => instance[key] ?? '');
+        names.add(name);
+    }
+
+    return Array.from(names);
+}
+/**
+ * @param recordName name of the record, e.g. "Items.your_custom_item"
+ * @param recordData
+ * @param {string} recordData.$base
+ * @param {string} recordData.entityName
+ * @param {string} recordData.appearanceName
+ * @param {string} recordData.displayName
+ * @param {{ atlasResourcePath: string, atlasPartName: string }} recordData.icon
+ * @param {Object.<string, string>} recordData.$instances
+ */
+function verifyItemDefinition(recordName, recordData) {
     // currently only implemented for clothing items
     if (!recordData?.entityName) {
         return;
@@ -145,16 +226,23 @@ function verifyItemDefinition(recordData, recordName) {
         invalidEntityNames[recordName] = `Record has no entityName - it will not spawn`;
     }
     if (!Object.keys(factoryInfo).includes(entityName)) {
-        invalidEntityNames[recordName] = `${entityName} not registered in any factory.csv`;
+        invalidEntityNames[recordName] = `entityName '${entityName}' is not registered in any factory.csv`;
         return;
     }
     
     const appearanceName = recordData.appearanceName?.split("!")[0] ?? '';
+    
     if (!appearanceName) {
         invalidAppearanceNames[recordName] = `No appearanceName found`;
-    } else if (!Object.keys(entFactoryMapping).includes(appearanceName)) {
-        invalidAppearanceNames[recordName] = `appearanceName name ${appearanceName} not found (expected: ${entityName})`;
-    }    
+        return;
+    }
+
+    GenerateAppearanceNames(appearanceName, recordData.$instances).forEach(name => {
+        if (!Object.keys(entFactoryMapping).includes(name)) {
+            invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root entity files`;
+        }    
+    });
+        
 }
 
 function verifyTweakXlFile(data) {
@@ -165,42 +253,45 @@ function verifyTweakXlFile(data) {
     Object.keys(data).forEach(key => itemDefinitionNames.push(key));
     
     itemDefinitionNames.forEach((name) => {
-        verifyItemDefinition(data[name], name);
+        verifyItemDefinition(name, data[name]);
     });
 
     if (Object.keys(invalidBases).length > 0) {
         Logger.Warning("File validation found invalid item $base keys. Find a list for clothing in the EquipmentEx wiki:");
         Logger.Info("\thttps://github.com/psiberx/cp2077-equipment-ex?tab=readme-ov-file#auto-conversions");
         Logger.Info("\tIf this is not a clothing item, please check for typos.\n\t"
-            + StringHelper.stringifyMap(invalidBases).replaceAll("\n", "\n\t")
+            + StringHelper.stringifyMapIndent(invalidBases)
         );
     }
 
     if (Object.keys(invalidEntityNames).length > 0) {
         Logger.Warning("File validation found invalid entity names. Make sure to register them in your .csv file.");
         Logger.Info(`\tValid entity names in your project are: [ ${Object.keys(factoryInfo).join(', ')} ]\n\t`
-            + StringHelper.stringifyMap(invalidEntityNames).replaceAll("\n", "\n\t")
+            + StringHelper.stringifyMapIndent(invalidEntityNames)
         );
     }
     if (Object.keys(invalidAppearanceNames).length > 0) {
         Logger.Warning("Your items seem to have invalid appearance names (ignore this if everything works):\n\t"
-            + StringHelper.stringifyMap(invalidAppearanceNames).replaceAll("\n", "\n\t"));
+            + StringHelper.stringifyMapIndent(invalidAppearanceNames));
         Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`)
     }
 }
 
 function reset_caches() {
-    factoryInfoCache = {};
     rootEntityCache = {};
+    factoryInfoCache = {};
+
+    entFileInfo = {};
+    factoryInfo = {};
+    
+    entFactoryMapping = {};
+    // don't delete valid records
+    itemDefinitionNames.length = 0;
+    
     invalidBases = {};
     invalidEntityNames = {};
-    invalidAppearanceNames = {};
-    entFactoryMapping = {};
+    invalidAppearanceNames = {};    
 
-    factoryInfo = {};
-    entFileInfo = {};
-
-    itemDefinitionNames.length = 0;
 }
 
 export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
@@ -210,6 +301,7 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
     }
     
     reset_caches();
+    
     if (isXlFile) {
         verifyYamlFilePaths(data);        
     } else {

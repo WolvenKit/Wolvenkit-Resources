@@ -1,6 +1,11 @@
 import * as Logger from '../../Logger.wscript';
 import * as TypeHelper from '../../TypeHelper.wscript';
 
+/**
+ * Returns a map of factory info from the file (which entity names use which root entity)
+ * @param {string} filePath - Path to the configuration file
+ * @returns {Object.<string, string>} Map `entityName` => `rootEntityPath`
+ */
 export function Get_Factory_Info(filePath)
 {
     const ret = {};
