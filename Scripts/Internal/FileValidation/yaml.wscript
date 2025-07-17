@@ -230,14 +230,17 @@ function verifyItemDefinition(recordName, recordData) {
         return;
     }
     
-    const appearanceName = recordData.appearanceName?.split("!")[0] ?? '';
-    
-    if (!appearanceName) {
+    if (!recordData.appearanceName) {
         invalidAppearanceNames[recordName] = `No appearanceName found`;
+        return;        
+    }
+    
+    if (recordData.appearanceName.includes("+") && !recordData.appearanceName.includes("!")) {
+        Logger.Warn(`AppearanceName ${recordData.appearanceName} contains + but no ! - dynamic variants will not work!`);
         return;
     }
 
-    GenerateAppearanceNames(appearanceName, recordData.$instances).forEach(name => {
+    GenerateAppearanceNames(recordData.appearanceName?.split("!")[0], recordData.$instances).forEach(name => {
         if (!Object.keys(entFactoryMapping).includes(name)) {
             invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root entity files`;
         }    
