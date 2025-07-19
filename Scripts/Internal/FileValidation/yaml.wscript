@@ -101,13 +101,14 @@ function verifyYamlFilePaths(data) {
     const filePaths = collectFilePaths(data);
     const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
 
-    let filesNotFound = filePaths.filter(p => !projectFiles.find(str => str === p));
+    // allow patching of base game files
+    let filesNotFound = filePaths.filter(p =>  !(p.startsWith('base') || p.startsWith('ep1')) && !projectFiles.find(str => str === p));
     
     // if link destination files aren't found, that's fine
     if (data.resource && data.resource.link) {
         const linkKeys = Object.keys(data.resource.link);
         const linkValues = collectFilePaths(data.resource.link).filter(p => !linkKeys.includes(p));
-        filesNotFound = filesNotFound.filter(p => !linkValues.includes(p));        
+        filesNotFound = filesNotFound.filter(p => !linkValues.includes(p));
     }
 
     if (filesNotFound.length > 0) {
