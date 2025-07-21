@@ -237,7 +237,7 @@ function verifyItemDefinition(recordName, recordData) {
     }
     
     if (recordData.appearanceName.includes("+") && !recordData.appearanceName.includes("!")) {
-        Logger.Warn(`AppearanceName ${recordData.appearanceName} contains + but no ! - dynamic variants will not work!`);
+        Logger.Warning(`AppearanceName ${recordData.appearanceName} contains + but no ! - dynamic variants will not work!`);
         return;
     }
 
