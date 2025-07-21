@@ -5,6 +5,7 @@ import {
     LOGLEVEL_INFO,
     LOGLEVEL_WARN
 } from "../../Wolvenkit_FileValidation.wscript";
+import * as Logger from "../../Logger.wscript";
 import {
     checkDepotPath,
     getNumCurlyBraces,
@@ -23,6 +24,10 @@ import {ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution} from "./archiveXL.
  */
 export function validateMaterialKeyValuePair(key, materialValue, info) {
     if (key === "$type" || hasUppercasePaths) {
+        return;
+    }
+    if (key === '' || key === 'None') {
+        addWarning(LOGLEVEL_WARN, `${info} has an empty value - it will be ignored.`);
         return;
     }
 
