@@ -13,7 +13,7 @@ export function Get_Factory_Info(filePath)
     try {
         const file = wkit.GameFileToJson(wkit.GetFileFromProject(filePath, OpenAs.GameFile));
         let json = TypeHelper.JsonParse(file);
-        
+
         (json?.Data?.RootChunk?.compiledData ?? {}).forEach((item) => {
             if (item.Length < 2)
             {
@@ -23,6 +23,6 @@ export function Get_Factory_Info(filePath)
         });
     } catch (e) {
         Logger.Error(`Error while parsing ${filePath}: ${e.message}`);
-    }    
+    }
     return ret;
 }

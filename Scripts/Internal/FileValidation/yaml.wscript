@@ -1,20 +1,21 @@
 import * as Logger from '../../Logger.wscript';
 import * as Csv from './csv.wscript';
 import * as Ent from './ent.wscript';
+import * as Json from './json.wscript';
 import * as StringHelper from "../StringHelper.wscript";
 import {ArchiveXLConstants} from "./archiveXL_gender_and_body_types.wscript";
 import {stringifyArray, stringifyMapIndent} from "../StringHelper.wscript";
 
 /**
  * read factory info only once per run
- * @type {Object.<string, Object.<string, EntityInfo>>} 
+ * @type {Object.<string, Object.<string, EntityInfo>>}
  * <pre>
  *     {
  *          filePath: {
  *              "entityName": Object.<EntityInfo>,
  *              "entityName2": Object.<EntityInfo>,
  *          }
- *     } 
+ *     }
  * </pre>
  */
 let rootEntityCache = {};
@@ -28,10 +29,28 @@ let rootEntityCache = {};
  *              "entityName": "filePath",
  *              "entityName2": "filePath",
  *          }
- *     } 
+ *     }
  * </pre>
  */
 let factoryInfoCache = {};
+
+/**
+ * read factory info only once per run
+ * @type {Object.<string, Object.<string, string>>}
+ * <pre>
+ *     {
+ *          filePath: [
+ *              secondaryKey: {
+ *                  "femaleVariant": "string",
+ *                  "maleVariant": "string",
+ *                  "primaryKey": number,
+ *                  "secondaryKey": "string",
+ *              }
+ *          ]
+ *     }
+ * </pre>
+ */
+let translateInfoCache = {};
 
 /**
  * all root entity info, read once. Group by entity name (key from csv)
@@ -41,7 +60,7 @@ let entFileInfo = {};
 
 /**
  * all factory info, read once.
- * @type {Object.<string, string>} 
+ * @type {Object.<string, string>}
  * <pre>
  *     { `entityName` => `rootEntityPath` }
  *</pre>
@@ -64,18 +83,22 @@ let entFactoryMapping = {};
 let validRecords = [];
 
 /**
- * Array of all records defined in the tweak file - those are valid as $base 
+ * Array of all records defined in the tweak file - those are valid as $base
  * @type {Array<string>}
  */
 let itemDefinitionNames = [];
 
+let translationEntries = {};
+
 // Collect $base errors
 let invalidBases = {};
 
-// Collect entityName errors  
+// Collect entityName errors
 let invalidEntityNames = {};
 
-// Collect appearance name errors  
+let undefinedTranslationKeys = {};
+
+// Collect appearance name errors
 let invalidAppearanceNames = {};
 
 function collectFilePaths(data, filePaths = []) {
@@ -103,7 +126,7 @@ function verifyYamlFilePaths(data) {
 
     // allow patching of base game files
     let filesNotFound = filePaths.filter(p =>  !(p.startsWith('base') || p.startsWith('ep1')) && !projectFiles.find(str => str === p));
-    
+
     // if link destination files aren't found, that's fine
     if (data.resource && data.resource.link) {
         const linkKeys = Object.keys(data.resource.link);
@@ -116,10 +139,26 @@ function verifyYamlFilePaths(data) {
     }
 }
 
+function getTranslationEntries() {
+    let ret = {};
+    const translationFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.json'));
+
+    translationFiles.forEach((filePath) => {
+        if (translateInfoCache[filePath]) {
+            return translateInfoCache[filePath];
+        }
+        translateInfoCache[filePath] = Json.Get_Translation_Entries(filePath);
+
+        ret = {...ret, ...translateInfoCache[filePath]};
+    });
+    return ret;
+
+}
+
 function getRootEntityInfo() {
     let ret = {};
     const rootEntityFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.ent'));
-    
+
     rootEntityFiles.forEach((filePath) => {
         if (rootEntityCache[filePath]) {
             return rootEntityCache[filePath];
@@ -142,8 +181,8 @@ function getFactoryInfo() {
             return factoryInfoCache[filePath];
         }
         factoryInfoCache[filePath] = Csv.Get_Factory_Info(filePath);
-        
-        ret = {...ret, ...factoryInfoCache[filePath]};        
+
+        ret = {...ret, ...factoryInfoCache[filePath]};
     });
     return ret;
 }
@@ -152,19 +191,19 @@ function mapFactoriesToEntFiles() {
     if (Object.keys(entFactoryMapping).length > 0) {
         return;
     }
-    
+
     Object.keys(entFileInfo).forEach((entName) => {
        const entInfo = entFileInfo[entName];
        if (!entInfo?.filePath) {
            return;
        }
         entFactoryMapping[entName] = entInfo.filePath;
-    });    
+    });
 }
 
 function getValidRecords() {
     if (!validRecords.length) {
-        Array.from(wkit.GetRecords()).forEach(val => validRecords.push(val));        
+        Array.from(wkit.GetRecords()).forEach(val => validRecords.push(val));
     }
     return validRecords;
 }
@@ -175,15 +214,15 @@ const instancePartRegex = /\$\(([^)]+)\)/g;
  * Generate all possible appearance names by resolving substitution
  * @param {string} appearanceName (already cut off at !)
  * @param  {Object.<string, string>} instances
- * @returns {string[]} 
+ * @returns {string[]}
  */
-function GenerateAppearanceNames(appearanceName, instances) {
+function SubstituteInstanceWildcards(appearanceName, instances) {
     if (!appearanceName) {
         return [];
     }
-    
+
     appearanceName = appearanceName.split("+")[0].replaceAll('{', '(').replaceAll('}', ')');
-    
+
     if (!instances) {
         return [appearanceName];
     }
@@ -216,12 +255,12 @@ function verifyItemDefinition(recordName, recordData) {
     const base = recordData["$base"];
     if (!base) {
         invalidBases[recordName] = 'No $base attribute found';
-    } else if (!itemDefinitionNames.includes(base) 
+    } else if (!itemDefinitionNames.includes(base)
         && !ArchiveXLConstants.validClothingBaseTypes.includes(base)
         && !getValidRecords().includes(base)) {
         invalidBases[recordName] = `${base}`;
-    } 
-    
+    }
+
     const entityName = recordData.entityName;
     if (!entityName && !itemDefinitionNames.includes(recordName)) {
         invalidEntityNames[recordName] = `Record has no entityName - it will not spawn`;
@@ -230,32 +269,42 @@ function verifyItemDefinition(recordName, recordData) {
         invalidEntityNames[recordName] = `entityName '${entityName}' is not registered in any factory.csv`;
         return;
     }
-    
+
     if (!recordData.appearanceName) {
         invalidAppearanceNames[recordName] = `No appearanceName found`;
-        return;        
+        return;
     }
-    
+
     if (recordData.appearanceName.includes("+") && !recordData.appearanceName.includes("!")) {
         Logger.Warning(`AppearanceName ${recordData.appearanceName} contains + but no ! - dynamic variants will not work!`);
         return;
     }
 
-    GenerateAppearanceNames(recordData.appearanceName?.split("!")[0], recordData.$instances).forEach(name => {
+    SubstituteInstanceWildcards(recordData.appearanceName?.split("!")[0], recordData.$instances).forEach(name => {
         if (!Object.keys(entFactoryMapping).includes(name)) {
             invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root entity files`;
-        }    
+        }
     });
-        
+
+    if (recordData.displayName && !translationEntries.length > 0) {
+        SubstituteInstanceWildcards(recordData.displayName, recordData.$instances).forEach(appearanceName => {
+            appearanceName = appearanceName.replaceAll("LocKey#", "");
+            if (!translationEntries[appearanceName]) {
+                undefinedTranslationKeys[recordName] ??= [];
+                undefinedTranslationKeys[recordName].push(appearanceName);
+            }
+        });
+    }
 }
 
 function verifyTweakXlFile(data) {
     factoryInfo = getFactoryInfo();
     entFileInfo = getRootEntityInfo();
+    translationEntries = getTranslationEntries();
     mapFactoriesToEntFiles();
-    
+
     Object.keys(data).forEach(key => itemDefinitionNames.push(key));
-    
+
     itemDefinitionNames.forEach((name) => {
         verifyItemDefinition(name, data[name]);
     });
@@ -279,22 +328,28 @@ function verifyTweakXlFile(data) {
             + StringHelper.stringifyMapIndent(invalidAppearanceNames));
         Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`)
     }
+    if (Object.keys(undefinedTranslationKeys).length > 0) {
+        Logger.Warning("Your items seem to be missing appearance definitions:\n\t"
+            + StringHelper.stringifyMapIndent(undefinedTranslationKeys));
+    }
 }
 
 function reset_caches() {
     rootEntityCache = {};
     factoryInfoCache = {};
+    translateInfoCache = {};
 
     entFileInfo = {};
     factoryInfo = {};
-    
+
     entFactoryMapping = {};
     // don't delete valid records
     itemDefinitionNames.length = 0;
-    
+
     invalidBases = {};
     invalidEntityNames = {};
-    invalidAppearanceNames = {};    
+    invalidAppearanceNames = {};
+    undefinedTranslationKeys = {};
 
 }
 
@@ -303,11 +358,11 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
         Logger.Info("No data found in YAML file. Skipping validation.")
         return;
     }
-    
+
     reset_caches();
-    
+
     if (isXlFile) {
-        verifyYamlFilePaths(data);        
+        verifyYamlFilePaths(data);
     } else {
         verifyTweakXlFile(data);
     }
