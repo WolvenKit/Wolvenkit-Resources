@@ -241,46 +241,59 @@ function SubstituteInstanceWildcards(appearanceName, instances) {
  * @param recordData
  * @param {string} recordData.$base
  * @param {string} recordData.entityName
+ * @param {string?} recordData.appearanceResourceName
  * @param {string} recordData.appearanceName
  * @param {string} recordData.displayName
+ * @param {string[]?} recordData.visualTags
  * @param {{ atlasResourcePath: string, atlasPartName: string }} recordData.icon
  * @param {Object.<string, string>} recordData.$instances
  */
 function verifyItemDefinition(recordName, recordData) {
-    // currently only implemented for clothing items
-    if (!recordData?.entityName) {
-        return;
-    }
-
-    const base = recordData["$base"];
+   
+    const base = recordData["$base"] ?? recordData["$type"];
     if (!base) {
         invalidBases[recordName] = 'No $base attribute found';
-    } else if (!itemDefinitionNames.includes(base)
+    } else if (!recordData["$type"] && !itemDefinitionNames.includes(base)
         && !ArchiveXLConstants.validClothingBaseTypes.includes(base)
         && !getValidRecords().includes(base)) {
+        // Only check if $base is used, not for $type
         invalidBases[recordName] = `${base}`;
     }
 
-    const entityName = recordData.entityName;
+    const entityName = recordData.entityName ?? recordData.appearanceResourceName;
+    
     if (!entityName && !itemDefinitionNames.includes(recordName)) {
-        invalidEntityNames[recordName] = `Record has no entityName - it will not spawn`;
-    }
+        invalidEntityNames[recordName] = `Record has no entityName and no appearanceResourceName - it will not spawn`;            
+    } 
+    
     if (!Object.keys(factoryInfo).includes(entityName)) {
-        invalidEntityNames[recordName] = `entityName '${entityName}' is not registered in any factory.csv`;
+        if (!!entityName) {
+            invalidEntityNames[recordName] = `'${entityName}' is not registered in any factory.csv`;            
+        }
+        return;
+    }
+    
+    if (recordData.projectileTemplateName && !Object.keys(factoryInfo).includes(recordData.projectileTemplateName)) {
+        const errorMsg =  invalidEntityNames[recordName] ? invalidEntityNames[recordName] + "\n" : '';
+        invalidEntityNames[recordName] = `${errorMsg}projectileTemplateName '${recordData.projectileTemplateName}' is not registered in any factory.csv`;
+    }
+
+    let appearanceNameOrTag = recordData.appearanceName;
+    if (!appearanceNameOrTag && !!recordData.appearanceResourceName) {
+        appearanceNameOrTag = (recordData.visualTags ?? []).filter(t => t !== "Default").pop();
+    }
+    
+    if (!appearanceNameOrTag) {
+        invalidAppearanceNames[recordName] = `No appearanceName or visualTag found`;
         return;
     }
 
-    if (!recordData.appearanceName) {
-        invalidAppearanceNames[recordName] = `No appearanceName found`;
+    if (appearanceNameOrTag.includes("+") && !appearanceNameOrTag.includes("!")) {
+        Logger.Warning(`AppearanceName ${appearanceNameOrTag} contains + but no ! - dynamic variants will not work!`);
         return;
     }
 
-    if (recordData.appearanceName.includes("+") && !recordData.appearanceName.includes("!")) {
-        Logger.Warning(`AppearanceName ${recordData.appearanceName} contains + but no ! - dynamic variants will not work!`);
-        return;
-    }
-
-    SubstituteInstanceWildcards(recordData.appearanceName?.split("!")[0], recordData.$instances).forEach(name => {
+    SubstituteInstanceWildcards(appearanceNameOrTag?.split("!")[0], recordData.$instances).forEach(name => {
         if (!Object.keys(entFactoryMapping).includes(name)) {
             invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root entity files`;
         }
