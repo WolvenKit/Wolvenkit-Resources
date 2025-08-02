@@ -544,12 +544,11 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 
         const meshPath = componentName && meshesByComponentName[componentName] ? meshesByComponentName[componentName] : '';
         if (meshPath && !checkDepotPath(meshPath, info)) {
-            const appearanceNames = component_collectAppearancesFromMesh(meshPath);
+            const appearanceNames = component_collectAppearancesFromMesh(meshPath) ?? [];
             const meshAppearanceName = stringifyPotentialCName(componentOverride["meshAppearance"]);
             if (isDynamicAppearance) {
                 // TODO: Not implemented yet
-            } else if ((appearanceNames || []).length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName)
-            ) {
+            } else if (appearanceNames.length == 0 || (appearanceNames.length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName))) {
                 appearanceNotFound(meshPath, meshAppearanceName, info);
             }
         }
