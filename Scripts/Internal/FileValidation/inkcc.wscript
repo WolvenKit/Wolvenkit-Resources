@@ -39,9 +39,6 @@ function validateGameuiAppearanceInfo(debugInfo, gameUiAppearanceOptions, slotGr
 
 function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOptions, slotGroupsResolved) {
     
-
-    
-        
     for (let i = 0; i < gameUiSwitcherOptions.length; i++) {
         const gameSwitcherOption = gameUiSwitcherOptions[i];
        
@@ -81,9 +78,10 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
 
         const link = stringifyWithSpaces(option["link"]);
         const name = stringifyWithSpaces(option["name"]);
+        const uiSlot = stringifyWithSpaces(option["uiSlot"]);
 
-        if (i > 0 && (!name || name === "None")) {
-            Logger.Error(`${groupKey}: customizationOptions[${i}] has no name (only the first can be empty)`);
+        if (i > 0 && (!name || name === "None") && (!link || link === "None") || (!uiSlot || uiSlot === "None")) {
+            Logger.Error(`${groupKey}: customizationOptions[${i}] has no name, link, or uiSlot`);
         }
 
         const validLinksForGroup = validLinks[groupKey] ?? [];
