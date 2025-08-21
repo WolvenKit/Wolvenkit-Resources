@@ -382,10 +382,6 @@ function checkForEmptyMeshes() {
     
     let emptyMeshes = emptyMeshNames.filter(n => !patchPaths.includes(n));
     
-    Logger.Success("all patch paths: " + stringifyArray(patchPaths));
-    Logger.Success("all empty meshes: " + stringifyArray(emptyMeshNames));
-    Logger.Success("filtered: " + stringifyArray(emptyMeshes));
-
     if (emptyMeshes.length > 0) {
         addWarning(LOGLEVEL_ERROR, `The following meshes have no appearances defined! This will cause crashes:\n\t ${emptyMeshes.join('\n\t')}`);        
     }
