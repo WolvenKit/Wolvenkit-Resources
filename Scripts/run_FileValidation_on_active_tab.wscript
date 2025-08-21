@@ -12,7 +12,7 @@ function Run() {
         Logger.Error('Failed to find active document');
         return;
     }
-    
+        
     let absolutePath = `${activeDocument.FilePath}`;
     if (!absolutePath) {
         Logger.Error('No file path in active document. Did you add this file to your project?');
@@ -24,7 +24,7 @@ function Run() {
     if (absolutePath.includes("resources\\")) {
         try {
             relativePath = absolutePath.split('resources\\').pop();
-            activeFile = wkit.YamlToJson( wkit.LoadFromResources(relativePath));            
+            activeFile = wkit.YamlToJson(wkit.LoadFromResources(relativePath));
         } catch {
             Logger.Error(`Failed to parse resource file: ${absolutePath}`);
             return;

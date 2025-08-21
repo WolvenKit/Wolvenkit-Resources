@@ -5,6 +5,10 @@ import * as Json from './json.wscript';
 import * as StringHelper from "../StringHelper.wscript";
 import {ArchiveXLConstants} from "./archiveXL_gender_and_body_types.wscript";
 import {stringifyArray, stringifyMapIndent} from "../StringHelper.wscript";
+import {GetAllProjectFiles, readYamlAsJson} from "../FileHelper.wscript";
+import * as TypeHelper from "../../TypeHelper.wscript";
+import {getEmptyMeshNames, meshAndMorphtargetReset} from "./mesh_and_morphtarget.wscript";
+import {addWarning, LOGLEVEL_ERROR, LOGLEVEL_WARN, printUserInfo} from "../../Wolvenkit_FileValidation.wscript";
 
 /**
  * read factory info only once per run
@@ -364,6 +368,32 @@ function reset_caches() {
     invalidAppearanceNames = {};
     undefinedTranslationKeys = {};
 
+    meshAndMorphtargetReset();
+}
+
+function checkForEmptyMeshes() {
+
+    let allPatchPaths = collectAllPatchPaths();
+    const patchPaths = Object.values(allPatchPaths)
+        .flat()
+        .filter((value, index, self) => self.indexOf(value) === index);
+
+    let emptyMeshNames = getEmptyMeshNames();
+    
+    let emptyMeshes = emptyMeshNames.filter(n => !patchPaths.includes(n));
+    
+    Logger.Success("all patch paths: " + stringifyArray(patchPaths));
+    Logger.Success("all empty meshes: " + stringifyArray(emptyMeshNames));
+    Logger.Success("filtered: " + stringifyArray(emptyMeshes));
+
+    if (emptyMeshes.length > 0) {
+        addWarning(LOGLEVEL_ERROR, `The following meshes have no appearances defined! This will cause crashes:\n\t ${emptyMeshes.join('\n\t')}`);        
+    }
+    
+    let emptyKeys = emptyMeshNames.filter(n => Object.keys(allPatchPaths).includes(n));
+    if (emptyKeys.length > 0) {
+        addWarning(LOGLEVEL_WARN, `You are patching empty material meshes:\n\t ${emptyKeys.join('\n\t')}`);
+    }
 }
 
 export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
@@ -371,12 +401,35 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
         Logger.Info("No data found in YAML file. Skipping validation.")
         return;
     }
-
     reset_caches();
 
     if (isXlFile) {
+        if (data.resources) {
+            Logger.Warning("Your yaml refers to 'resources', did you mean 'resource'?");
+        }
         verifyYamlFilePaths(data);
+        checkForEmptyMeshes(data);
+        printUserInfo();
     } else {
         verifyTweakXlFile(data);
     }
+}
+
+export function collectAllPatchPaths() {
+
+    const ret = {};
+    for (let filePath of GetAllProjectFiles('resources', 'xl')) {        
+        const data = readYamlAsJson(filePath)?.resource?.patch;
+       
+        if (!data) {
+            Logger.Error(`data.resource.patch not found in ${filePath}`);
+            continue;
+        }
+
+        const entries = Object.entries(data);
+        for (let [key, value] of entries) {            
+            ret[key] = [...(ret[key] ?? []), ...Array.from(value)];
+        }        
+    }
+    return ret;
 }

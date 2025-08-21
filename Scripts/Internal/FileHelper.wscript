@@ -97,3 +97,62 @@ export function ReadActiveFileAsJson(expectedFileExtension, suppressLogOutput = 
     }
     return null;
 }
+
+
+/**
+ * @param { 'resources' | 'archive' | 'raw' } folderName
+ * @param {{ string }} fileExtension
+ * @returns {string[]} List of matching file paths
+ */
+export function GetAllProjectFiles(folderName, fileExtension=undefined) {
+    let ret = [];
+    for (let filename of wkit.GetProjectFiles(folderName)) {
+        if (!fileExtension || filename.split('.').pop().endsWith(`${fileExtension}`.replace('.', ''))) {
+            ret.push(filename);
+        }
+    }
+    return ret;
+}
+
+export function readGameFile(filePath) {
+    let file, json;
+    try {
+        file = wkit.GetFileFromProject(filePath, OpenAs.GameFile);
+    } catch (err) { }
+
+    if (!file) {
+        Logger.Error($`Failed to read ${filePath}`);
+        return;
+    }
+
+    json = TypeHelper.JsonParse(wkit.GameFileToJson(file));
+
+    if (!json) {
+        Logger.Error($`Failed to parse content of ${filePath}`);
+        return;
+    }
+    return json;
+}
+export function readYamlAsJson(filePath) {
+    if (!filePath) {
+        Logger.Error(`no file path given`);
+        return;
+    }   
+    
+    let file, yaml, json;
+    try {
+        file = wkit.LoadFromResources(filePath)
+    } catch (err) { }
+
+    if (!file) {
+        Logger.Error(`Failed to read ${filePath}`);
+        return;
+    }
+    yaml = wkit.YamlToJson(file);
+
+    if (!yaml) {
+        Logger.Error(`Failed to parse content of ${filePath}`);
+    }
+    
+    return TypeHelper.JsonParse(yaml);
+}

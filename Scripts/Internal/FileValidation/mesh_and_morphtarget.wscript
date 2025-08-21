@@ -8,13 +8,14 @@ import {
     addWarning, getPathToCurrentFile,
     LOGLEVEL_ERROR,
     LOGLEVEL_INFO,
-    LOGLEVEL_WARN, meshSettings, PLACEHOLDER_NAME_REGEX
+    LOGLEVEL_WARN, meshSettings, pathToCurrentFile, PLACEHOLDER_NAME_REGEX
 } from "../../Wolvenkit_FileValidation.wscript";
 import * as FileValidation from "../../Wolvenkit_FileValidation.wscript";
 import * as TypeHelper from '../../TypeHelper.wscript';
 import {getArchiveXlResolvedPaths} from "./archiveXL.wscript";
 import {material_getMaterialPropertyValue, validateMaterialKeyValuePair} from "./material_and_shaders.wscript";
 import {JsonStringify} from "../../TypeHelper.wscript";
+import {GetAllProjectFiles, readGameFile} from "../FileHelper.wscript";
 
 
 // scan materials, save for the next function
@@ -24,7 +25,7 @@ let localIndexList = [];
 // if checkDuplicateMaterialDefinitions is used: warn user if duplicates exist in list
 let listOfMaterialProperties = {};
 
-
+let emptyMeshNames = [];
 
 function meshFile_validatePlaceholderMaterial(material, info) {
     if (meshSettings.validatePlaceholderValues && (material.values || []).length) {
@@ -264,28 +265,49 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     }
 }
 
+export function getEmptyMeshNames(fromProject = false) {
+    if (fromProject) {
+        emptyMeshNames.clear();
+    }
+    if (emptyMeshNames.length === 0) {
+        for (let filePath of GetAllProjectFiles('archive', 'mesh')) {
+            const data = readGameFile(filePath)?.Data?.RootChunk;
+            if (!data) continue;
+            if (data.appearances.length === 0 || data.materialEntries.length === 0) {
+                emptyMeshNames.push(filePath);
+            }            
+        }
+    }    
+    return emptyMeshNames;
+}
+
+export function meshAndMorphtargetReset() {
+    emptyMeshNames = [];
+}
+
+
 /**
  * @param {{ renderResourceBlob: {Data: {header: {renderChunkInfos }}} | string, Data: {RootChunk} }} mesh
  * @param {{ }} mesh.appearances[]
  * @param {{ }} mesh.materialEntries[]
  * @param {{ }} mesh.localMaterialBuffer[]
  * @param {{ }} mesh.preloadLocalMaterialInstances[]
+ * @param meshPath
  * @returns {*|boolean|boolean}
  * @private
  */
-export function _validateMeshFile(mesh) {
+export function _validateMeshFile(mesh, meshPath) {
     // check if file needs to be called recursively or is invalid
-    if (mesh?.Data?.RootChunk) return _validateMeshFile(mesh.Data.RootChunk);
+    if (mesh?.Data?.RootChunk) return _validateMeshFile(mesh.Data.RootChunk, meshPath);
     if (checkIfFileIsBroken(mesh, 'mesh')) return;
+
+    if (mesh.appearances.length === 0 || mesh.materialEntries.length === 0) {
+        emptyMeshNames.push(meshPath ?? pathToCurrentFile);
+        return;
+    }
+    
     checkMeshMaterialIndices(mesh);
-
-    if (mesh.appearances.length === 0 && meshSettings.checkEmptyAppearances) {
-        addWarning(LOGLEVEL_INFO, 'This mesh has no appearances. Unless it is intended for ArchiveXL resource patching, it will be invisible!');
-    }
-    if (mesh.materialEntries.length === 0 && meshSettings.checkEmptyAppearances) {
-        addWarning(LOGLEVEL_INFO, 'This mesh has no material definitions. Unless it is intended for ArchiveXL resource patching, it will be invisible!');
-    }
-
+    
     meshFile_collectDynamicChunkMaterials(mesh);
 
     const definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));

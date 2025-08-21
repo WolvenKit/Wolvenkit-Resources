@@ -13,7 +13,10 @@ import {
 } from "./Internal/FileValidation/00_shared.wscript";
 import { validateQuestphaseFile as validate_questphase_file } from "./Internal/FileValidation/graph_questphase.wscript"
 import { validateSceneFile as validate_scene_file } from "./Internal/FileValidation/graph_scene.wscript"
-import {_validateMeshFile} from "./Internal/FileValidation/mesh_and_morphtarget.wscript";
+import {
+    _validateMeshFile,
+    meshAndMorphtargetReset
+} from "./Internal/FileValidation/mesh_and_morphtarget.wscript";
 import Settings from "./hook_settings.wscript";
 import {validateMaterialKeyValuePair} from "./Internal/FileValidation/material_and_shaders.wscript";
 import {validate_yaml_file} from "./Internal/FileValidation/yaml.wscript";
@@ -121,7 +124,7 @@ export function addWarning(loglevel, text) {
     currentWarnings[getPathToCurrentFile()][text] = loglevel;
 }
 
-function printUserInfo() {    
+export function printUserInfo() {    
     for (const [filePath, warnings] of Object.entries(currentWarnings)) {
         if (warnings.length === 0) {
             return;
@@ -167,6 +170,8 @@ export function resetInternalFlagsAndCaches() {
     meshAppearancesNotFoundByComponent = {};
 
     currentWarnings = {};
+
+    meshAndMorphtargetReset();
 
     // if path to current file isn't set, get it from wkit
     pushCurrentFilePath(getPathToCurrentFile());
@@ -548,7 +553,7 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
             const meshAppearanceName = stringifyPotentialCName(componentOverride["meshAppearance"]);
             if (isDynamicAppearance) {
                 // TODO: Not implemented yet
-            } else if (appearanceNames.length == 0 || (appearanceNames.length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName))) {
+            } else if (appearanceNames.length === 0 || (appearanceNames.length > 1 && !appearanceNames.includes(meshAppearanceName) && !componentOverrideCollisions.includes(meshAppearanceName))) {
                 appearanceNotFound(meshPath, meshAppearanceName, info);
             }
         }
@@ -892,7 +897,8 @@ const depotPathSubkeys = [ 'mesh', 'morphtarget', 'morphResource', 'facialSetup'
  */
 function entFile_appFile_validateComponent(component, _index, validateRecursively, info) {
     let type = component.$type || '';
-    const isDebugComponent = type.toLowerCase().includes('debug');
+    let name = (component.name?.$value || '').toLowerCase();
+    const isDebugComponent = type.toLowerCase().includes('debug') ;
     const componentName = stringifyPotentialCName(component.name, info, (isRootEntity || isDebugComponent)) ?? '';
 
     // Those components only exist for ArchiveXL's internal logic, like for body type flags
@@ -912,7 +918,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     let hasMesh = false;
 
     // allow empty paths for debug components
-    const depotPathCanBeEmpty = isDebugComponent || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot'));
+    const depotPathCanBeEmpty = isDebugComponent
+        || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot')
+        || (name.includes('extra') && name.includes('component')));
 
     switch (type) {
         case WITH_DEPOT_PATH:
@@ -1077,7 +1085,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             }
             
             pushCurrentFilePath(componentMeshPath);
-            _validateMeshFile(mesh)
+            _validateMeshFile(mesh, componentMeshPath);
             popCurrentFilePath();
           } catch (err) {
             Logger.Error(`Failed to load ${componentMeshPath}`);
@@ -1445,7 +1453,7 @@ export function validateMeshFile(mesh, _meshSettings) {
 
     resetInternalFlagsAndCaches();
 
-    _validateMeshFile(mesh);
+    _validateMeshFile(mesh, pathToCurrentFile);
     printUserInfo();
 }
 

@@ -56,6 +56,7 @@ export function RunFileValidation(ext, file) {
     const fileName = (fileContent.Header?.ArchiveFileName || '').split('archive\\').pop() || '';
     FileValidation.setPathToCurrentFile(fileName);
 
+   
     wkit.SuspendFileWatcher(true);
     let success = true;
     try {
