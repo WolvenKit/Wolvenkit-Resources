@@ -71,7 +71,9 @@ let isRootEntity = false;
 /** Are path substitutions used in the .app or the mesh entity?  */
 let isUsingSubstitution = false;
 
+/** Store component names and IDs so we can compare against them */
 let componentNamesInCurrentContext = [];
+let componentIdsInCurrentContext = [];
 
 /**
  * Matches placeholders such as
@@ -483,6 +485,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
             const _componentIds = componentIds;
             componentIds.length = 0;
             componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
+            componentIdsInCurrentContext = components.map(c => c.id).filter(n => !!n);
             for (let i = 0; i < components.length; i++) {
                 const component = components[i];
                 entFile_appFile_validateComponent(component, i, validateRecursively, `${info}.components[${i}]`);
@@ -690,6 +693,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         appearanceErrorMessages[appearanceName].push(`WARNING|.app ${appearanceName} is loaded as dynamic, but it has components outside of a mesh entity. They will be IGNORED.`)
     } else {
         componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
+        componentIdsInCurrentContext = components.map(c => c.id).filter(n => !!n);
         for (let i = 0; i < components.length; i++) {
             const component = components[i];
             if (appFileSettings?.validateRecursively || validateRecursively) {
@@ -927,7 +931,9 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot')
         || (name.includes('extra') && name.includes('component')));
 
-    
+    if ((componentNamesInCurrentContext.filter(n => n === componentName) ?? []).length > 1 && (componentIdsInCurrentContext.filter(n => n === component.id) ?? []).length > 1) {
+        addWarning(LOGLEVEL_INFO, `${info}: Duplicate of ${componentName} with the ID ${component.id}, delete one`);
+    }
     /* 
      * TODO: 
      * Validate `parentTransform` and `skinning` against componentNamesInCurrentContext, 
@@ -943,7 +949,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
             break;
         default:
             if (!isRootEntity && type.toLowerCase().includes('mesh')) {
-                addWarning(LOGLEVEL_INFO, `Component of type ${type} doesn't have a mesh path`);
+                addWarning(LOGLEVEL_INFO, `${info}: Component of type ${type} doesn't have a mesh path`);
             }
             break;
     }
@@ -1316,6 +1322,7 @@ export function validateEntFile(ent, _entSettings) {
 
     const validateEntRecursively = _entSettings.validateMeshesRecursively || _entSettings.validateAppsRecursively;
     componentNamesInCurrentContext = [ "root", ...ent.components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
+    componentIdsInCurrentContext = ent.components.map(c => c.id).filter(n => !!n);
     
     // validate ent component names
     for (let i = 0; i < (ent.components.length || 0); i++) {
