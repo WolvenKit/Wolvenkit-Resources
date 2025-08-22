@@ -12,6 +12,17 @@ import {
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from '../../Logger.wscript';
 
+/** Component names to ignore for space check */
+const cdprComponentNames = [
+    'ep1 animsets', 
+    'animation gameplay setup',
+    'character entity animation setup',
+    'special locomotion setup',
+    'trigger activator',
+    'fear extension',
+    'ultimate edition animsets',
+];
+
 /**
  * Some users had files that were outright broken - they didn't make the game crash, but silently failed to work
  * and caused exceptions in file validation because certain values weren't set. This method fixes the structure
@@ -82,7 +93,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
 
     if (ret && ret.trim && ret.trim() !== ret && !!ret.trim()) {
         Logger.Error(`${info}has trailing or leading spaces! Make sure to remove them, or the component might not work!`);
-    } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0 && !PLACEHOLDER_NAME_REGEX.test(ret || '')) {
+    } else if (!suppressSpaceCheck && ret?.indexOf && ret.indexOf(" ") >= 0 && !PLACEHOLDER_NAME_REGEX.test(ret || '') && !cdprComponentNames.includes((ret ?? '').toLowerCase())) {
         Logger.Warning(`${info}includes spaces. Please use _ instead.`);
     }
     return ret;
