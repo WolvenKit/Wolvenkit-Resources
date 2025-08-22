@@ -79,8 +79,9 @@ let componentIdsInCurrentContext = [];
  * Matches placeholders such as
  * ----------------
  * ================
+ * and names ending in bk or bkp
  */
-export const PLACEHOLDER_NAME_REGEX = /^[-=_]+.*[-=_]+$/;
+export const PLACEHOLDER_NAME_REGEX = /(^[-=_]+.*[-=_]+$)|(_bkp?$)/;
 
 /** Warn about self-referencing resources */
 export let pathToCurrentFile = '';
@@ -932,7 +933,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         || (name.includes('extra') && name.includes('component')));
 
     if ((componentNamesInCurrentContext.filter(n => n === componentName) ?? []).length > 1 && (componentIdsInCurrentContext.filter(n => n === component.id) ?? []).length > 1) {
-        addWarning(LOGLEVEL_INFO, `${info}: Duplicate of ${componentName} with the ID ${component.id}, delete one`);
+        addWarning(LOGLEVEL_INFO, `${info}: Duplicate of '${componentName}' with the ID '${component.id}', delete one`);
     }
     /* 
      * TODO: 
