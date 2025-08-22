@@ -708,8 +708,12 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         componentIdsInCurrentContext = components.map(c => c.id).filter(n => !!n);
         for (let i = 0; i < components.length; i++) {
             const component = components[i];
+            let matchingChunk = null;
+            if (i < chunks.length) {
+                matchingChunk = chunks[i];
+            }
             if (appFileSettings?.validateRecursively || validateRecursively) {
-                entFile_appFile_validateComponent(component, i, validateRecursively, `app.${appearanceName}`, chunks[i]);
+                entFile_appFile_validateComponent(component, i, validateRecursively, `app.${appearanceName}`, matchingChunk);
             }
             if (component.mesh) {
                 const meshDepotPath = stringifyPotentialCName(component.mesh.DepotPath);
