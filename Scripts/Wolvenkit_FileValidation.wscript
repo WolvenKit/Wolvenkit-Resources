@@ -74,6 +74,7 @@ let isUsingSubstitution = false;
 /** Store component names and IDs so we can compare against them */
 let componentNamesInCurrentContext = [];
 let componentIdsInCurrentContext = [];
+let chunksByComponentHandleId = {};
 
 /**
  * Matches placeholders such as
@@ -472,39 +473,46 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     if (undefined !== meshesByEntityPath[entityDepotPath]) {
         return;
     }
-
+    
+    if (!validateRecursively) {
+        componentsByEntityPath[entityDepotPath] = [];
+        meshesByEntityPath[entityDepotPath] = [];
+        return;
+    }
+    
     const meshesInEntityFile = [];
     const componentsInEntityFile = [];
-    if (validateRecursively) {
-        try {
-            const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
+    
+    try {
+        const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
 
-            // fileExists has been checked in validatePartsOverride
-            const entity = TypeHelper.JsonParse(fileContent);
-            const components = entity && entity.Data && entity.Data.RootChunk ? entity.Data.RootChunk["components"] || [] : [];
-            isInvalidVariantComponent = false;
-            const _componentIds = componentIds;
-            componentIds.length = 0;
-            componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '') ?? '') ];
-            componentIdsInCurrentContext = components.map(c => c.id).filter(n => !!n);
-            for (let i = 0; i < components.length; i++) {
-                const component = components[i];
-                entFile_appFile_validateComponent(component, i, validateRecursively, `${info}.components[${i}]`);
-                const meshPath = component.mesh ? stringifyPotentialCName(component.mesh.DepotPath) : '';
-                if (meshPath && !meshesInEntityFile.includes(meshPath)) {
-                    meshesInEntityFile.push(meshPath);
-                }
-                const isDebugComponent = (component.$type || '').toLowerCase().includes('debug');
-                const componentName = stringifyPotentialCName(component.name, `${info}.components[${i}]`, isDebugComponent);
-                if (componentName && !componentsInEntityFile.includes(componentName)) {
-                    componentsInEntityFile.push(componentName);
-                }
+        // fileExists has been checked in validatePartsOverride
+        const entity = TypeHelper.JsonParse(fileContent);
+        const components = entity && entity.Data && entity.Data.RootChunk ? entity.Data.RootChunk["components"] || [] : [];
+        isInvalidVariantComponent = false;
+        const _componentIds = componentIds;
+        componentIds.length = 0;           
+        
+        componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '') ?? '') ];
+        componentIdsInCurrentContext = components.map(c => c.id).filter(n => !!n);
+        
+        for (let i = 0; i < components.length; i++) {
+            const component = components[i];
+            entFile_appFile_validateComponent(component, i, validateRecursively, `${info}.components[${i}]`);
+            const meshPath = component.mesh ? stringifyPotentialCName(component.mesh.DepotPath) : '';
+            if (meshPath && !meshesInEntityFile.includes(meshPath)) {
+                meshesInEntityFile.push(meshPath);
             }
-            componentIds = _componentIds;
-        } catch (err) {
-            addWarning(LOGLEVEL_ERROR, `Couldn't load file from depot path: ${entityDepotPath} (${err.message})`);
-            addWarning(LOGLEVEL_INFO, `\tThat can happen if you use a root entity instead of a mesh entity.`);
+            const isDebugComponent = (component.$type || '').toLowerCase().includes('debug');
+            const componentName = stringifyPotentialCName(component.name, `${info}.components[${i}]`, isDebugComponent);
+            if (componentName && !componentsInEntityFile.includes(componentName)) {
+                componentsInEntityFile.push(componentName);
+            }
         }
+        componentIds = _componentIds;
+    } catch (err) {
+        addWarning(LOGLEVEL_ERROR, `Couldn't load file from depot path: ${entityDepotPath} (${err.message})`);
+        addWarning(LOGLEVEL_INFO, `\tThat can happen if you use a root entity instead of a mesh entity.`);
     }
 
     componentsByEntityPath[entityDepotPath] = componentsInEntityFile;
@@ -651,6 +659,7 @@ function appFile_validateTags(appearance, appearanceName, partsValuePaths = []) 
  * @param appearance
  * @param appearance.Data.name
  * @param appearance.Data.components
+ * @param appearance.Data.compiledData.Data.Chunks
  * @param appearance.Data.partsValues
  * @param appearance.Data.partsOverrides
  * @param appearance.Data.visualTags.tags
@@ -674,7 +683,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     }
 
     appearanceErrorMessages[appearanceName] ||= [];
-
+    
     if (alreadyDefinedAppearanceNames.includes(appearanceName)) {
         appearanceErrorMessages[appearanceName].push(`INFO|An appearance with the name ${appearanceName} is already defined in .app file`);
     } else {
@@ -686,9 +695,11 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     // might be null
     const components = appearance.Data.components || [];
+    const chunks = appearance.Data.compiledData.Data.Chunks || [];
 
     const _componentIds = componentIds;
     componentIds.length = 0;
+    
 
     if (isDynamicAppearance && components.length) {
         appearanceErrorMessages[appearanceName].push(`WARNING|.app ${appearanceName} is loaded as dynamic, but it has components outside of a mesh entity. They will be IGNORED.`)
@@ -698,7 +709,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
         for (let i = 0; i < components.length; i++) {
             const component = components[i];
             if (appFileSettings?.validateRecursively || validateRecursively) {
-                entFile_appFile_validateComponent(component, i, validateRecursively, `app.${appearanceName}`);
+                entFile_appFile_validateComponent(component, i, validateRecursively, `app.${appearanceName}`, chunks[i]);
             }
             if (component.mesh) {
                 const meshDepotPath = stringifyPotentialCName(component.mesh.DepotPath);
@@ -723,7 +734,6 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
             addWarning(LOGLEVEL_WARN, `${appearanceName}.partsValues[${i}]: Substitution in depot path not supported.`);
         }
     }
-
 
     appFile_validateTags(appearance, appearanceName, partsValuePaths);
 
@@ -898,13 +908,23 @@ const depotPathSubkeys = [ 'mesh', 'morphtarget', 'morphResource', 'facialSetup'
  * @param component.name
  * @param component.id
  * @param component.meshAppearance
+ * 
+ * @param component.parentTransform
+ * 
+ * @param component.skinning
+ * 
  * @param _index
  * @param validateRecursively
  * @param info
  * 
+ * @param {{
+ *  skinning: { Data: { bindName: { $value: string }} }
+ *  parentTransform: { Data: { bindName: { $value: string }} }
+ * }} matchingChunk
+ * 
  * For different component types, check DepotPath property
  */
-function entFile_appFile_validateComponent(component, _index, validateRecursively, info) {
+function entFile_appFile_validateComponent(component, _index, validateRecursively, info, matchingChunk = undefined) {
     let type = component.$type || '';
     let name = (component.name?.$value || '').toLowerCase();
     const isDebugComponent = type.toLowerCase().includes('debug') ;
@@ -937,10 +957,23 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     }
     
     /* 
-     * TODO: 
-     * Validate `parentTransform` and `skinning` against componentNamesInCurrentContext, 
-     * but currently they only have `HandleRefId` property, which I don't know how to resolve yet    
-     */
+     * Check that ParentTransform and Skinning are bound to valid components
+     */    
+    if (!!component.parentTransform && matchingChunk?.parentTransform?.Data?.bindName) {
+        const bindName = stringifyPotentialCName(matchingChunk?.parentTransform?.Data?.bindName);
+        if (!!bindName && !componentNamesInCurrentContext.includes(bindName)) {
+            addWarning(LOGLEVEL_INFO, `${info}: '${componentName}' has an invalid parentTransform binding to '${bindName}'`);
+        }
+    } 
+    
+    if (!!component.skinning && matchingChunk?.skinning?.Data?.bindName) {
+        const bindName = stringifyPotentialCName(matchingChunk?.skinning?.Data?.bindName);
+        if (!!bindName && !componentNamesInCurrentContext.includes(bindName)) {
+            addWarning(LOGLEVEL_INFO, `${info}: '${componentName}' has an invalid skinning binding to '${bindName}'`);
+        }
+    }
+    
+    
     switch (type) {
         case WITH_DEPOT_PATH:
             checkDepotPath(component[componentPropertyKeyWithDepotPath].DepotPath, `${info}.${componentName}`, depotPathCanBeEmpty);
@@ -1330,7 +1363,7 @@ export function validateEntFile(ent, _entSettings) {
     for (let i = 0; i < (ent.components.length || 0); i++) {
         const component = ent.components[i];
         const isDebugComponent = (component?.$type || '').toLowerCase().includes('debug');
-        const componentName = stringifyPotentialCName(component.name, `ent.components[${i}]`, (isRootEntity || isDebugComponent)) || `${i}`;
+        const componentName = stringifyPotentialCName(component.name, `ent.components[${i}]`, (isRootEntity || isDebugComponent)) || `${i}`;        
         entFile_appFile_validateComponent(component, i, validateEntRecursively, `ent.components.${componentName}`);
         // put its name into the correct map
         (allComponentNames.includes(componentName) ? duplicateComponentNames : allComponentNames).push(componentName);
