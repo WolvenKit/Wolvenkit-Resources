@@ -71,6 +71,8 @@ let isRootEntity = false;
 /** Are path substitutions used in the .app or the mesh entity?  */
 let isUsingSubstitution = false;
 
+let componentNamesInCurrentContext = [];
+
 /**
  * Matches placeholders such as
  * ----------------
@@ -480,6 +482,7 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
             isInvalidVariantComponent = false;
             const _componentIds = componentIds;
             componentIds.length = 0;
+            componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
             for (let i = 0; i < components.length; i++) {
                 const component = components[i];
                 entFile_appFile_validateComponent(component, i, validateRecursively, `${info}.components[${i}]`);
@@ -686,6 +689,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
     if (isDynamicAppearance && components.length) {
         appearanceErrorMessages[appearanceName].push(`WARNING|.app ${appearanceName} is loaded as dynamic, but it has components outside of a mesh entity. They will be IGNORED.`)
     } else {
+        componentNamesInCurrentContext = [ "root", ...components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
         for (let i = 0; i < components.length; i++) {
             const component = components[i];
             if (appFileSettings?.validateRecursively || validateRecursively) {
@@ -905,6 +909,7 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     if (componentName?.includes(":")) {
         return;
     }
+
     let componentPropertyKeyWithDepotPath = '';
 
     depotPathSubkeys.forEach((propertyName) => {
@@ -922,6 +927,12 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
         || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot')
         || (name.includes('extra') && name.includes('component')));
 
+    
+    /* 
+     * TODO: 
+     * Validate `parentTransform` and `skinning` against componentNamesInCurrentContext, 
+     * but currently they only have `HandleRefId` property, which I don't know how to resolve yet    
+     */
     switch (type) {
         case WITH_DEPOT_PATH:
             checkDepotPath(component[componentPropertyKeyWithDepotPath].DepotPath, `${info}.${componentName}`, depotPathCanBeEmpty);
@@ -1304,6 +1315,7 @@ export function validateEntFile(ent, _entSettings) {
     }
 
     const validateEntRecursively = _entSettings.validateMeshesRecursively || _entSettings.validateAppsRecursively;
+    componentNamesInCurrentContext = [ "root", ...ent.components.map(c => stringifyPotentialCName(c.name, '')).filter(n => !!n) ];
     
     // validate ent component names
     for (let i = 0; i < (ent.components.length || 0); i++) {
