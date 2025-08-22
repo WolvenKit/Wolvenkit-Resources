@@ -938,6 +938,10 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
     if (componentName.includes(":")) {
         return;
     }
+    
+    if (pathToCurrentFile.endsWith("app") && componentName.startsWith("*")) {
+        addWarning(LOGLEVEL_INFO, `${info} (${componentName}): Dynamic substitution in .app files not supported`);
+    }
 
     let componentPropertyKeyWithDepotPath = '';
 
