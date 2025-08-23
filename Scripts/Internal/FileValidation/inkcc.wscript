@@ -28,18 +28,18 @@ const validLinks = {
 
 const allOptionNames = [];
 
-function validateGameuiAppearanceInfo(debugInfo, gameUiAppearanceOptions, slotGroups) {
+function validateGameuiAppearanceInfo(debugInfo, gameUiAppearanceOptions, slotGroups, allowEmptyDepotPath) {
     // Logger.Success(gameUiAppearanceOptions);
     
     // if a resource is linked: check it
     if (gameUiAppearanceOptions["resource"] && gameUiAppearanceOptions["resource"]["DepotPath"]) {
-        checkDepotPath(stringifyPotentialCName(gameUiAppearanceOptions["resource"]["DepotPath"]), debugInfo);
+        checkDepotPath(stringifyPotentialCName(gameUiAppearanceOptions["resource"]["DepotPath"]), debugInfo, allowEmptyDepotPath);
     }
 
     allOptionNames.push(stringifyWithSpaces(gameUiAppearanceOptions["name"], debugInfo));
 }
 
-function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOptions, slotGroupsResolved) {
+function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOptions, slotGroupsResolved, allowEmptyDepotPath) {
     
     for (let i = 0; i < gameUiSwitcherOptions.length; i++) {
         const gameSwitcherOption = gameUiSwitcherOptions[i];
@@ -48,7 +48,7 @@ function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOption
         optionNames.forEach(name => {
             allOptionNames.push(name);
             let found = false;
-            Object.keys(slotGroupsResolved).forEach(key => {                
+            Object.keys(slotGroupsResolved).forEach(key => {
                 if (slotGroupsResolved[key].includes(name)) {
                     found = true;
                 }                
@@ -82,7 +82,9 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
         const name = stringifyWithSpaces(option["name"]);
         const uiSlot = stringifyWithSpaces(option["uiSlot"]);
 
-        if (i > 1 && ((!name || name === "None") && (!link || link === "None") || (!uiSlot || uiSlot === "None"))) {
+        const hasEmptyName = (!name || name === "None") && (!link || link === "None") || (!uiSlot || uiSlot === "None");
+        
+        if (i > 1 && hasEmptyName) {
             Logger.Error(`${groupKey}: customizationOptions[${i}] has no name, link, or uiSlot`);
         }
 
@@ -94,10 +96,10 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
         
         switch (option["$type"]) {
             case "gameuiSwitcherInfo":
-                validateGameuiSwitcherOptions(groupKey, `${groupKey}.customizationOptions[${i}]`, option["options"], slotGroupsResolved);
+                validateGameuiSwitcherOptions(groupKey, `${groupKey}.customizationOptions[${i}]`, option["options"], slotGroupsResolved, i <= 1 && hasEmptyName);
                 break;
             case "gameuiAppearanceInfo":
-                validateGameuiAppearanceInfo(`${groupKey}.customizationOptions[${i}]`, option, slotGroupsResolved);
+                validateGameuiAppearanceInfo(`${groupKey}.customizationOptions[${i}]`, option, slotGroupsResolved, i <= 1 && hasEmptyName);
                 break;
             default:
                 break;
