@@ -20,7 +20,9 @@ const validTags = {
 const validLinks = {
     head: [
         // hair
-        "hairstyle_cyberware", "hairstyle", "hair color", "hairstyle color"
+        "hairstyle_cyberware", "hairstyle", "hair color", "hairstyle color",
+        // eyes
+        "eyes_color", "eyes_color_2",
     ],
 }
 
@@ -80,7 +82,7 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
         const name = stringifyWithSpaces(option["name"]);
         const uiSlot = stringifyWithSpaces(option["uiSlot"]);
 
-        if (i > 0 && (!name || name === "None") && (!link || link === "None") || (!uiSlot || uiSlot === "None")) {
+        if (i > 1 && ((!name || name === "None") && (!link || link === "None") || (!uiSlot || uiSlot === "None"))) {
             Logger.Error(`${groupKey}: customizationOptions[${i}] has no name, link, or uiSlot`);
         }
 
