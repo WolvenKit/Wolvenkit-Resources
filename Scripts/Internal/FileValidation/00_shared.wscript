@@ -21,6 +21,7 @@ const cdprComponentNames = [
     'trigger activator',
     'fear extension',
     'ultimate edition animsets',
+    'gameplay animation setup',
 ];
 
 /**
