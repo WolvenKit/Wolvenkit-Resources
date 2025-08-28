@@ -153,7 +153,7 @@ export function setPathToCurrentFile(path) {
 }
 
 export function getPathToCurrentFile() {
-    return pathToCurrentFile || FileHelper.GetActiveFileRelativePath();
+    return pathToCurrentFile || FileHelper.GetActiveFileRelativePath() || '';
 }
 export function resetInternalFlagsAndCaches() {
  
