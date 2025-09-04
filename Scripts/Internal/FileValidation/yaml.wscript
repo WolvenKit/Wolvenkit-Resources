@@ -418,7 +418,6 @@ export function collectAllPatchPaths() {
         const data = readYamlAsJson(filePath)?.resource?.patch;
        
         if (!data) {
-            Logger.Error(`data.resource.patch not found in ${filePath}`);
             continue;
         }
 
