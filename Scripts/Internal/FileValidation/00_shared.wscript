@@ -22,6 +22,7 @@ const cdprComponentNames = [
     'fear extension',
     'ultimate edition animsets',
     'gameplay animation setup',
+    'ultimate edition extension',
 ];
 
 /**
