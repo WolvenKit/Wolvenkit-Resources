@@ -82,7 +82,7 @@ let chunksByComponentHandleId = {};
  * ================
  * and names ending in bk or bkp
  */
-export const PLACEHOLDER_NAME_REGEX = /(^[-=_]+.*[-=_]+$)|(_bkp?$)/;
+export const PLACEHOLDER_NAME_REGEX = /(^[-=_]+.*[-=_]+(@\w+)?$)|(_bkp?$)/;
 
 /** Warn about self-referencing resources */
 export let pathToCurrentFile = '';
