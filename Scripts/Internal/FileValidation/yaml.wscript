@@ -346,7 +346,7 @@ function verifyTweakXlFile(data) {
         Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`)
     }
     if (Object.keys(undefinedTranslationKeys).length > 0) {
-        Logger.Warning("Your items seem to be missing appearance definitions:\n\t"
+        Logger.Warning("Your project seems to be missing translation entries:\n\t"
             + StringHelper.stringifyMapIndent(undefinedTranslationKeys));
     }
 }
