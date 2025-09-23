@@ -64,7 +64,7 @@ export function RunFileValidation(ext, file) {
         if (isYamlFile) {
             data = fileContent;
         } else {
-            data = fileContent["Data"]["RootChunk"];            
+            data = (fileContent["Data"] ?? {})["RootChunk"];            
         }
         switch (ext) {
             case "anims":
