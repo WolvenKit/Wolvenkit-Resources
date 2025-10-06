@@ -149,16 +149,18 @@ function CheckForInvalidActorId(scene) {
   }
   
   // Validate sequence: IDs should be 0, 1, 2, 3, etc.
-  if (allActorIds.length > 0) {
-    allActorIds.sort((a, b) => a - b);
-    
-    for (let i = 0; i < allActorIds.length; i++) {
-      if (allActorIds[i] !== i) {
-        Logger.Warning(
-          `Actor ID validation failed: Expected actor ID ${i} but found ${allActorIds[i]}. Actor IDs must start at 0 and increment without gaps.`
-        );
-        break;
-      }
+  if (allActorIds.length === 0) {
+    return;
+  }
+  
+  allActorIds.sort((a, b) => a - b);
+  
+  for (let i = 0; i < allActorIds.length; i++) {
+    if (allActorIds[i] !== i) {
+      Logger.Warning(
+        `Actor ID validation failed: Expected actor ID ${i} but found ${allActorIds[i]}. Actor IDs must start at 0 and increment without gaps.`
+      );
+      break;
     }
   }
 }
@@ -357,6 +359,10 @@ function IsInvalidPerformerId(id) {
 function ValidateSectionEvent(event, index, parentNode) {
   const eventType = event.Data.$type;
   
+  if (!eventType || SKIP_PERFORMER_ID_VALIDATION_EVENTS.has(eventType)) {
+    return;
+  }
+  
   // Basic check for scneventsSocket (check osockStamp)
   if (eventType === "scneventsSocket") {
     const USHORT_MAX = 65535;
@@ -366,10 +372,6 @@ function ValidateSectionEvent(event, index, parentNode) {
         `${eventType} at index ${index} in Section Node ID ${parentNode.Data.nodeId.id} has default osockStamp values (Name: ${USHORT_MAX}, Ordinal: ${USHORT_MAX}). Please set proper socket values`
       );
     }
-    return;
-  }
-  
-  if (!eventType || SKIP_PERFORMER_ID_VALIDATION_EVENTS.has(eventType)) {
     return;
   }
 
@@ -488,16 +490,18 @@ function ValidatePropIdSequence(scene) {
     }
   });
   
-  if (propIds.length > 0) {
-    propIds.sort((a, b) => a - b);
-    
-    for (let i = 0; i < propIds.length; i++) {
-      if (propIds[i] !== i) {
-        Logger.Warning(
-          `Prop ID validation failed: Expected prop ID ${i} but found ${propIds[i]}. Prop IDs must start at 0 and increment without gaps.`
-        );
-        break;
-      }
+  if (propIds.length === 0) {
+    return;
+  }
+  
+  propIds.sort((a, b) => a - b);
+  
+  for (let i = 0; i < propIds.length; i++) {
+    if (propIds[i] !== i) {
+      Logger.Warning(
+        `Prop ID validation failed: Expected prop ID ${i} but found ${propIds[i]}. Prop IDs must start at 0 and increment without gaps.`
+      );
+      break;
     }
   }
 }
