@@ -68,6 +68,7 @@ export function validateSceneFile(scene, _sceneSettings) {
   ValidateActorBehaviorsInSectionNodes(scene);
   ValidateScreenplayDialogLineItemIds(scene);
   ValidateScreenplayDialogLineSpeakers(scene);
+  ValidateScreenplayChoiceOptionItemIds(scene);
   ValidateQuestNodeIsockMappings(scene);
   ValidateWorkspotInstanceIds(scene);
   ValidateEntryExitPointNames(scene);
@@ -671,7 +672,7 @@ function ValidateScreenplayDialogLineItemIds(scene) {
     
     if (actualItemId !== expectedItemId) {
       Logger.Warning(
-        `Screenplay line ItemId validation failed: Line ${lineIndex} has ItemId ${actualItemId}, expected ${expectedItemId} (line_number * 256 + 1)`
+        `screenplayStore line ItemId validation failed: Line ${lineIndex} has ItemId ${actualItemId}, expected ${expectedItemId} (line_number * 256 + 1)`
       );
     }
   });
@@ -707,16 +708,41 @@ function ValidateScreenplayDialogLineSpeakers(scene) {
   // Report missing speakers
   if (linesWithMissingSpeaker.length > 0) {
     Logger.Warning(
-      `Dialogue validation failed: ${linesWithMissingSpeaker.length} dialogue line(s) have no speaker assigned. Check ${linesWithMissingSpeaker.join(', ')} in screenplayStore->lines`
+      `screenplayStore validation failed: ${linesWithMissingSpeaker.length} dialogue line(s) have no speaker assigned. Check ${linesWithMissingSpeaker.join(', ')} in screenplayStore->lines`
     );
   }
   
   // Report missing addressees
   if (linesWithMissingAddressee.length > 0) {
     Logger.Warning(
-      `Dialogue validation failed: ${linesWithMissingAddressee.length} dialogue line(s) have no addressee assigned. Check ${linesWithMissingAddressee.join(', ')} in screenplayStore->lines`
+      `screenplayStore validation failed: ${linesWithMissingAddressee.length} dialogue line(s) have no addressee assigned. Check ${linesWithMissingAddressee.join(', ')} in screenplayStore->lines`
     );
   }
+}
+
+/**
+ * Validates that screenplay choice option ItemIds follow the correct formula: option_number * 256 + 2
+ * @param {*} scene 
+ */
+function ValidateScreenplayChoiceOptionItemIds(scene) {
+  if (!scene.screenplayStore?.options) {
+    return;
+  }
+  
+  scene.screenplayStore.options.forEach((option, optionIndex) => {
+    if (option?.itemId?.id === undefined) {
+      return;
+    }
+    
+    const expectedItemId = optionIndex * 256 + 2;
+    const actualItemId = option.itemId.id;
+    
+    if (actualItemId !== expectedItemId) {
+      Logger.Warning(
+        `screenplayStore option ItemId validation failed: Option ${optionIndex} has ItemId ${actualItemId}, expected ${expectedItemId} (option_number * 256 + 2)`
+      );
+    }
+  });
 }
 
 /**
