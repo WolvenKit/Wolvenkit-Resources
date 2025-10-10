@@ -8,7 +8,13 @@ import {stringifyArray, stringifyMapIndent} from "../StringHelper.wscript";
 import {GetAllProjectFiles, readYamlAsJson} from "../FileHelper.wscript";
 import * as TypeHelper from "../../TypeHelper.wscript";
 import {getEmptyMeshNames, meshAndMorphtargetReset} from "./mesh_and_morphtarget.wscript";
-import {addWarning, LOGLEVEL_ERROR, LOGLEVEL_WARN, printUserInfo} from "../../Wolvenkit_FileValidation.wscript";
+import {
+    addWarning,
+    LOGLEVEL_ERROR,
+    LOGLEVEL_INFO,
+    LOGLEVEL_WARN,
+    printUserInfo
+} from "../../Wolvenkit_FileValidation.wscript";
 
 /**
  * read factory info only once per run
@@ -372,8 +378,7 @@ function reset_caches() {
 }
 
 function checkForEmptyMeshes() {
-
-    let allPatchPaths = collectAllPatchPaths();
+    const allPatchPaths = collectAllPatchPaths();
     const patchPaths = Object.values(allPatchPaths)
         .flat()
         .filter((value, index, self) => self.indexOf(value) === index);
@@ -388,7 +393,45 @@ function checkForEmptyMeshes() {
     
     let emptyKeys = emptyMeshNames.filter(n => Object.keys(allPatchPaths).includes(n));
     if (emptyKeys.length > 0) {
-        addWarning(LOGLEVEL_WARN, `You are patching empty material meshes:\n\t ${emptyKeys.join('\n\t')}`);
+        addWarning(LOGLEVEL_WARN, `You are patching empty material meshes:\n\t${emptyKeys.join('\n\t')}`);
+    }
+}
+
+function verifyPatchPaths() {
+    const allPatchPaths = collectAllPatchPaths();
+    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
+    
+    const patchMeshes = Object.values(allPatchPaths).flat();
+    
+    const duplicatePatchMeshes = patchMeshes.filter((value) => Object.keys(allPatchPaths).includes(value));
+    
+    let filesNotFound = patchMeshes.filter(p =>  
+        !(p.startsWith('base') || p.startsWith('ep1')) && !projectFiles.find(str => str === p));
+    
+    if (duplicatePatchMeshes.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
+    }
+    if (filesNotFound.length > 0) {
+        addWarning(LOGLEVEL_INFO, `The following patch meshes are not part of your project:\n\t${filesNotFound.join('\n\t')}`);
+    }
+}
+
+function verifyLinkPaths() {
+    
+    const allLinkPaths = collectAllLinkPaths();
+    const allLinkKeys = Object.keys(allLinkPaths);
+    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
+    
+    const linkedMeshes = Object.values(allLinkPaths).flat();
+    
+    const existingFiles = linkedMeshes.filter((value) => projectFiles.includes(value));
+    const linksToSelf = linkedMeshes.filter((value) => allLinkKeys.includes(value) && !existingFiles.includes(value));
+    
+    if (linksToSelf.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following meshes link to themselves:\n\t${linksToSelf.join('\n\t')}`);
+    }
+    if (existingFiles.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following links target existing files and will do nothing::\n\t${linksToSelf.join('\n\t')}`);
     }
 }
 
@@ -399,18 +442,47 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
     }
     reset_caches();
 
-    if (isXlFile) {
-        if (data.resources) {
-            Logger.Warning("Your yaml refers to 'resources', did you mean 'resource'?");
-        }
-        verifyYamlFilePaths(data);
-        checkForEmptyMeshes(data);
-        printUserInfo();
-    } else {
+    if (!isXlFile) {
         verifyTweakXlFile(data);
+        return;
     }
+    
+    if (data.resources) {
+        Logger.Warning("Your yaml refers to 'resources', did you mean 'resource'?");
+    }
+    verifyYamlFilePaths(data);
+        
+    verifyPatchPaths();
+    verifyLinkPaths();
+    checkForEmptyMeshes();
+    printUserInfo();
 }
 
+
+/**
+ * @returns {Object.<string, string>} A map: [originalFilePath] => [array of files being linked]
+ */
+export function collectAllLinkPaths() {
+
+    const ret = {};
+    for (let filePath of GetAllProjectFiles('resources', 'xl')) {
+        const data = readYamlAsJson(filePath)?.resource?.link;
+
+        if (!data) {
+            continue;
+        }
+
+        for (let [key, value] of Object.entries(data)) {
+            var valueArray = Array.from(value);
+            ret[key] = [...(ret[key] ?? []), ...valueArray];
+        }
+    }
+    return ret;
+}
+
+/**
+ * @returns {Object.<string, string>} A map: [patchFilePath] => [array of files being patched]
+ */
 export function collectAllPatchPaths() {
 
     const ret = {};
@@ -420,10 +492,10 @@ export function collectAllPatchPaths() {
         if (!data) {
             continue;
         }
-
-        const entries = Object.entries(data);
-        for (let [key, value] of entries) {            
-            ret[key] = [...(ret[key] ?? []), ...Array.from(value)];
+        
+        for (let [key, value] of Object.entries(data)) {
+            var valueArray = Array.from(value);
+            ret[key] = [...(ret[key] ?? []), ...valueArray];
         }        
     }
     return ret;
