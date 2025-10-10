@@ -695,7 +695,7 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     // might be null
     const components = appearance.Data.components || [];
-    const chunks = appearance.Data.compiledData.Data.Chunks || [];
+    const chunks = appearance.Data.compiledData?.Data?.Chunks || [];
 
     const _componentIds = componentIds;
     componentIds.length = 0;
