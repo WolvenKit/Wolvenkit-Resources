@@ -348,7 +348,7 @@ function verifyTweakXlFile(data) {
     if (emptyKeys.length > 0) {
         Logger.Warning("You have empty keys in your .yaml, which will cause warnings in the TweakXL log."
         + "\nTo overwrite a record, set it to 'None'.\nIf you want to overwrite an array, please define an empty array: '[]'\n\t"
-        + emptyKeys.join("\n\t") + "\n"
+        + stringifyArray(emptyKeys) + "\n"
         );
     }
     
