@@ -1341,12 +1341,12 @@ export function validateEntFile(ent, _entSettings) {
     const entityType = ent.entity?.Data?.$type ?? '';
 
     // Logger.Success(`ent ${entityType}, isRootEntity: ${isRootEntity}`);
-    if (isRootEntity) {
+    if (isRootEntity && !!pathToCurrentFile.trim()) {
         // vehicleArmedCarBaseObject, vehicleBaseObject etc
         if (entityType.startsWith("vehicle") && entityType.endsWith("BaseObject")) {
-            Logger.Info("This is a vehicle root entity!")
+            Logger.Info(`${pathToCurrentFile} is a vehicle root entity!`)
         } else if (entityType === "gameGarmentItemObject") {
-            Logger.Info("This is a garment item root entity!")
+            Logger.Info(`${pathToCurrentFile} is a garment item root entity!`)
         }
         
         if (entityType === "entEntity") {
@@ -1355,7 +1355,7 @@ export function validateEntFile(ent, _entSettings) {
         } else if ((ent.components || []).length === 0) {
             addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a root entity, but you don't have any components.`);
         }
-    } else if (entityType === "gameGarmentItemObject") {
+    } else if (entityType === "gameGarmentItemObject" && !!pathToCurrentFile.trim()) {
         addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
     }
 
