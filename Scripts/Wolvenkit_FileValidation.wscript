@@ -2,6 +2,7 @@
 
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
+import {stringifyArray, stringifyMapIndent} from "Internal/StringHelper.wscript";
 
 import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
@@ -1341,12 +1342,12 @@ export function validateEntFile(ent, _entSettings) {
     const entityType = ent.entity?.Data?.$type ?? '';
 
     // Logger.Success(`ent ${entityType}, isRootEntity: ${isRootEntity}`);
-    if (isRootEntity) {
+    if (isRootEntity && !!pathToCurrentFile.trim()) {
         // vehicleArmedCarBaseObject, vehicleBaseObject etc
         if (entityType.startsWith("vehicle") && entityType.endsWith("BaseObject")) {
-            Logger.Info("This is a vehicle root entity!")
+            Logger.Info(`${pathToCurrentFile} is a vehicle root entity!`)
         } else if (entityType === "gameGarmentItemObject") {
-            Logger.Info("This is a garment item root entity!")
+            Logger.Info(`${pathToCurrentFile} is a garment item root entity!`)
         }
         
         if (entityType === "entEntity") {
@@ -1355,7 +1356,7 @@ export function validateEntFile(ent, _entSettings) {
         } else if ((ent.components || []).length === 0) {
             addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a root entity, but you don't have any components.`);
         }
-    } else if (entityType === "gameGarmentItemObject") {
+    } else if (entityType === "gameGarmentItemObject" && !!pathToCurrentFile.trim()) {
         addWarning(LOGLEVEL_INFO, `${currentFileName} seems to be a mesh entity, but it seems to be used as a root entity.`);
     }
 
@@ -1697,64 +1698,75 @@ export function validateJsonFile(jsonData, jsonSettings) {
 
     resetInternalFlagsAndCaches();
 
-    const duplicatePrimaryKeys = [];
     const secondaryKeys = [];
+    const primaryKeys = [];
     const femaleTranslations = [];
     const maleTranslations = [];
     const emptyFemaleVariants = [];
-
+    
+    const obsoleteMaleTranslations = false;
+    
     for (let i = 0; i < jsonData.root.Data.entries.length; i++) {
         const element = jsonData.root.Data.entries[i];
-
-        const potentialFemaleVariant = element.length > 0 ? element[0] : '' || '';
-        const potentialMaleVariant = element.length > 1 ? element[1] : '' || '';
-        const potentialPrimaryKey = element.length > 2 ? element[2] : '' || '';
-        const secondaryKey = element.length > 3 ? element[3] : '' || '';
-
-        if (!PLACEHOLDER_NAME_REGEX.test(secondaryKey)) {
-            secondaryKeys.push(secondaryKey);
-
-            if (potentialMaleVariant && !potentialFemaleVariant) {
-                emptyFemaleVariants.push(secondaryKey);
-            }
-
-            if (jsonSettings.checkDuplicateTranslations) {
-                if (potentialFemaleVariant && femaleTranslations.includes(potentialFemaleVariant)) {
-                    addWarning(LOGLEVEL_WARN, `entry ${i}: ${potentialFemaleVariant} already defined`);
-                } else {
-                    femaleTranslations.push(secondaryKey);
-                }
-                if (potentialMaleVariant && maleTranslations.includes(potentialMaleVariant)) {
-                    addWarning(LOGLEVEL_WARN, `entry ${i}: ${potentialMaleVariant} already defined`);
-                } else {
-                    maleTranslations.push(potentialMaleVariant);
-                }
-            }
-
-            if (potentialPrimaryKey && potentialPrimaryKey !== '0') {
-                duplicatePrimaryKeys.push(potentialPrimaryKey);
-            }
+        if (!element.secondaryKey || PLACEHOLDER_NAME_REGEX.test(element.secondaryKey ?? '')) {
+           continue;
         }
+        
+        secondaryKeys.push(element.secondaryKey);
+        primaryKeys.push(element.primaryKey);     
+        
+        if (element.maleVariant === element.femaleVariant) {
+            obsoleteMaleTranslations = true;
+        }
+
+        if (element.maleVariant && !element.femaleVariant) {
+            emptyFemaleVariants.push(element.secondaryKey);
+        }
+
+        femaleTranslations.push(element.femaleVariant);
+        maleTranslations.push(element.maleVariant);        
+    }
+    
+    const duplicateKeys = secondaryKeys
+        .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
+        .filter((path, i, array) => !!path && array.indexOf(path) === i); // filter out duplicates for printing
+    
+    const duplicatePrimaryKeys = primaryKeys
+        .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
+        .filter((path, i, array) => !!path && array.indexOf(path) === i) // filter out duplicates for printing
+        .filter((path, i, array) => path !== '0' || !path) // filter out '0' and empty string
+    
+    const duplicateTranslations = [
+        ...femaleTranslations
+        .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
+        .filter((path, i, array) => !!path && array.indexOf(path) === i),
+        ...maleTranslations
+        .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
+        .filter((path, i, array) => !!path && array.indexOf(path) === i), // filter out duplicates for printing
+    ];    
+
+    if (obsoleteMaleTranslations) {
+        addWarning(LOGLEVEL_INFO, "Did you know? If you don't define a male variant, the game will fall back to femaleVariant as default!");        
+    }
+    if (duplicatePrimaryKeys?.length) {
+        addWarning(LOGLEVEL_WARN, 'You have duplicate primary keys in your file. Entries will overwrite each other, '
+            + 'unless you set this value to 0:'
+            + stringifyArray(duplicatePrimaryKeys));
+    }
+    
+    if (duplicateKeys?.length) {
+        addWarning(LOGLEVEL_WARN, 'You have duplicate secondary keys in your file. The following entries will overwrite each other:'
+        + stringifyArray(duplicateKeys));
+    }
+           
+    if (duplicateTranslations.length) {
+        addWarning(LOGLEVEL_WARN, 'Some translation entries define the same text multiple times. This can lead to issues with CCXL:'
+        + stringifyArray(duplicateTranslations));
     }
 
-    if (jsonSettings.checkDuplicateKeys) {
-        if (duplicatePrimaryKeys.length) {
-            addWarning(LOGLEVEL_WARN, 'You have duplicate primary keys in your file. Entries will overwrite each other, '
-                + 'unless you set this value to 0');
-        }
-        const duplicateKeys = secondaryKeys
-            .filter((path, i, array) => !!path && array.indexOf(path) !== i) // filter out unique keys
-            .filter((path, i, array) => !!path && array.indexOf(path) === i); // filter out duplicates
-
-        if (duplicateKeys?.length) {
-            addWarning(LOGLEVEL_WARN, 'You have duplicate secondary keys in your file. The following entries will overwrite each other:'
-            + (duplicateKeys.length === 1 ? `${duplicateKeys}` : `[ ${duplicateKeys.join(", ")}`));
-        }
-    }
-
-    if (jsonSettings.checkEmptyFemaleVariant && emptyFemaleVariants.length > 0) {
-        addWarning(LOGLEVEL_WARN, `The following entries have no default value (femaleVariant): [ ${emptyFemaleVariants.join(', ')}]`);
-        addWarning(LOGLEVEL_INFO, 'Ignore this if your item is masc V only and you\'re using itemsFactoryAppearanceSuffix.Camera or dynamic appearances.');
+    if (emptyFemaleVariants.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following entries have no default value (femaleVariant):`
+            + stringifyArray(emptyFemaleVariants));
     }
     printUserInfo();
 }

@@ -256,10 +256,12 @@ function SubstituteInstanceWildcards(appearanceName, instances) {
  * @param {string} recordData.displayName
  * @param {string[]?} recordData.visualTags
  * @param {{ atlasResourcePath: string, atlasPartName: string }} recordData.icon
- * @param {Object.<string, string>} recordData.$instances
+ * @param {Object.<string, string>} recordData.$instances 
  */
-function verifyItemDefinition(recordName, recordData) {
-   
+function verifyItemDefinition(recordName, recordData) {   
+    if (!recordName.startsWith("Items.")) {
+        return;
+    }
     const base = recordData["$base"] ?? recordData["$type"];
     if (!base) {
         invalidBases[recordName] = 'No $base attribute found';
@@ -326,12 +328,30 @@ function verifyTweakXlFile(data) {
     translationEntries = getTranslationEntries();
     mapFactoriesToEntFiles();
 
-    Object.keys(data).forEach(key => itemDefinitionNames.push(key));
+    const emptyKeys = [];
+    
+    Object.keys(data).forEach(key => {
+        itemDefinitionNames.push(key);
+        if (typeof data[key] !== 'object' || data[key] === null) {
+            emptyKeys.push(key);
+        }
+    });
 
     itemDefinitionNames.forEach((name) => {
         verifyItemDefinition(name, data[name]);
     });
-
+    
+    if (data["photo_mode.character.adamPoses"]) {
+        Logger.Warning("You're trying to define 'adamPoses' in your yaml, but the correct key is 'adamSmasherPoses'.");        
+    }
+    
+    if (emptyKeys.length > 0) {
+        Logger.Warning("You have empty keys in your .yaml, which will cause warnings in the TweakXL log."
+        + "\nTo overwrite a record, set it to 'None'.\nIf you want to overwrite an array, please define an empty array: '[]'\n\t"
+        + stringifyArray(emptyKeys) + "\n"
+        );
+    }
+    
     if (Object.keys(invalidBases).length > 0) {
         Logger.Warning("File validation found invalid item $base keys. Find a list for clothing in the EquipmentEx wiki:");
         Logger.Info("\thttps://github.com/psiberx/cp2077-equipment-ex?tab=readme-ov-file#auto-conversions");
