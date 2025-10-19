@@ -5,6 +5,7 @@ import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath
 } from "00_shared.wscript";
 import * as Logger from '../../Logger.wscript';
+import * as TypeHelper from "../../TypeHelper.wscript";
 
 //#region inkatlas
 /**
@@ -41,7 +42,6 @@ export function validateInkatlasFile(inkatlas, _inkatlasSettings) {
         return;
     }
 
-
     (inkatlas.slots?.Elements || []).forEach((entry, index) => {
         let seen = {};
         depotPath = stringifyPotentialCName(entry.texture?.DepotPath);
@@ -68,3 +68,17 @@ export function validateInkatlasFile(inkatlas, _inkatlasSettings) {
 
 }
 //#endregion
+
+export function GetInkatlasSlots(relativePath) {
+    const file = wkit.GameFileToJson(wkit.GetFileFromProject(relativePath, OpenAs.GameFile));
+    let json = TypeHelper.JsonParse(file);
+    const ret = [];
+
+    (json.Data.RootChunk.slots?.Elements ?? []).forEach(entry => {
+        (entry.parts ?? []).forEach(part => {
+            ret.push(stringifyPotentialCName(part.partName));
+        });
+    });
+    
+    return ret;
+}

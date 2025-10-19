@@ -15,6 +15,7 @@ import {
     LOGLEVEL_WARN,
     printUserInfo
 } from "../../Wolvenkit_FileValidation.wscript";
+import {GetInkatlasSlots} from "./inkatlas.wscript";
 
 /**
  * read factory info only once per run
@@ -45,7 +46,7 @@ let rootEntityCache = {};
 let factoryInfoCache = {};
 
 /**
- * read factory info only once per run
+ * read i18n info only once per run
  * @type {Object.<string, Object.<string, string>>}
  * <pre>
  *     {
@@ -61,6 +62,19 @@ let factoryInfoCache = {};
  * </pre>
  */
 let translateInfoCache = {};
+
+/**
+ * read inkatlas icons only once per run
+ * @type {Object.<string, string[]>}
+ * <pre>
+ *     {
+ *          filePath: [
+ *            "icon_slot_name1", "icon_slot_name2",
+ *          ]
+ *     }
+ * </pre>
+ */
+let inkatlasIconCache = {};
 
 /**
  * all root entity info, read once. Group by entity name (key from csv)
@@ -100,6 +114,8 @@ let itemDefinitionNames = [];
 
 let translationEntries = {};
 
+let inkatlasIconEntries = {};
+
 // Collect $base errors
 let invalidBases = {};
 
@@ -110,6 +126,8 @@ let undefinedTranslationKeys = {};
 
 // Collect appearance name errors
 let invalidAppearanceNames = {};
+
+let invalidIcons = {};
 
 function collectFilePaths(data, filePaths = []) {
     if (!data) {
@@ -149,6 +167,19 @@ function verifyYamlFilePaths(data) {
     }
 }
 
+function getIconEntries() {
+    let ret = {};
+    const iconFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.inkatlas'));
+    
+    iconFiles.forEach((filePath) => {
+        if (!inkatlasIconCache[filePath]) {
+            inkatlasIconCache[filePath] = GetInkatlasSlots(filePath);            
+        }
+        ret[filePath] = inkatlasIconCache[filePath];
+    });
+    
+    return ret;
+}
 function getTranslationEntries() {
     let ret = {};
     const translationFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.json'));
@@ -282,12 +313,26 @@ function verifyItemDefinition(recordName, recordData) {
         if (!!entityName) {
             invalidEntityNames[recordName] = `'${entityName}' is not registered in any factory.csv`;            
         }
-        return;
     }
     
     if (recordData.projectileTemplateName && !Object.keys(factoryInfo).includes(recordData.projectileTemplateName)) {
         const errorMsg =  invalidEntityNames[recordName] ? invalidEntityNames[recordName] + "\n" : '';
         invalidEntityNames[recordName] = `${errorMsg}projectileTemplateName '${recordData.projectileTemplateName}' is not registered in any factory.csv`;
+    }
+
+    if (recordData.icon) {
+        const undefinedIcons = [];
+        if (!recordData.icon.atlasResourcePath || !inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
+            invalidIcons[recordName] = `icon.atlasResourcePath not found in project: '${recordData.icon.atlasResourcePath}'`;
+        } else if (!!inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
+            const definedIcons = SubstituteInstanceWildcards(recordData.icon.atlasPartName, recordData.$instances);
+            definedIcons.filter(iconName => !inkatlasIconEntries[recordData.icon.atlasResourcePath].includes(iconName)).forEach((iconName) => {
+                undefinedIcons.push(iconName);
+            });
+            if (undefinedIcons.length > 0) {
+                invalidIcons[recordName] = `icons not found in ${recordData.icon.atlasResourcePath}: \n\t${undefinedIcons.join("\n\t")} `;
+            }
+        }
     }
 
     let appearanceNameOrTag = recordData.appearanceName;
@@ -326,6 +371,8 @@ function verifyTweakXlFile(data) {
     factoryInfo = getFactoryInfo();
     entFileInfo = getRootEntityInfo();
     translationEntries = getTranslationEntries();
+    inkatlasIconEntries = getIconEntries();
+    
     mapFactoriesToEntFiles();
 
     const emptyKeys = [];
@@ -369,7 +416,11 @@ function verifyTweakXlFile(data) {
     if (Object.keys(invalidAppearanceNames).length > 0) {
         Logger.Warning("Your items seem to have invalid appearance names (ignore this if everything works):\n\t"
             + StringHelper.stringifyMapIndent(invalidAppearanceNames));
-        Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`)
+        Logger.Info(`Valid appearance names are: ${stringifyArray(Object.keys(entFactoryMapping))}`);
+    }
+    if (Object.keys(invalidIcons).length > 0) {
+        Logger.Warning("Your items seem to miss icons (ignore this if everything works):\n\t"
+            + StringHelper.stringifyMapIndent(invalidIcons));
     }
     if (Object.keys(undefinedTranslationKeys).length > 0) {
         Logger.Warning("Your project seems to be missing translation entries:\n\t"
@@ -381,6 +432,7 @@ function reset_caches() {
     rootEntityCache = {};
     factoryInfoCache = {};
     translateInfoCache = {};
+    inkatlasIconCache = {};
 
     entFileInfo = {};
     factoryInfo = {};
@@ -392,6 +444,7 @@ function reset_caches() {
     invalidBases = {};
     invalidEntityNames = {};
     invalidAppearanceNames = {};
+    invalidIcons = {};
     undefinedTranslationKeys = {};
 
     meshAndMorphtargetReset();
@@ -442,7 +495,7 @@ function verifyLinkPaths() {
     const allLinkKeys = Object.keys(allLinkPaths);
     const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
     
-    const linkedMeshes = Object.values(allLinkPaths).filter((value) => !!value && !!value.trim()).flat();
+    const linkedMeshes = Object.values(allLinkPaths).filter((value) => !!value && value.trim && !!value.trim()).flat();
     
     const existingFiles = linkedMeshes.filter((value) => projectFiles.includes(value));
     const linksToSelf = linkedMeshes.filter((value) => allLinkKeys.includes(value) && !existingFiles.includes(value));
