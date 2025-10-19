@@ -442,7 +442,7 @@ function verifyLinkPaths() {
     const allLinkKeys = Object.keys(allLinkPaths);
     const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
     
-    const linkedMeshes = Object.values(allLinkPaths).flat();
+    const linkedMeshes = Object.values(allLinkPaths).filter((value) => !!value && !!value.trim()).flat();
     
     const existingFiles = linkedMeshes.filter((value) => projectFiles.includes(value));
     const linksToSelf = linkedMeshes.filter((value) => allLinkKeys.includes(value) && !existingFiles.includes(value));
