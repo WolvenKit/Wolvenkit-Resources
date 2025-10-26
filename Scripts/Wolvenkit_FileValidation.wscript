@@ -483,13 +483,23 @@ function appFile_collectComponentsFromEntPath(entityDepotPath, validateRecursive
     
     const meshesInEntityFile = [];
     const componentsInEntityFile = [];
-    
+
     try {
         const fileContent = wkit.LoadGameFileFromProject(entityDepotPath, 'json');
 
         // fileExists has been checked in validatePartsOverride
-        const entity = TypeHelper.JsonParse(fileContent);
-        const components = entity && entity.Data && entity.Data.RootChunk ? entity.Data.RootChunk["components"] || [] : [];
+        const entity = TypeHelper.JsonParse(fileContent)?.Data?.RootChunk;
+        
+        if (!entity) {
+            return;
+        }
+        
+        // check type of entity (do not use root entity)
+        if (entity.entity?.Data?.["$type"] !== "entEntity") {
+            addWarning(LOGLEVEL_WARN, `You're using a root entity (${entityDepotPath}) instead of a mesh entity`);            
+        }
+
+        const components = entity.components ?? [];
         isInvalidVariantComponent = false;
         const _componentIds = componentIds;
         componentIds.length = 0;           
@@ -581,7 +591,6 @@ function appFile_validatePartsOverride(override, index, appearanceName) {
 
 function appFile_validatePartsValue(partsValueEntityDepotPath, index, appearanceName, validateRecursively) {
     const info = `${appearanceName}.partsValues[${index}]`;
-
 
     if (!checkDepotPath(partsValueEntityDepotPath, info)) {
         return;

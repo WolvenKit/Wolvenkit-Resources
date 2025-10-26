@@ -325,8 +325,8 @@ function verifyItemDefinition(recordName, recordData) {
         if (!recordData.icon.atlasResourcePath || !inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
             invalidIcons[recordName] = `icon.atlasResourcePath not found in project: '${recordData.icon.atlasResourcePath}'`;
         } else if (!!inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
-            const definedIcons = SubstituteInstanceWildcards(recordData.icon.atlasPartName, recordData.$instances);
-            definedIcons.filter(iconName => !inkatlasIconEntries[recordData.icon.atlasResourcePath].includes(iconName)).forEach((iconName) => {
+            const usedIcons = SubstituteInstanceWildcards(recordData.icon.atlasPartName, recordData.$instances);
+            usedIcons.filter(iconName => !inkatlasIconEntries[recordData.icon.atlasResourcePath].includes(iconName)).forEach((iconName) => {
                 undefinedIcons.push(iconName);
             });
             if (undefinedIcons.length > 0) {
