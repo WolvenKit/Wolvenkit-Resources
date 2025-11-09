@@ -22,7 +22,7 @@ import {ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution} from "./archiveXL.
  * @param materialValue The material value definition contained within
  * @param info String for debugging, e.g. name of material and index of value
  */
-export function validateMaterialKeyValuePair(key, materialValue, info) {
+export function validateMaterialKeyValuePair(key, materialValue, info, baseType = '') {
     if (key === "$type" || hasUppercasePaths) {
         return;
     }
@@ -47,6 +47,15 @@ export function validateMaterialKeyValuePair(key, materialValue, info) {
         case "MultilayerMask":
             if (!materialDepotPath.endsWith(".mlmask")) {
                 addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .mlmask. This will cause crashes.`);
+                return;
+            }
+            break;
+        case "HairProfile":
+            if (baseType !== "rRef:CHairProfile") {
+                addWarning(LOGLEVEL_WARN, `${info} is an invalid HairProfile. Please re-create it!`);
+            }
+            if (!materialDepotPath.endsWith(".hp")) {
+                addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .hp. This will cause crashes.`);
                 return;
             }
             break;
