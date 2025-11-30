@@ -1,6 +1,7 @@
 import * as Logger from '../../Logger.wscript';
 import * as Csv from './csv.wscript';
 import * as Ent from './ent.wscript';
+import * as App from './app.wscript';
 import * as Json from './json.wscript';
 import * as StringHelper from "../StringHelper.wscript";
 import {ArchiveXLConstants} from "./archiveXL_gender_and_body_types.wscript";
@@ -208,6 +209,18 @@ function getRootEntityInfo() {
 
         ret = {...ret, ...rootEntityCache[filePath]};
     });
+    
+    const rootAppearanceFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.app'));
+
+    rootAppearanceFiles.forEach((filePath) => {
+        if (rootEntityCache[filePath]) {
+            return rootEntityCache[filePath];
+        }
+        rootEntityCache[filePath] = App.Get_App_Appearances(filePath);
+
+        ret = {...ret, ...rootEntityCache[filePath]};
+    });
+    
     return ret;
 }
 
@@ -228,17 +241,17 @@ function getFactoryInfo() {
     return ret;
 }
 
-function mapFactoriesToEntFiles() {
+function mapFactoriesToEntFiles() {  
     if (Object.keys(entFactoryMapping).length > 0) {
         return;
     }
-
+    const registeredFiles = Object.values(entFileInfo); // TODO: Filter against this
     Object.keys(entFileInfo).forEach((entName) => {
        const entInfo = entFileInfo[entName];
        if (!entInfo?.filePath) {
            return;
        }
-        entFactoryMapping[entName] = entInfo.filePath;
+       entFactoryMapping[entName] = entInfo.filePath;
     });
 }
 
@@ -352,7 +365,7 @@ function verifyItemDefinition(recordName, recordData) {
 
     SubstituteInstanceWildcards(appearanceNameOrTag?.split("!")[0], recordData.$instances).forEach(name => {
         if (!Object.keys(entFactoryMapping).includes(name)) {
-            invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root entity files`;
+            invalidAppearanceNames[recordName] = `appearanceName ${name} not found in root .ent/.app files`;
         }
     });
 
