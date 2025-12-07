@@ -404,6 +404,30 @@ function verifyItemDefinition(recordName, recordData) {
                 undefinedTranslationKeys[recordName].push(appearanceName);
             }
         });
+    }    
+}
+
+function verifyArchiveXlPaths() {
+    const xlFiles = Array.from(wkit.GetProjectFiles('resources')).filter(f => f.endsWith('.xl'));
+    let jsonFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.json'));
+    let factoryFiles = Array.from(wkit.GetProjectFiles('archive')).filter(f => f.endsWith('.csv'));
+    
+    if (!xlFiles.length && (jsonFiles.length || factoryFiles.length)) {
+        Logger.Warning("You have .json or .csv files in your archive, but no .xl file to register them.");
+        return;
+    }
+
+    xlFiles.forEach((filePath) => {
+        const fileContent = wkit.LoadFromResources(filePath);
+        jsonFiles = jsonFiles.filter(f => !fileContent.includes(f));
+        factoryFiles = factoryFiles.filter(f => !fileContent.includes(f));
+    });
+    
+    if (jsonFiles.length) {
+        Logger.Warning("The following .json files are not registered in any .xl file:\n\t" + stringifyArray(jsonFiles));
+    }
+    if (factoryFiles.length) {
+        Logger.Warning("The following .csv files are not registered in any .xl file:\n\t" + stringifyArray(factoryFiles));
     }
 }
 
@@ -429,6 +453,8 @@ function verifyTweakXlFile(data) {
     itemDefinitionNames.forEach((name) => {
         verifyItemDefinition(name, data[name]);
     });
+    
+    verifyArchiveXlPaths();
     
     if (data["photo_mode.character.adamPoses"]) {
         Logger.Warning("You're trying to define 'adamPoses' in your yaml, but the correct key is 'adamSmasherPoses'.");        
