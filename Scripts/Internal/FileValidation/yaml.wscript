@@ -149,6 +149,26 @@ function collectFilePaths(data, filePaths = []) {
     return [... new Set(filePaths)]; // remove duplicates
 }
 
+
+function collectLocKeys(data, locKeys = []) {
+    if (!data) {
+        return locKeys;
+    }
+    let keys = Object.keys(data);
+    if (keys.length === 0) {
+        return locKeys;
+    }
+    for (let key of keys) {
+        let value = data[key];
+        if (typeof value === 'string' && value.toLowerCase().includes('lockey')) {
+            locKeys.push(value);
+        } else if (typeof value === 'object') {
+            collectLocKeys(value, locKeys);
+        }
+    }
+    return [... new Set(locKeys)]; // remove duplicates
+}
+
 function verifyYamlFilePaths(data) {
     const filePaths = collectFilePaths(data);
     const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
@@ -166,6 +186,13 @@ function verifyYamlFilePaths(data) {
     if (filesNotFound.length > 0) {
         Logger.Error(`The following files were not found in the project:\n\t${filesNotFound.join('\n\t')}`);
     }
+}
+
+function verifyLocKeys(data) {
+    const locKeys = collectLocKeys(data);
+    if (locKeys.find(s => s.includes('LocKey("'))) {
+        Logger.Warning("LocKey(\"key\") format may not work. If you're experiencing errors, change to LocKey#key");
+    }    
 }
 
 function getIconEntries() {
@@ -371,7 +398,7 @@ function verifyItemDefinition(recordName, recordData) {
 
     if (recordData.displayName && !translationEntries.length > 0) {
         SubstituteInstanceWildcards(recordData.displayName, recordData.$instances).forEach(appearanceName => {
-            appearanceName = appearanceName.replaceAll("LocKey#", "");
+            appearanceName = appearanceName.replaceAll("LocKey#", "").replaceAll('LocKey("', '').replaceAll('")', '');
             if (!translationEntries[appearanceName]) {
                 undefinedTranslationKeys[recordName] ??= [];
                 undefinedTranslationKeys[recordName].push(appearanceName);
@@ -387,6 +414,8 @@ function verifyTweakXlFile(data) {
     inkatlasIconEntries = getIconEntries();
     
     mapFactoriesToEntFiles();
+
+    verifyLocKeys(data);
 
     const emptyKeys = [];
     
@@ -536,6 +565,7 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
     if (data.resources) {
         Logger.Warning("Your yaml refers to 'resources', did you mean 'resource'?");
     }
+    
     verifyYamlFilePaths(data);
         
     verifyPatchPaths();
