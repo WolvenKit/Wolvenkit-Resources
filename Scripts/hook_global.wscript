@@ -210,7 +210,7 @@ globalThis.onImportFromJson = function (jsonText) {
     // json["Data"]["RootChunk"]["cookingPlatform"] = "PLATFORM_PS5";
 
     return {
-        jsonText: TypeHelper.JsonStringify(json, 2)
+        jsonText: TypeHelper.JsonStringify(json)
     }
 }
 

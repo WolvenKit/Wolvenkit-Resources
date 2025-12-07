@@ -240,7 +240,13 @@ function FindEntRigs(fileName) {
     for (let app of json["Data"]["RootChunk"]["appearances"]) {
         var appfileName = app["appearanceResource"]["DepotPath"];
         //Logger.Info(appfileName);
-        var appfile = wkit.GetFileFromBase(appfileName.toString());
+        var appfileNameStr = appfileName.toString();
+        if (wkit.FileExistsInProject(appfileNameStr)) {
+            var appfile = wkit.GetFileFromProject(appfileNameStr, OpenAs.GameFile);
+        }
+        else {
+            var appfile = wkit.GetFileFromBase(appfileNameStr);
+        }
         var appjson = TypeHelper.JsonParse(wkit.GameFileToJson(appfile));
         for (let appApp of appjson["Data"]["RootChunk"]["appearances"]) {
             for (let appcomp of appApp["Data"]["components"]) {
