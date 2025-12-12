@@ -1713,7 +1713,7 @@ export function validateJsonFile(jsonData, jsonSettings) {
     const maleTranslations = [];
     const emptyFemaleVariants = [];
     
-    const obsoleteMaleTranslations = false;
+    let obsoleteMaleTranslations = false;
     
     for (let i = 0; i < jsonData.root.Data.entries.length; i++) {
         const element = jsonData.root.Data.entries[i];
