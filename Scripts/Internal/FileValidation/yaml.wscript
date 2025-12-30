@@ -317,6 +317,104 @@ function SubstituteInstanceWildcards(appearanceName, instances) {
 
     return Array.from(names);
 }
+
+/**
+ * Extract substitutions from a resolved name based on a template with placeholders
+ * @param template template string
+ * @param resolved the resolved string
+ * @returns {*[]} an array with all substitutions
+ */
+
+function extractSubstitutions(template, resolved) {
+    const templateParts = template.replace("Icons.", "").split('_');
+    const resolvedParts = resolved.replace("Icons.", "").split('_');
+
+    const substitutions = [];
+    let currentSubstitution = [];
+    let r = 0; // resolved index
+    let t = 0; // template index
+
+    while (t < templateParts.length && r < resolvedParts.length) {
+        const templatePart = templateParts[t];
+        const resolvedPart = resolvedParts[r];
+
+        if (templatePart.startsWith('$(')) {
+            // This is a placeholder - start/continue collecting substitution
+            currentSubstitution.push(resolvedPart);
+            r++;
+
+            // Check if next template part is also a placeholder or if we're at the end
+            // If it's fixed or we're done, finalize this substitution
+            if (t + 1 >= templateParts.length || !templateParts[t + 1].startsWith('$(')) {
+                if (currentSubstitution.length > 0) {
+                    substitutions.push(currentSubstitution.join('_'));
+                    currentSubstitution = [];
+                }
+            }
+            t++;
+        } else {
+            // This is a fixed part - it should match
+            if (templatePart === resolvedPart) {
+                t++;
+                r++;
+            } else {
+                // If it doesn't match, maybe we're in the middle of a multi-part substitution
+                // Add this to current substitution and continue
+                if (t > 0 && templateParts[t - 1].startsWith('$(')) {
+                    currentSubstitution.push(resolvedPart);
+                    r++;
+                } else {
+                    // Something is wrong - fixed parts don't match
+                    return [];
+                    // throw new Error(`Mismatch at position ${t}: expected "${templatePart}", got "${resolvedPart}"`);
+                }
+            }
+        }
+    }
+
+    // Handle any leftover substitution parts
+    if (currentSubstitution.length > 0) {
+        substitutions.push(currentSubstitution.join('_'));
+    }
+
+    // If we still have resolved parts left, they might belong to the last placeholder
+    while (r < resolvedParts.length) {
+        // Check if the last template part was a placeholder
+        if (t > 0 && templateParts[t - 1].startsWith('$(')) {
+            if (substitutions.length > 0) {
+                // Append to the last substitution
+                substitutions[substitutions.length - 1] += '_' + resolvedParts.slice(r).join('_');
+            }
+        }
+        r = resolvedParts.length;
+    }
+
+    return substitutions.map(s => s.split('.')[0]);
+}
+
+/**
+ * Filters an array of instances, removing all entries that don't match a part in matchingParts
+ * 
+ * @param {Object.<string, string>[]} instances
+ * @param {string[]} matchingParts
+ * @returns {Object.<string, string>[]} instances filtered by matchingParts array
+ */
+function filterInstances(instances, matchingParts) {
+    if (!matchingParts.length) {
+        return instances;
+    }
+    const ret = [];
+    for (const instance of instances) {
+        Object.entries(instance).forEach((key, value) => {
+            if (!matchingParts.includes(value)) {
+                return;
+            }
+            ret.push({ name: key, value: value });
+        })
+    }
+    return ret;
+}
+
 /**
  * @param recordName name of the record, e.g. "Items.your_custom_item"
  * @param recordData
@@ -325,6 +423,7 @@ function SubstituteInstanceWildcards(appearanceName, instances) {
  * @param {string?} recordData.appearanceResourceName
  * @param {string} recordData.appearanceName
  * @param {string} recordData.displayName
+ * @param {string} recordData.projectileTemplateName
  * @param {string[]?} recordData.visualTags
  * @param {{ atlasResourcePath: string, atlasPartName: string }} recordData.icon
  * @param {Object.<string, string>} recordData.$instances 
@@ -333,6 +432,7 @@ function verifyItemDefinition(recordName, recordData) {
     if (!recordName.startsWith("Items.")) {
         return;
     }
+    
     const base = recordData["$base"] ?? recordData["$type"];
     if (!base) {
         invalidBases[recordName] = 'No $base attribute found';
@@ -360,21 +460,34 @@ function verifyItemDefinition(recordName, recordData) {
         invalidEntityNames[recordName] = `${errorMsg}projectileTemplateName '${recordData.projectileTemplateName}' is not registered in any factory.csv`;
     }
 
-    if (recordData.icon) {
+    if (!!recordData.icon?.atlasResourcePath) {
         const undefinedIcons = [];
-        if (!recordData.icon.atlasResourcePath || !inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
-            invalidIcons[recordName] = `icon.atlasResourcePath not found in project: '${recordData.icon.atlasResourcePath}'`;
-        } else if (!!inkatlasIconEntries[recordData.icon.atlasResourcePath]) {
-            const usedIcons = SubstituteInstanceWildcards(recordData.icon.atlasPartName, recordData.$instances);
-            usedIcons.filter(iconName => !inkatlasIconEntries[recordData.icon.atlasResourcePath].includes(iconName)).forEach((iconName) => {
-                undefinedIcons.push(iconName);
-            });
-            if (undefinedIcons.length > 0) {
-                invalidIcons[recordName] = `icons not found in ${recordData.icon.atlasResourcePath}: \n\t${undefinedIcons.join("\n\t")} `;
+        const atlasResourcePaths = SubstituteInstanceWildcards(recordData.icon.atlasResourcePath, recordData.$instances);
+        atlasResourcePaths.forEach(resourcePath => {
+            if (!inkatlasIconEntries[resourcePath]) {
+                invalidIcons[recordName] = `icon.atlasResourcePath not found in project: '${resourcePath}'`;
+            } else if (!!inkatlasIconEntries[resourcePath]) {
+                const wildcardParts = extractSubstitutions(recordData.icon.atlasResourcePath, resourcePath); // will be empty if no wildcards in atlasResourcePath
+                const instances = filterInstances(recordData.$instances, wildcardParts);
+                const usedIcons = SubstituteInstanceWildcards(recordData.icon.atlasPartName, instances);
+                                
+                usedIcons
+                    // .filter(icon => wildcardParts.every(part => icon.includes(part)))                        // if file parts are instanced, only use corresponding appearances   
+                    .filter(icon => !inkatlasIconEntries[resourcePath].includes(icon))
+                    .forEach(icon => undefinedIcons.push(icon));
+                
+                if (undefinedIcons.length > 0) {                    
+                    invalidIcons[recordName] = `icons not found in ${resourcePath} (${wildcardParts.join(', ')}): \n\t${undefinedIcons.join("\n\t")} `;
+                }
             }
-        }
+        }); 
     }
 
+    // do not validate tags/appearances for anything without a file hooked up
+    if ((!recordName.appearanceResourceName && !recordName.entityName)) {
+        return; 
+    }
+    
     let appearanceNameOrTag = recordData.appearanceName;
     if (!appearanceNameOrTag && !!recordData.appearanceResourceName) {
         appearanceNameOrTag = (recordData.visualTags ?? []).filter(t => t !== "Default").pop();
