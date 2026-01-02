@@ -12,6 +12,7 @@ import {
 } from "../../Wolvenkit_FileValidation.wscript";
 import * as FileValidation from "../../Wolvenkit_FileValidation.wscript";
 import * as TypeHelper from '../../TypeHelper.wscript';
+import * as Logger from '../../Logger.wscript';
 import {getArchiveXlResolvedPaths} from "./archiveXL.wscript";
 import {material_getMaterialPropertyValue, validateMaterialKeyValuePair} from "./material_and_shaders.wscript";
 import {JsonStringify} from "../../TypeHelper.wscript";
@@ -354,14 +355,12 @@ export function _validateMeshFile(mesh, meshPath) {
         }
     }
 
-    if (meshSettings.checkExternalMaterialPaths) {
-        mesh.externalMaterials ||= [];
-        for (let i = 0; i < mesh.externalMaterials.length; i++) {
-            const material = mesh.externalMaterials[i];
-            checkDepotPath(material?.DepotPath, `externalMaterials[${i}]`);
-        }
+    mesh.externalMaterials ||= [];
+    for (let i = 0; i < mesh.externalMaterials.length; i++) {
+        const material = mesh.externalMaterials[i];
+        checkDepotPath(material?.DepotPath, `externalMaterials[${i}]`);
     }
-
+    
     let numSubMeshes = 0;
 
     // Create RenderResourceBlob if it doesn't exist?

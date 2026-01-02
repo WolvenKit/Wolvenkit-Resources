@@ -109,7 +109,6 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
  * @param _info info string for the user
  * @param allowEmpty suppress warning if depot path is unset (partsOverrides will target player entity)
  * @param suppressLogOutput suppress log output (because they'll be gathered in other places)
- * @param isSoft It's okay if soft references start with an * and don't contain substitution
  *
  * @return true if the depot path exists and can be resolved.
  */
@@ -135,6 +134,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
 
     // check if the path has uppercase characters
     if (hasUppercase(depotPath)) {
+        hasUppercasePaths = true;
         return false;
     }
 
@@ -152,13 +152,13 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     }
 
     // ArchiveXL 1.5 variant magic requires checking this in a loop
-    const archiveXlResolvedPaths = getArchiveXlResolvedPaths(stringifyPotentialCName(depotPath));
+    const archiveXlResolvedPaths = getArchiveXlResolvedPaths(depotPath);
     let ret = true;
 
     let warnAboutSubstitution = false;
     switch (getPathToCurrentFile().split('.').pop()) {
         case 'ent':
-            warnAboutSubstitution = entSettings.warnAboutSubstitution;
+            warnAboutSubstitution = entSettings.warnAboutIncompleteSubstitution;
             break;
         case 'mesh':
             warnAboutSubstitution = meshSettings.enabled;
@@ -170,40 +170,39 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => wkit.FileExists(p) && p.includes("base"))) {
         return;
     }
-    
+
     archiveXlResolvedPaths.forEach((resolvedPath) => {
         if (getPathToCurrentFile() === resolvedPath) {
             if (!suppressLogOutput) {
-                Logger.Error(`${info}Depot path ${resolvedPath} references itself. This _will_ crash the game!`);
+                Logger.Warning(`${info}Depot path ${resolvedPath} references itself. This _will_ crash the game! (Ignore this irf everything works)`);
             }
             ret = false;
             return;
         }
-        // all fine
-        if (wkit.FileExists(resolvedPath)) {
+
+        // all fine, or we don't care
+        if (wkit.FileExists(resolvedPath) || suppressLogOutput) {
             return;
         }
 
-        if (suppressLogOutput) {
-            return;
-        }
-        
-        // File does not exist
-        ret = false;
-
+        // ignore ArchiveXL hair profiles
         if (resolvedPath.startsWith("archive_xl\\characters\\common\\hair\\textures\\hair_profiles")) {
             ret = true;
             return;
         }
+        
         if (warnAboutSubstitution && shouldHaveSubstitution(resolvedPath, true)) {
+            ret = false;
             Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It's either invalid or not yet supported in wkit.`);
             return;
         }
         
         if (!!currentMaterialName) {
+            ret = false;
             Logger.Info(`${info}${resolvedPath}: substitution couldn't be resolved. It may not be defined yet, or the file is in a different mod.`);
             return;
         }
+        ret = false;
         Logger.Warning(`${info}${resolvedPath} not found in project or game files`);        
     })
     return ret;
