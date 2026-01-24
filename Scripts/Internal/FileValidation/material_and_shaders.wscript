@@ -52,7 +52,7 @@ export function validateMaterialKeyValuePair(key, materialValue, info, baseType 
             break;
         case "HairProfile":
             if (baseType !== "rRef:CHairProfile") {
-                addWarning(LOGLEVEL_WARN, `${info} is an invalid HairProfile. Please re-create it!`);
+                addWarning(LOGLEVEL_WARN, `${info} parameter is not of the type 'HairProfile'. Please re-create it in the 'values' array!`);
             }
             if (!materialDepotPath.endsWith(".hp")) {
                 addWarning(LOGLEVEL_ERROR, `${info}${materialDepotPath} doesn't end in .hp. This will cause crashes.`);
