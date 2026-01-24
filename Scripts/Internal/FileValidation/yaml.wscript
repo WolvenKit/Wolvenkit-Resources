@@ -123,6 +123,8 @@ let invalidBases = {};
 // Collect entityName errors
 let invalidEntityNames = {};
 
+let invalidEntityTypes = {};
+
 let undefinedTranslationKeys = {};
 
 // Collect appearance name errors
@@ -544,6 +546,23 @@ function verifyArchiveXlPaths() {
     }
 }
 
+function verifyFactoryEntityTypes() {
+
+    const alreadyInvalid = Object.keys(invalidEntityNames);
+    const checkMe = {};
+    Object.keys(factoryInfo).forEach((entityName) => {
+        if (alreadyInvalid.includes(entityName)) {
+            return;
+        }        
+        checkMe[entityName] = factoryInfo[entityName];        
+    });
+    invalidEntityTypes = Csv.validateEntityTypes(checkMe);
+    if (!invalidEntityTypes.length) {
+        return;
+    }
+    Logger.Warning("The following entity files are not valid as factory entries:\n\t" + stringifyArray(invalidEntityTypes));
+}
+
 function verifyTweakXlFile(data) {
     factoryInfo = getFactoryInfo();
     entFileInfo = getRootEntityInfo();
@@ -568,6 +587,8 @@ function verifyTweakXlFile(data) {
     });
     
     verifyArchiveXlPaths();
+    
+    verifyFactoryEntityTypes();
     
     if (data["photo_mode.character.adamPoses"]) {
         Logger.Warning("You're trying to define 'adamPoses' in your yaml, but the correct key is 'adamSmasherPoses'.");        
@@ -594,6 +615,10 @@ function verifyTweakXlFile(data) {
             + StringHelper.stringifyMapIndent(invalidEntityNames)
         );
     }
+    if (invalidEntityTypes.length > 0) {
+        Logger.Warning(`File validation found invalid entities in your .csv:\n\t${StringHelper.stringifyArray(invalidEntityTypes)}`);        
+    }
+    
     if (Object.keys(invalidAppearanceNames).length > 0) {
         Logger.Warning("Your items seem to have invalid appearance names (ignore this if everything works):\n\t"
             + StringHelper.stringifyMapIndent(invalidAppearanceNames));
@@ -624,6 +649,7 @@ function reset_caches() {
 
     invalidBases = {};
     invalidEntityNames = {};
+    invalidEntityTypes = {};
     invalidAppearanceNames = {};
     invalidIcons = {};
     undefinedTranslationKeys = {};

@@ -2,12 +2,14 @@
 
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
+import * as Entity from 'Internal/FileValidation/ent.wscript';
 import {stringifyArray, stringifyMapIndent} from "Internal/StringHelper.wscript";
 
 import { getArchiveXlResolvedPaths, ARCHIVE_XL_VARIANT_INDICATOR, shouldHaveSubstitution } from "./Internal/FileValidation/archiveXL.wscript";
 import { validateInkatlasFile as validate_inkatlas_file } from "./Internal/FileValidation/inkatlas.wscript";
 import { validateInkCCFile as validate_inkcc_file } from "./Internal/FileValidation/inkcc.wscript";
 import * as FileHelper from "./Internal/FileHelper.wscript";
+import * as Csv from "./Internal/FileValidation/csv.wscript";
 
 import {
     checkIfFileIsBroken, stringifyPotentialCName, checkDepotPath, checkCurlyBraces, isNumericHash, formatArrayForPrint
@@ -1670,6 +1672,8 @@ export function validateCsvFile(csvData, csvSettings) {
 
     // check if we have invalid depot paths (mixing up a json and a csv maybe)
     let potentiallyInvalidFactoryPaths = [];
+    
+    const namesAndPaths = {};
 
     for (let i = 0; i < csvData.compiledData.length; i++) {
         const element = csvData.compiledData[i];
@@ -1682,8 +1686,19 @@ export function validateCsvFile(csvData, csvSettings) {
             } else if (!wkit.FileExists(potentialPath)) {
                 addWarning(LOGLEVEL_WARN, `${potentialName}: ${potentialPath} seems to be a file path, but can't be found in project or game files`);
             }
-        }
+            else {
+                namesAndPaths[potentialName] = potentialPath;                
+            }
+        }        
     }
+    
+    const entityTypeWarnings = Csv.validateEntityTypes(namesAndPaths);
+    if (entityTypeWarnings.length) {
+        addWarning(LOGLEVEL_WARN, "One or more entities in your factory have invalid types:");
+    }
+    entityTypeWarnings.forEach(warning => {
+        addWarning(LOGLEVEL_WARN, `\t${warning}`);        
+    })
 
     if (csvSettings.warnAboutInvalidDepotPaths && potentiallyInvalidFactoryPaths.length) {
         addWarning(LOGLEVEL_WARN, `One or more entries couldn't be resolved to depot paths. Is this a valid factory? The following elements have warnings:`);

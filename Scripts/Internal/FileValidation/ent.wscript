@@ -47,3 +47,17 @@ export function Get_Entity_Appearances(filePath)
     }
     return ret;
 }
+
+
+export function Get_Entity_Type(filePath)
+{
+    // Parse referenced file and return entity type
+    try {
+        const file = wkit.GameFileToJson(wkit.GetFileFromProject(filePath, OpenAs.GameFile));
+        let data = TypeHelper.JsonParse(file)?.Data?.RootChunk;
+        return data?.entity?.Data?.$type;
+    } catch (e) {
+        return `Error while parsing ${filePath}: ${e.message}`;
+    }    
+}
+
