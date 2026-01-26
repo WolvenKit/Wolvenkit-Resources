@@ -18,6 +18,8 @@ import {
 } from "../../Wolvenkit_FileValidation.wscript";
 import {GetInkatlasSlots} from "./inkatlas.wscript";
 
+const virtualCarDealerKeys = [ "dealerAtlasPath", "dealerPartName" ]
+
 /**
  * read factory info only once per run
  * @type {Object.<string, Object.<string, EntityInfo>>}
@@ -574,10 +576,10 @@ function verifyTweakXlFile(data) {
     verifyLocKeys(data);
 
     const emptyKeys = [];
-    
+
     Object.keys(data).forEach(key => {
         itemDefinitionNames.push(key);
-        if (typeof data[key] !== 'object' || data[key] === null) {
+        if ((typeof data[key] !== 'object' || data[key] === null)  && !virtualCarDealerKeys.find(k => key.endsWith(k))) {
             emptyKeys.push(key);
         }
     });
@@ -714,7 +716,26 @@ function verifyLinkPaths() {
     }
 }
 
-export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
+function verifyVirtualCarDealerProperties(rawFile) {
+    const atlasPattern = /^(Vehicle\.\w+\.)?dealerAtlasPath:[ ]*\"([a-z0-9_]+(\/|\\\\))*[a-z0-9_]+\.inkatlas\"$/;
+    const partNamePattern = /^(Vehicle\.\w+\.)?dealerPartName:[ ]*\"[a-z0-9_]+"$/;
+    
+    const invalidCarDealerProperties = rawFile.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.indexOf('dealerAtlasPath') >= 0 || line.indexOf('dealerPartName') >= 0)
+            .filter(line => !line.match(atlasPattern) && !line.match(partNamePattern));
+
+    if (invalidCarDealerProperties.length > 0) {
+        Logger.Warning("Found invalid properties for Virtual Car Dealer. Make sure values are enclosed in double quotes and use either forward slashes or double backslashes.\n\tAffected lines:"
+            + stringifyArray(invalidCarDealerProperties));
+        Logger.Info("Valid Examples:"
+            + "\n\tVehicle.my_vehicle.dealerAtlasPath: \"my/folder/icons.inkatlas\""
+            + "\n\tVehicle.my_vehicle.dealerAtlasPath: \"my\\\\folder\\\\icons.inkatlas\""
+            + "\n\tVehicle.my_vehicle.dealerPartName: \"my_part_name\"");
+    }
+}
+
+export function validate_yaml_file(data, rawFile, yaml_settings, isXlFile = false) {
     if (!data) {
         Logger.Info("No data found in YAML file. Skipping validation.")
         return;
@@ -723,6 +744,7 @@ export function validate_yaml_file(data, yaml_settings, isXlFile = false) {
 
     if (!isXlFile) {
         verifyTweakXlFile(data);
+        verifyVirtualCarDealerProperties(rawFile);
         return;
     }
     
