@@ -887,7 +887,7 @@ export function SetNumAppearances(number) {
     numAppearances = number;
 }
 
-export let dynamicMaterials = new Set();
+export let dynamicMaterials = new Map();
 export var currentMaterialName = "";
 
 export function SetCurrentMaterialName(newValue) {
