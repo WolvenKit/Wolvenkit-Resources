@@ -602,9 +602,8 @@ function verifyTweakXlFile(data) {
     }
     
     if (Object.keys(invalidBases).length > 0) {
-        Logger.Warning("File validation found invalid item $base keys. Find a list for clothing in the EquipmentEx wiki:");
-        Logger.Info("\thttps://github.com/psiberx/cp2077-equipment-ex?tab=readme-ov-file#auto-conversions");
-        Logger.Info("\tIf this is not a clothing item, please check for typos.\n\t"
+        Logger.Warning("Invalid equipment $base keys (ignore for weapons/cars/mods/abilities). Find a list in the EquipmentEx wiki:");
+        Logger.Info("\thttps://github.com/psiberx/cp2077-equipment-ex?tab=readme-ov-file#auto-conversions\n\t"
             + StringHelper.stringifyMapIndent(invalidBases)
         );
     }
