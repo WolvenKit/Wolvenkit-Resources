@@ -31,16 +31,16 @@ export function RunFileValidation(ext, file) {
     if (!file) { // Something went wrong when passing the file from WKit
         return;
     }
-    
+   
     let fileContent;
     
     const isYamlFile = yamlExtensions.includes(ext);
     if (isYamlFile) {
         try {
-            fileContent = TypeHelper.JsonParse(wkit.YamlToJson(file));            
+            fileContent = TypeHelper.JsonParse(wkit.YamlToJson(file));
         } catch {
             if (!file.includes("[object Object]")) {
-                Logger.Error(`${file} contains invalid YAML. Use www.yamllint.com to fix your syntax errors.`);                
+                Logger.Error(`${file} contains invalid YAML. Use www.yamllint.com to fix your syntax errors.`);
             }
             return;
         }
@@ -120,7 +120,7 @@ export function RunFileValidation(ext, file) {
             case "xl":
             case "yml":
             case "yaml":
-                FileValidation.validateYamlFile(data, {}, ext.endsWith('xl'));
+                FileValidation.validateYamlFile(data, wkit.JsonToYaml(file), {}, ext.endsWith('xl'));
                 break;
             default:
                 Logger.Info("File validation not implemented for file type " + ext);

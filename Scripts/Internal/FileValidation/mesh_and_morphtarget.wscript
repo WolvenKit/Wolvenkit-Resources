@@ -223,6 +223,7 @@ function printDuplicateMaterialWarnings() {
 function meshFile_collectDynamicChunkMaterials(mesh) {
     FileValidation.SetNumAppearances(0);
     FileValidation.dynamicMaterials.clear();
+    
     // null-safety
     if (!mesh || typeof mesh === 'bigint') return;
 
@@ -233,7 +234,9 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     const meshAsString = JsonStringify(mesh);
 
     // it's not dynamic
-    if (!meshAsString.includes("@")) return;
+    if (!meshAsString.includes("@")) {
+        return;
+    }
 
     if (!meshAsString.includes("@context") && mesh.appearances.length < 2) {
         addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
@@ -257,10 +260,13 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
             }
             const nameParts = chunkMaterialName.split("@");
             const dynamicMaterialName = `@${nameParts[(nameParts.length -1)]}`;
-            FileValidation.dynamicMaterials[dynamicMaterialName] = FileValidation.dynamicMaterials[dynamicMaterialName] || [];
 
-            if (!FileValidation.dynamicMaterials[dynamicMaterialName].includes(nameParts[0])) {
-                FileValidation.dynamicMaterials[dynamicMaterialName].push(nameParts[0]);
+            if (!FileValidation.dynamicMaterials.has(dynamicMaterialName)) {
+                FileValidation.dynamicMaterials.set(dynamicMaterialName, []);
+            }
+            
+            if (!FileValidation.dynamicMaterials.get(dynamicMaterialName).includes(nameParts[0])) {
+                FileValidation.dynamicMaterials.get(dynamicMaterialName).push(nameParts[0]);
             }
         }
     }
@@ -312,9 +318,8 @@ export function _validateMeshFile(mesh, meshPath) {
     meshFile_collectDynamicChunkMaterials(mesh);
 
     const definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));
-
-    const undefinedDynamicMaterialNames = Object.keys(FileValidation.dynamicMaterials).filter((name) => !definedMaterialNames.includes(name));
-
+    const undefinedDynamicMaterialNames = Array.from(FileValidation.dynamicMaterials.keys().filter((name) => !definedMaterialNames.includes(name)));
+    
     if (undefinedDynamicMaterialNames.length > 0) {
         addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
     }

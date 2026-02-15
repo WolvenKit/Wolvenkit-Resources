@@ -24,6 +24,7 @@ export class ArchiveXLConstants {
     }
     
     static validClothingBaseTypes = [
+        // Base items
         "Items.GenericHeadClothing",
         "Items.Glasses",
         "Items.Visor",
@@ -33,6 +34,48 @@ export class ArchiveXLConstants {
         "Items.GenericLegClothing",
         "Items.Skirt",
         "Items.GenericFootClothing",
-        "Items.Outfit"
+        "Items.Outfit",
+
+        // Head items
+        "Items.HelmetHair",
+        "Items.Hat",
+        "Items.Cap",
+        "Items.Scarf",
+        "Items.ScarfHair",
+        "Items.Balaclava",
+        
+        // Face item
+        "Items.Glasses",
+        "Items.Mask",
+        "Items.Visor",
+        "Items.Tech",
+        
+        // T2
+        "Items.Coat",
+        "Items.Dress",
+        "Items.FormalJacket",
+        "Items.Jacket",
+        "Items.Jumpsuit",
+        "Items.LooseShirt",
+        "Items.Vest",
+        
+        // T1
+        "Items.FormalShirt",
+        "Items.Shirt",
+        "Items.TankTop",
+        "Items.TightJumpsuit",
+        "Items.TShirt",
+        "Items.Undershirt",
+
+        // Legs
+        "Items.FormalPants",
+        "Items.Pants",
+        "Items.Shorts",
+        "Items.Skirt",
+        
+        // Feet
+        "Items.Boots",
+        "Items.CasualShoes",
+        "Items.FormalShoe",
     ];
 }
