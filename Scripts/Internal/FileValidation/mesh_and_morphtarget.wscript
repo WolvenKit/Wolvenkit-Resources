@@ -478,7 +478,6 @@ export function _validateMeshFile(mesh, meshPath) {
     for (let i = 0; i < localMaterials.length; i += 1) {
         const material = localMaterials[i];
         const baseMaterial = stringifyPotentialCName(material.Data.baseMaterial.DepotPath);
-        Logger.Success(baseMaterial);
         if (!baseMaterial || !contextMaterialValues.includes(baseMaterial)) {
             continue;
         }
