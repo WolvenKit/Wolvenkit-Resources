@@ -331,23 +331,39 @@ export function _validateMeshFile(mesh, meshPath) {
     if (undefinedDynamicMaterialNames.length > 0) {
         addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
     }
+
+    let localMaterials = mesh.localMaterialBuffer.materials;
+    if (localMaterials.length === 0) {
+        localMaterials = mesh.preloadLocalMaterialInstances;
+    }
     
     const maxExternalMaterialIndex = mesh.materialEntries.filter(e => !e.isLocalInstance).map(e => e.index).reduce((max, current) => Math.max(max, current), -1);
     const maxLocalMaterialIndex = mesh.materialEntries.filter(e => e.isLocalInstance).map(e => e.index).reduce((max, current) => Math.max(max, current), -1);
 
     if (mesh.externalMaterials.length -1 < maxExternalMaterialIndex) {
-        addWarning(LOGLEVEL_ERROR, `Your mesh is trying to use an external material with the index ${maxExternalMaterialIndex}, but there are only ${maxExternalMaterialIndex.length} entries (count starts at 0)`);    
+        addWarning(LOGLEVEL_ERROR, `Your mesh is trying to use an external material with the index ${maxExternalMaterialIndex}, but there are only ${mesh.externalMaterials.length} entries (count starts at 0)`);    
+    }
+    if (localMaterials.length -1 < maxLocalMaterialIndex) {
+        addWarning(LOGLEVEL_ERROR, `Your mesh is trying to use a local material with the index ${maxLocalMaterialIndex}, but there are only ${localMaterials.length} entries (count starts at 0)`);    
     }
     
-    if (!!mesh.localMaterialBuffer?.materials) {
+    const localMaterialMap = {};
+    const externalMaterialMap = {};
+
+    mesh.materialEntries.forEach(e => {
+        const targetMap = e.isLocalInstance ? localMaterialMap : externalMaterialMap;
+        targetMap[e.index] = stringifyPotentialCName(e.name);
+    });
+    
+    
+    if (!!mesh.localMaterialBuffer?.materials.length) {
         for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
             let material = mesh.localMaterialBuffer.materials[i];
 
             let materialName =  `localMaterialBuffer.materials[${i}]`;
 
-            // Add a warning here?
-            if (i < mesh.materialEntries.length) {
-                materialName = stringifyPotentialCName(mesh.materialEntries[i].name) || materialName;
+            if (!!localMaterialMap[i]) {
+                materialName = localMaterialMap[i];
             }
 
             if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
@@ -362,12 +378,10 @@ export function _validateMeshFile(mesh, meshPath) {
         let material = mesh.preloadLocalMaterialInstances[i];
 
         let materialName =  `preloadLocalMaterials[${i}]`;
-
-        // Add a warning here?
-        if (i < mesh.materialEntries.length) {
-            materialName = stringifyPotentialCName(mesh.materialEntries[i].name) || materialName;
+        
+        if (!!localMaterialMap[i]) {
+            materialName = localMaterialMap[i];
         }
-
         if (PLACEHOLDER_NAME_REGEX.test(materialName)) {
             meshFile_validatePlaceholderMaterial(material, `preloadLocalMaterials[${i}]`);
         } else {
@@ -427,7 +441,52 @@ export function _validateMeshFile(mesh, meshPath) {
     if ((mesh.appearances[0].Data.chunkMaterials || []).length === 0) {
         addWarning(LOGLEVEL_INFO, 'The first appearance has no chunk materials. The mesh will be invisible, and dynamically generated materials will not work!');
     }
+    
+    const contextIndex = Object.keys(localMaterialMap).find(key => localMaterialMap[key] === "@context");
+
     printDuplicateMaterialWarnings();
+    
+    if (contextIndex === undefined) {        
+        return true;
+    }
+
+    // check for @context and embed flags for base materials
+    const context = localMaterials[contextIndex];
+    if (!!stringifyPotentialCName(context.Data.baseMaterial.DepotPath)) {
+        addWarning(LOGLEVEL_WARN, 'Your @context material must not have a base material!');
+    }
+    let hasInvalidValues = context.Data.values.find(v => v["$type"] !== "CName") !== undefined;
+    let contextMaterialValues = [];
+    context.Data.values.forEach(v => {
+        const valueKeys = Object.keys(v);
+        if (valueKeys.length !== 2) {
+            hasInvalidValues = true;
+            return;
+        }
+        const value = v[valueKeys[1]];
+        if (typeof value !== 'object') {
+            return;
+        }
+        contextMaterialValues.push(stringifyPotentialCName(value));
+    })
+    
+    if (hasInvalidValues) {
+        addWarning(LOGLEVEL_WARN, `Your @context has invalid properties - they must be of the type CPUName64`);
+
+    }
+
+    for (let i = 0; i < localMaterials.length; i += 1) {
+        const material = localMaterials[i];
+        const baseMaterial = stringifyPotentialCName(material.Data.baseMaterial.DepotPath);
+        Logger.Success(baseMaterial);
+        if (!baseMaterial || !contextMaterialValues.includes(baseMaterial)) {
+            continue;
+        }
+        if (material.Data.baseMaterial.Flags !== "Soft") {
+            const materialName = localMaterialMap[i] ?? `localMaterialBuffer.materials[${i}]`;
+            addWarning(LOGLEVEL_WARN, `${materialName}: base material 'Flags' must be set to 'Soft' when referenced in @context!`);
+        }
+    }
 
     return true;
 }
