@@ -331,7 +331,14 @@ export function _validateMeshFile(mesh, meshPath) {
     if (undefinedDynamicMaterialNames.length > 0) {
         addWarning(LOGLEVEL_ERROR, `You're using dynamic materials that are not defined. This will crash your game! [ ${undefinedDynamicMaterialNames.join(", ")} ]`);
     }
+    
+    const maxExternalMaterialIndex = mesh.materialEntries.filter(e => !e.isLocalInstance).map(e => e.index).reduce((max, current) => Math.max(max, current), -1);
+    const maxLocalMaterialIndex = mesh.materialEntries.filter(e => e.isLocalInstance).map(e => e.index).reduce((max, current) => Math.max(max, current), -1);
 
+    if (mesh.externalMaterials.length -1 < maxExternalMaterialIndex) {
+        addWarning(LOGLEVEL_WARN, `Your mesh is trying to use an external material with the index ${maxExternalMaterialIndex}, but there are only ${maxExternalMaterialIndex.length} entries (count starts at 0)`);    
+    }
+    
     if (!!mesh.localMaterialBuffer?.materials) {
         for (let i = 0; i < mesh.localMaterialBuffer.materials.length; i++) {
             let material = mesh.localMaterialBuffer.materials[i];
