@@ -87,6 +87,8 @@ let chunksByComponentHandleId = {};
  */
 export const PLACEHOLDER_NAME_REGEX = /(^[-=_]+.*[-=_]+(@\w+)?$)|(_bkp?$)/;
 
+export const VALID_APPEARANCE_NAME_REGEX = /^(\w|\d|-|&|=)+$/
+
 /** Warn about self-referencing resources */
 export let pathToCurrentFile = '';
 export let pathToParentFile = '';
@@ -689,9 +691,12 @@ function appFile_validateAppearance(appearance, index, validateRecursively, vali
 
     if (appearanceName.length === 0 || PLACEHOLDER_NAME_REGEX.test(appearanceName)) return;
 
+    appearanceErrorMessages[appearanceName] ??= [];
     if (!appearanceName) {
         appearanceName = `appearances[${index}]`;
         appearanceErrorMessages[appearanceName].push(`INFO|appearance definition #${index} has no name yet`);
+    } else if (!VALID_APPEARANCE_NAME_REGEX.test(appearanceName)) {        
+        appearanceErrorMessages[appearanceName].push(`WARNING|Appearance name ${appearanceName} seems to have invalid characters`);
     }
 
     appearanceErrorMessages[appearanceName] ||= [];
