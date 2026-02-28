@@ -336,7 +336,7 @@ export function _validateMeshFile(mesh, meshPath) {
     const maxLocalMaterialIndex = mesh.materialEntries.filter(e => e.isLocalInstance).map(e => e.index).reduce((max, current) => Math.max(max, current), -1);
 
     if (mesh.externalMaterials.length -1 < maxExternalMaterialIndex) {
-        addWarning(LOGLEVEL_WARN, `Your mesh is trying to use an external material with the index ${maxExternalMaterialIndex}, but there are only ${maxExternalMaterialIndex.length} entries (count starts at 0)`);    
+        addWarning(LOGLEVEL_ERROR, `Your mesh is trying to use an external material with the index ${maxExternalMaterialIndex}, but there are only ${maxExternalMaterialIndex.length} entries (count starts at 0)`);    
     }
     
     if (!!mesh.localMaterialBuffer?.materials) {
