@@ -52,13 +52,15 @@ function meshFile_CheckMaterialProperties(material, materialName, materialIndex,
 
     if (!baseMaterial && materialName !== "@context") {
         addWarning(LOGLEVEL_INFO, `${materialInfo}: No base material defined!`);
-        baseMaterial = "";
     }
+    baseMaterial ??= "";
     
-    // some people have been trying to put .xbm files there and then wonder 
-    const baseNameParts = baseMaterial.split('.');
-    if (!!baseMaterial && materialName !== "@context" && !baseMaterialExtensions.includes(baseNameParts[baseNameParts.length -1 ])) {    
-        addWarning(LOGLEVEL_WARN, `${materialInfo}: Base material seems to be invalid (should be .mi, .mt or .remt, but is ${baseNameParts[baseNameParts.length -1 ]})`);
+    if (baseMaterial.split) {        
+        // some people have been trying to put .xbm files there and then wonder 
+        const baseNameParts = baseMaterial.split('.');
+        if (!!baseMaterial && materialName !== "@context" && !baseMaterialExtensions.includes(baseNameParts[baseNameParts.length -1 ])) {    
+            addWarning(LOGLEVEL_WARN, `${materialInfo}: Base material seems to be invalid (should be .mi, .mt or .remt, but is ${baseNameParts[baseNameParts.length -1 ]})`);
+        }
     }
 
     const isSoftDependency = material.baseMaterial?.Flags === "Soft";
