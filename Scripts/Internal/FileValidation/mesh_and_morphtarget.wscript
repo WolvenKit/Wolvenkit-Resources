@@ -454,7 +454,7 @@ export function _validateMeshFile(mesh, meshPath) {
 
     // check for @context and embed flags for base materials
     const context = localMaterials[contextIndex];
-    if (!!stringifyPotentialCName(context.Data.baseMaterial.DepotPath)) {
+    if (!!stringifyPotentialCName(context?.Data?.baseMaterial?.DepotPath)) {
         addWarning(LOGLEVEL_WARN, 'Your @context material must not have a base material!');
     }
     let hasInvalidValues = context.Data.values.find(v => v["$type"] !== "CName") !== undefined;
