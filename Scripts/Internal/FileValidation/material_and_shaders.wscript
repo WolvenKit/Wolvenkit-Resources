@@ -75,6 +75,12 @@ export function validateMaterialKeyValuePair(key, materialValue, info, baseType 
                 return;
             }
             break;
+        case "Emissive":
+            if (materialDepotPath.endsWith("white.xbm")) {
+                addWarning(LOGLEVEL_WARN, `${info}${materialDepotPath}: Emissive turns black with a fully white mask. Ignore this if everything works.`);
+                return;
+            }
+            break;
     }
     if (materialValue.Flags?.includes('Embedded')) {
         addWarning(LOGLEVEL_INFO, `${info} is set to Embedded. This might not work as you expect it.`);
