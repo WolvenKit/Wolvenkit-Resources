@@ -81,11 +81,11 @@ let chunksByComponentHandleId = {};
 
 /**
  * Matches placeholders such as
- * ----------------
+ * ---------------- blah
  * ================
  * and names ending in bk or bkp
  */
-export const PLACEHOLDER_NAME_REGEX = /(^[-=_]+.*[-=_]+(@\w+)?$)|(_bkp?$)/;
+export const PLACEHOLDER_NAME_REGEX = /^([-=_]+.*[-=_\s\d]+(@\w\d+)?$)|(_bkp?$)/;
 
 export const VALID_APPEARANCE_NAME_REGEX = /^(\w|\d|-|&|=)+$/
 
