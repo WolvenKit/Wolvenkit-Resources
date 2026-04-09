@@ -282,7 +282,7 @@ function mapFactoriesToEntFiles() {
        if (!entInfo?.filePath) {
            return;
        }
-       entFactoryMapping[entName] = entInfo.filePath;
+       entFactoryMapping[entName] = entInfo;
     });
 }
 
@@ -488,10 +488,10 @@ function verifyItemDefinition(recordName, recordData) {
     }
 
     // do not validate tags/appearances for anything without a file hooked up
-    if ((!recordName.appearanceResourceName && !recordName.entityName)) {
+    if ((!recordData.appearanceResourceName && !recordData.entityName)) {
         return; 
     }
-    
+
     let appearanceNameOrTag = recordData.appearanceName;
     if (!appearanceNameOrTag && !!recordData.appearanceResourceName) {
         appearanceNameOrTag = (recordData.visualTags ?? []).filter(t => t !== "Default").pop();
