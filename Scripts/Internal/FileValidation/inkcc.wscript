@@ -23,6 +23,8 @@ const validLinks = {
         "hairstyle_cyberware", "hairstyle", "hair color", "hairstyle color", "eyebrows color", "eyelash color",
         // eyes
         "eyes_color", "eyes_color_2",
+        // skin color (WIP)
+        "skin color"
     ],
 }
 
