@@ -98,7 +98,8 @@ function validateCustomizationOptions(groupKey, customizationOptions, slotGroups
         
         switch (option["$type"]) {
             case "gameuiSwitcherInfo":
-                validateGameuiSwitcherOptions(groupKey, `${groupKey}.customizationOptions[${i}]`, option["options"], slotGroupsResolved, i <= 1 && hasEmptyName);
+                validateGameuiSwitcherOptions(groupKey, `${groupKey}.customizationOptions[${i}]`, option["options"], slotGroupsResolved,
+                    (i <= 1 && hasEmptyName) || uiSlot === 'skin_type_switcher');
                 break;
             case "gameuiAppearanceInfo":
                 validateGameuiAppearanceInfo(`${groupKey}.customizationOptions[${i}]`, option, slotGroupsResolved, i <= 1 && hasEmptyName);
