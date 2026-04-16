@@ -284,7 +284,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
 
 export function getEmptyMeshNames(fromProject = false) {
     if (fromProject) {
-        emptyMeshNames.clear();
+        emptyMeshNames.slice(0);
     }
     if (emptyMeshNames.length === 0) {
         for (let filePath of GetAllProjectFiles('archive', 'mesh')) {

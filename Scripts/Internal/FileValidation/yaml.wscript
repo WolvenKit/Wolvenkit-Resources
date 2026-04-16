@@ -664,7 +664,7 @@ function checkForEmptyMeshes() {
         .flat()
         .filter((value, index, self) => self.indexOf(value) === index);
 
-    let emptyMeshNames = getEmptyMeshNames();
+    let emptyMeshNames = getEmptyMeshNames(true);
     
     let emptyMeshes = emptyMeshNames.filter(n => !patchPaths.includes(n));
     
