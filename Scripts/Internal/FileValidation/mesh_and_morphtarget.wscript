@@ -320,6 +320,9 @@ export function _validateMeshFile(mesh, meshPath) {
 
     if (mesh.appearances.length === 0 || mesh.materialEntries.length === 0) {
         emptyMeshNames.push(meshPath ?? pathToCurrentFile);
+        if (!Array.from(wkit.GetProjectFiles("resources")).filter(f => f.endsWith(".xl")).length) {
+            addWarning(LOGLEVEL_ERROR, 'No materials defined in .mesh file, and you have no .xl file to patch them! This will crash the game!');
+        }
         return;
     }
     
