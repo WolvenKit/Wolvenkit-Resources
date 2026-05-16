@@ -63,7 +63,7 @@ function validateGameuiSwitcherOptions(groupKey, debugText, gameUiSwitcherOption
         const validTagsForGroup = validTags[groupKey] ?? [];
         const invalidTags = gameSwitcherOption.tags.tags.map((tag) => stringifyWithSpaces(tag)).filter((tag) => !validTagsForGroup.includes(tag));
         if (invalidTags.length > 0) {
-            Logger.Warning(`${debugText}: option[${i}] has invalid tags ${invalidTags.join(", ")} (valid tags are ${validTags.join(", ")})`);
+            Logger.Warning(`${debugText}: option[${i}] has invalid tags ${invalidTags.join(", ")} (valid tags are ${validTagsForGroup.join(", ")})`);
         } 
     }
 
