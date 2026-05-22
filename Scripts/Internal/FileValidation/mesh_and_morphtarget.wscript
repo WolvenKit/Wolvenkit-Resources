@@ -423,7 +423,7 @@ export function _validateMeshFile(mesh, meshPath) {
         for (let j = 0; j < appearance.chunkMaterials.length; j++) {
             const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
             if (!ignoreChunkMaterialName(chunkMaterialName)
-                && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
+                && !!chunkMaterialName.includes && !chunkMaterialName.includes("@") // TODO: ArchiveXL dynamic material check
                 && !(chunkMaterialName in materialNames)
             ) {
                 invisibleSubmeshes.push(`submesh ${j}: ${chunkMaterialName}`);
