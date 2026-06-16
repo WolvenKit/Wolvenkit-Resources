@@ -252,7 +252,6 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
         addWarning(LOGLEVEL_WARN, `You need at least two appearances for dynamic appearances to work!`);
     }
 
-    const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
     const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
 
     const appearanceChunksByName = {};
@@ -275,7 +274,7 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
             templateAppearanceName = stringifyPotentialCName(tag) || firstAppearanceName;
         }
 
-        let templateChunks = appearanceChunksByName[templateAppearanceName] ?? firstAppearanceChunks;
+        let templateChunks = appearanceChunksByName[templateAppearanceName] ?? appearanceChunksByName[firstAppearanceName] ?? [];
         appearance.chunkMaterials = templateChunks.map(chunk => ({ 
             "$value": chunk.value.replaceAll(templateAppearanceName, appearanceName),
         }));
