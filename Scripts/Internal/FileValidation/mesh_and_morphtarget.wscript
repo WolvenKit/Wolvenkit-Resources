@@ -255,31 +255,61 @@ function meshFile_collectDynamicChunkMaterials(mesh) {
     const firstAppearanceChunks = mesh.appearances[0].Data.chunkMaterials;
     const firstAppearanceName = stringifyPotentialCName(mesh.appearances[0].Data.name) ?? "";
 
+    const appearanceChunksByName = {};
     for (let i = 0; i < mesh.appearances.length; i++) {
-        FileValidation.SetNumAppearances(FileValidation.numAppearances + 1);
         let appearance = mesh.appearances[i].Data;
-        if (appearance.chunkMaterials.length === 0) {
-            appearance.chunkMaterials = firstAppearanceChunks.map((material) => ({
-                "$value": material.value.replaceAll(firstAppearanceName,  appearance.name)
-            }));            
+        let appearanceName = stringifyPotentialCName(appearance.name);
+        if (PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+            continue;
         }
-        for (let j = 0; j < appearance.chunkMaterials.length; j++) {
-            const chunkMaterialName = stringifyPotentialCName(appearance.chunkMaterials[j]) || '';
+        
+        if (appearance.chunkMaterials.length > 0) {
+            appearanceChunksByName[appearanceName] = appearance.chunkMaterials;
+            continue;
+        }
+        
+        // Read  template appearance from tags - fallback to first appearance
+        let templateAppearanceName = firstAppearanceName;
+        if (appearance.tags.length) {
+            let tag = appearance.tags[0];
+            templateAppearanceName = stringifyPotentialCName(tag) || firstAppearanceName;
+        }
+
+        let templateChunks = appearanceChunksByName[templateAppearanceName] ?? firstAppearanceChunks;
+        appearance.chunkMaterials = templateChunks.map(chunk => ({ 
+            "$value": chunk.value.replaceAll(templateAppearanceName, appearanceName),
+        }));
+        appearanceChunksByName[appearanceName] = appearance.chunkMaterials;
+    }
+
+    Object.keys(appearanceChunksByName).forEach(appearanceName => {
+        if (PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+            return;
+        }
+        const chunks = appearanceChunksByName[appearanceName] ?? [];
+        for (let j = 0; j < chunks.length; j++) {
+            const chunkMaterialName = stringifyPotentialCName(chunks[j]) || '';
             if (ignoreChunkMaterialName(chunkMaterialName) || !chunkMaterialName.includes("@")) {
                 continue;
             }
+
             const nameParts = chunkMaterialName.split("@");
             const dynamicMaterialName = `@${nameParts[(nameParts.length -1)]}`;
 
             if (!FileValidation.dynamicMaterials.has(dynamicMaterialName)) {
                 FileValidation.dynamicMaterials.set(dynamicMaterialName, []);
             }
-            
+
             if (!FileValidation.dynamicMaterials.get(dynamicMaterialName).includes(nameParts[0])) {
                 FileValidation.dynamicMaterials.get(dynamicMaterialName).push(nameParts[0]);
             }
         }
+    });
+    for (let i = 0; i < mesh.appearances.length; i++) {
+
+        
     }
+    
 }
 
 export function getEmptyMeshNames(fromProject = false) {
@@ -329,7 +359,7 @@ export function _validateMeshFile(mesh, meshPath) {
     checkMeshMaterialIndices(mesh);
     
     meshFile_collectDynamicChunkMaterials(mesh);
-
+    
     const definedMaterialNames = (mesh.materialEntries || []).map(entry => stringifyPotentialCName(entry.name));
     const undefinedDynamicMaterialNames = Array.from(FileValidation.dynamicMaterials.keys().filter((name) => !definedMaterialNames.includes(name)));
     
@@ -415,8 +445,11 @@ export function _validateMeshFile(mesh, meshPath) {
         let invisibleSubmeshes = [];
         let appearance = mesh.appearances[i].Data;
         const appearanceName = stringifyPotentialCName(appearance.name);
-
-        if (appearanceName && appearance.chunkMaterials > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName) && numSubMeshes > appearance.chunkMaterials) {
+        if (PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+            continue;
+        }
+        
+        if (appearanceName && appearance.chunkMaterials > 0 && numSubMeshes > appearance.chunkMaterials) {
             addWarning(LOGLEVEL_INFO, `Appearance ${appearanceName} has only ${appearance.chunkMaterials.length} of ${numSubMeshes} submesh appearances assigned. Meshes without appearances will render as invisible.`);
         }
 
@@ -431,7 +464,7 @@ export function _validateMeshFile(mesh, meshPath) {
         }
         
         
-        if (invisibleSubmeshes.length > 0 && !PLACEHOLDER_NAME_REGEX.test(appearanceName)) {
+        if (invisibleSubmeshes.length > 0) {
             let filePrefix = "";
             if (getPathToCurrentFile().endsWith('.mesh')) {
                 filePrefix = `${getPathToCurrentFile()}: `;
