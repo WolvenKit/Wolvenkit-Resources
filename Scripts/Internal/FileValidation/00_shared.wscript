@@ -7,10 +7,11 @@ import {
     currentMaterialName,
     entSettings,
     meshSettings,
-    PLACEHOLDER_NAME_REGEX
- } from '../../Wolvenkit_FileValidation.wscript';
+    PLACEHOLDER_NAME_REGEX, getFileLinks
+} from '../../Wolvenkit_FileValidation.wscript';
 import { getArchiveXlResolvedPaths, shouldHaveSubstitution } from './archiveXL.wscript';
 import * as Logger from '../../Logger.wscript';
+import {collectAllLinkPaths, collectAllPatchPaths, validate_yaml_file} from "./yaml.wscript";
 
 /** Component names to ignore for space check */
 const cdprComponentNames = [
@@ -102,6 +103,7 @@ export function stringifyPotentialCName(cnameOrString, _info = '', suppressSpace
 }
 
 
+
 /**
  * Will check if a depot path exists. If the path is dynamic, it will resolve substitution.
  *
@@ -170,6 +172,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
     if (archiveXlResolvedPaths.length > 1 && !!archiveXlResolvedPaths.find(p => wkit.FileExists(p) && p.includes("base"))) {
         return;
     }
+    
 
     archiveXlResolvedPaths.forEach((resolvedPath) => {
         if (getPathToCurrentFile() === resolvedPath) {
@@ -181,7 +184,7 @@ export function checkDepotPath(_depotPath, _info, allowEmpty = false, suppressLo
         }
 
         // all fine, or we don't care
-        if (wkit.FileExists(resolvedPath) || suppressLogOutput) {
+        if (wkit.FileExists(resolvedPath) || getFileLinks().includes(resolvedPath) || suppressLogOutput) {
             return;
         }
 

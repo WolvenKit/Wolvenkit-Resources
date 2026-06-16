@@ -22,7 +22,7 @@ import {
 } from "./Internal/FileValidation/mesh_and_morphtarget.wscript";
 import Settings from "./hook_settings.wscript";
 import {validateMaterialKeyValuePair} from "./Internal/FileValidation/material_and_shaders.wscript";
-import {validate_yaml_file} from "./Internal/FileValidation/yaml.wscript";
+import {validate_yaml_file, collectAllLinkPaths} from "./Internal/FileValidation/yaml.wscript";
 
 /*
  *     .___                      __           .__                                     __  .__    .__           _____.__.__
@@ -181,6 +181,8 @@ export function resetInternalFlagsAndCaches() {
     meshAppearancesNotFoundByComponent = {};
 
     currentWarnings = {};
+    
+    fileLinks = null;
 
     meshAndMorphtargetReset();
 
@@ -447,6 +449,20 @@ let componentIds = {};
 let usedAppearanceTags = []
 
 let appFileSettings = {};
+
+/**
+ * For depot path validation: only read this once, set back to null in resetInternalFlagsAndCaches
+ */
+let fileLinks = null;
+
+export function getFileLinks() {
+    if (null !== fileLinks) {
+        return fileLinks;
+    }
+    const linkData = collectAllLinkPaths() ?? {};
+    fileLinks = Array.from(Object.keys(linkData).map(key => linkData[key])).flat();
+    return fileLinks;
+}
 
 function component_collectAppearancesFromMesh(componentMeshPath) {
     if (!componentMeshPath || /^\d+$/.test(componentMeshPath) || !wkit.FileExists(componentMeshPath)) return;
