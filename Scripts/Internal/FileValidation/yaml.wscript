@@ -683,7 +683,7 @@ function verifyPatchPaths() {
     const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
     
     const patchMeshes = Object.values(allPatchPaths).flat();
-    
+        
     const duplicatePatchMeshes = patchMeshes.filter((value) => Object.keys(allPatchPaths).includes(value));
     
     let filesNotFound = patchMeshes.filter(p =>  
@@ -789,14 +789,22 @@ export function collectAllPatchPaths() {
 
     const ret = {};
     for (let filePath of GetAllProjectFiles('resources', 'xl')) {        
-        const data = readYamlAsJson(filePath)?.resource?.patch;
+        const patchData = readYamlAsJson(filePath)?.resource?.patch;
        
-        if (!data) {
+        if (!patchData) {
             continue;
         }
+        const scopeData = readYamlAsJson(filePath)?.resource?.scope ?? {};
         
-        for (let [key, value] of Object.entries(data)) {
-            var valueArray = Array.from(value);
+        for (let [key, value] of Object.entries(patchData)) {
+            let valueArray = Array.from(value);
+            valueArray = valueArray.flatMap(item => {
+                if (!scopeData.hasOwnProperty(item) || !Array.isArray(scopeData[item])) {
+                    return [item];
+                }               
+                return scopeData[item];
+            })
+            
             ret[key] = [...(ret[key] ?? []), ...valueArray];
         }        
     }
