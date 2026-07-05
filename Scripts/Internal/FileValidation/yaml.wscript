@@ -134,8 +134,26 @@ let invalidAppearanceNames = {};
 
 let invalidIcons = {};
 
+let allFilePaths = null;
+let allScopes = null;
+let copyFilePaths =  null;
+let patchFilePaths = null;
+let linkFilePaths = null;
+
+/**
+ * Returns a flat map of an object's values (if they're nested lists). Empty list if object is invalid.
+ * @param data
+ * @returns  {string[]}
+ */
+function getValuesFlat(data) {
+    if (typeof data !== "object") {
+        return [];
+    }
+    return Object.values(data).flatMap(item => Array.isArray(item) ? item : [item]);
+}
+ 
 function collectFilePaths(data, filePaths = []) {
-    if (!data) {
+    if (!data || typeof(data) !== "object") {
         return filePaths;
     }
     let keys = Object.keys(data);
@@ -153,6 +171,196 @@ function collectFilePaths(data, filePaths = []) {
     return [... new Set(filePaths)]; // remove duplicates
 }
 
+function getProjectFilesAndLinks() {
+    return [
+        ...Array.from(wkit.GetProjectFiles('archive')),
+        ... getValuesFlat(linkFilePaths),
+        ... getValuesFlat(copyFilePaths),
+    ];
+}
+
+function verifyYamlFilePaths(data) {
+    
+    allFilePaths = collectFilePaths(data);
+    
+    collectAllCopyPaths();
+    collectAllPatchPaths();
+    collectAllLinkPaths();
+        
+    const projectFiles = getProjectFilesAndLinks();
+    
+    let filesNotFound = allFilePaths        
+        .filter(p => !projectFiles.includes(p)) // if they don't exist in project files, links, or copies;
+        .filter(p => !wkit.FileExistsInArchive(p)) // base game files can be ignored
+
+    if (filesNotFound.length > 0) {
+        Logger.Error(`The following files were not found in the project:\n\t${filesNotFound.join('\n\t')}`);
+    }
+}
+
+function patchPropsShouldBeEmpty(path, props) {
+    if (!props || !props.length) {
+        return;
+    }    
+    Logger.Success(`Checking ${path} for ${props}`);
+    
+    let file;
+    if (wkit.FileExistsInProject(path)) {
+        file = wkit.GetFileFromProject(path, OpenAs.GameFile);
+    }
+    else {
+        file = wkit.GetFileFromBase(path);
+    }
+    
+    const fileData = TypeHelper.JsonParse(wkit.GameFileToJson(file));   
+    
+    const rootChunk = fileData["Data"]["RootChunk"];
+    
+    if (!rootChunk) { 
+        Logger.Error(`You're trying to patch ${path}, but we couldn't read it!`);
+        return;
+    }
+    
+    if (path.endsWith(".mesh")) {
+        
+        if (props.includes("renderResourceBlob") && !!rootChunk["renderResourceBlob"]) {    
+            Logger.Warning(`Patching issues found with ${path}:`);
+            Logger.Warning(`\tYou are trying to patch 'renderResourceBlob', but the property is not empty`);
+        }
+        return;
+    }
+    
+    if (!path.endsWith(".morphtarget")) {
+        return;
+    }
+
+    const errorMessages = [];    
+    if (props.includes("blob") && !!rootChunk["blob"]) {
+        errorMessages.push("You are trying to patch 'blob', but the value is not null");
+    }
+    if (props.includes("boundingBox") && rootChunk["boundingBox"]) {
+        const max = rootChunk["boundingBox"]["Max"] ?? {};
+        const min = rootChunk["boundingBox"]["Min"] ?? {};
+        if (!!max.W ||  !!max.X || !!max.Y || !!max.Z || !!min.W || !!min.X || !!min.Y || !!min.Z) {
+            errorMessages.push("You are trying to patch 'boundingBox', but the value is not empty");                
+        }
+    }
+    if (props.includes("targets") && rootChunk["targets"] && !!rootChunk["targets"].length) {
+        errorMessages.push("You are trying to patch 'targets', but the list is not empty");
+    }
+    
+    if (!errorMessages.length) {
+        return;
+    }
+    Logger.Warning(`Patching issues found with ${path}:\n\t${errorMessages.join('\n\t')}`)
+}
+
+function verify3dDataPatching(data) {
+    if (!data.resource?.patch) {
+        return;
+    }
+
+    const basegameFilesAsPatch = [];
+    const patchedProps = {};
+    Object.keys(data.resource.patch)
+        .filter(p => p.endsWith(".mesh") || p.endsWith(".morphtarget"))
+        .forEach(patchFilePath => {
+            const patchProperties = data.resource.patch[patchFilePath];
+            if (!patchProperties || !patchProperties["props"]) {
+                return;
+            }
+            if (wkit.FileExistsInArchive(patchFilePath)) {
+                basegameFilesAsPatch.push(patchFilePath);
+            }
+            patchFilePaths[patchFilePath].forEach(targetFile => {
+                patchedProps[targetFile] = forceToArray(patchProperties["props"]);
+            });
+        });
+
+    Object.keys(patchedProps).forEach(patchFilePath => {
+        patchPropsShouldBeEmpty(patchFilePath, patchedProps[patchFilePath]);        
+    });
+
+    if (basegameFilesAsPatch.length > 0) {
+        Logger.Warning(`You're trying to patch props from base game files. Please create a copy first: \n\t${basegameFilesAsPatch.join('\n\t')}`)
+    }
+}
+
+function verifyCopyPaths() {
+    if (!copyFilePaths || copyFilePaths === {}) {
+        return;
+    }
+    
+    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
+
+    const copyMeshes = getValuesFlat(copyFilePaths);
+
+    const duplicatePatchMeshes = copyMeshes.filter((value) => Object.keys(copyFilePaths).includes(value));
+
+    let filesExist = copyMeshes.filter(p => projectFiles.find(str => str === p));
+
+    if (duplicatePatchMeshes.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
+    }
+    if (filesExist.length > 0) {
+        addWarning(LOGLEVEL_INFO, `You are copying files, but some of them already exist:\n\t${filesExist.join('\n\t')}`);
+    }
+}
+
+function verifyPatchPaths() {
+    if (!patchFilePaths || patchFilePaths === {}) {
+        return;
+    }
+    
+    const projectFiles = getProjectFilesAndLinks();
+
+    const patchMeshes = getValuesFlat(patchFilePaths);
+    
+    const duplicatePatchMeshes = Object.keys(patchFilePaths).filter((key) => forceToArray(patchFilePaths[key]).includes(key));
+    let filesNotFound = patchMeshes.filter(p =>
+        !projectFiles.find(str => str === p) && !wkit.FileExistsInArchive(p));
+
+    if (duplicatePatchMeshes.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
+    }
+    if (filesNotFound.length > 0) {
+        addWarning(LOGLEVEL_INFO, `You're trying to patch meshes that are not part of your project:\n\t${filesNotFound.join('\n\t')}`);
+    }
+}
+
+function verifyLinkPaths() {
+    if (!linkFilePaths || linkFilePaths === {}) {
+        return;
+    }
+    
+    const allLinkKeys = Object.keys(linkFilePaths);
+    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
+
+    const linkedMeshes = Object.values(linkFilePaths).filter((value) => !!value && value.trim && !!value.trim()).flat();
+
+    const existingFiles = linkedMeshes.filter((value) => projectFiles.includes(value));
+    const linksToSelf = linkedMeshes.filter((value) => allLinkKeys.includes(value) && !existingFiles.includes(value));
+
+    if (linksToSelf.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following meshes link to themselves:\n\t${linksToSelf.join('\n\t')}`);
+    }
+    if (existingFiles.length > 0) {
+        addWarning(LOGLEVEL_WARN, `The following links target existing files and will do nothing::\n\t${linksToSelf.join('\n\t')}`);
+    }
+}
+
+function verifyResourceOperations(data) {
+
+    if (!data || !data.resource) {
+        return;
+    }
+
+    verifyPatchPaths();
+    verifyLinkPaths();
+    verifyCopyPaths();
+
+    verify3dDataPatching(data);
+}
 
 function collectLocKeys(data, locKeys = []) {
     if (!data) {
@@ -173,24 +381,6 @@ function collectLocKeys(data, locKeys = []) {
     return [... new Set(locKeys)]; // remove duplicates
 }
 
-function verifyYamlFilePaths(data) {
-    const filePaths = collectFilePaths(data);
-    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
-
-    // allow patching of base game files
-    let filesNotFound = filePaths.filter(p =>  !(p.startsWith('base') || p.startsWith('ep1')) && !projectFiles.find(str => str === p));
-
-    // if link destination files aren't found, that's fine
-    if (data.resource && data.resource.link) {
-        const linkKeys = Object.keys(data.resource.link);
-        const linkValues = collectFilePaths(data.resource.link).filter(p => !linkKeys.includes(p));
-        filesNotFound = filesNotFound.filter(p => !linkValues.includes(p));
-    }
-
-    if (filesNotFound.length > 0) {
-        Logger.Error(`The following files were not found in the project:\n\t${filesNotFound.join('\n\t')}`);
-    }
-}
 
 function verifyLocKeys(data) {
     const locKeys = collectLocKeys(data);
@@ -225,7 +415,6 @@ function getTranslationEntries() {
         ret = {...ret, ...translateInfoCache[filePath]};
     });
     return ret;
-
 }
 
 function getRootEntityInfo() {
@@ -654,6 +843,12 @@ function reset_caches() {
     invalidAppearanceNames = {};
     invalidIcons = {};
     undefinedTranslationKeys = {};
+    
+    allFilePaths = null;
+    patchFilePaths = null;
+    linkFilePaths = null;
+    copyFilePaths = null;
+    allScopes = null;
 
     meshAndMorphtargetReset();
 }
@@ -675,44 +870,6 @@ function checkForEmptyMeshes() {
     let emptyKeys = emptyMeshNames.filter(n => Object.keys(allPatchPaths).includes(n));
     if (emptyKeys.length > 0) {
         addWarning(LOGLEVEL_WARN, `You are patching empty material meshes:\n\t${emptyKeys.join('\n\t')}`);
-    }
-}
-
-function verifyPatchPaths() {
-    const allPatchPaths = collectAllPatchPaths();
-    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
-    
-    const patchMeshes = Object.values(allPatchPaths).flat();
-        
-    const duplicatePatchMeshes = patchMeshes.filter((value) => Object.keys(allPatchPaths).includes(value));
-    
-    let filesNotFound = patchMeshes.filter(p =>  
-        !(p.startsWith('base') || p.startsWith('ep1')) && !projectFiles.find(str => str === p));
-    
-    if (duplicatePatchMeshes.length > 0) {
-        addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
-    }
-    if (filesNotFound.length > 0) {
-        addWarning(LOGLEVEL_INFO, `The following patch meshes are not part of your project:\n\t${filesNotFound.join('\n\t')}`);
-    }
-}
-
-function verifyLinkPaths() {
-    
-    const allLinkPaths = collectAllLinkPaths();
-    const allLinkKeys = Object.keys(allLinkPaths);
-    const projectFiles = Array.from(wkit.GetProjectFiles('archive'));
-    
-    const linkedMeshes = Object.values(allLinkPaths).filter((value) => !!value && value.trim && !!value.trim()).flat();
-    
-    const existingFiles = linkedMeshes.filter((value) => projectFiles.includes(value));
-    const linksToSelf = linkedMeshes.filter((value) => allLinkKeys.includes(value) && !existingFiles.includes(value));
-    
-    if (linksToSelf.length > 0) {
-        addWarning(LOGLEVEL_WARN, `The following meshes link to themselves:\n\t${linksToSelf.join('\n\t')}`);
-    }
-    if (existingFiles.length > 0) {
-        addWarning(LOGLEVEL_WARN, `The following links target existing files and will do nothing::\n\t${linksToSelf.join('\n\t')}`);
     }
 }
 
@@ -753,20 +910,53 @@ export function validate_yaml_file(data, rawFile, yaml_settings, isXlFile = fals
     }
     
     verifyYamlFilePaths(data);
+    verifyResourceOperations(data);
         
-    verifyPatchPaths();
-    verifyLinkPaths();
     checkForEmptyMeshes();
     printUserInfo();
 }
 
+export function getAllScopes() {
+    if (!!allScopes) {
+        return allScopes;
+    }
+    allScopes = {}
+    
+    for (let filePath of GetAllProjectFiles('resources', 'xl')) {
+        const scopeData = readYamlAsJson(filePath)?.resource?.scope ?? {};
+        Object.keys(scopeData).forEach(key => {
+            allScopes[key] = scopeData[key];
+        });
+    }
+    return allScopes;
+}
+
+function resolveAllScopes(data) {
+    if (typeof(data) !== "object" || !Object.keys(data).length) {
+        return data;
+    }
+    const scopeData = getAllScopes();
+    const ret = {};
+    Object.keys(data).forEach(key => {
+        ret[key] = data[key].flatMap(item => {
+            if (!scopeData[item]) {
+                return [item];
+            }
+            return forceToArray(scopeData[item]);
+        });
+    });
+    return ret;
+}
 
 /**
  * @returns {Object.<string, string>} A map: [originalFilePath] => [array of files being linked]
  */
 export function collectAllLinkPaths() {
-
-    const ret = {};
+    if (!!linkFilePaths) {
+        return linkFilePaths;
+    }
+    
+    linkFilePaths = {};
     for (let filePath of GetAllProjectFiles('resources', 'xl')) {
         const data = readYamlAsJson(filePath)?.resource?.link;
 
@@ -775,38 +965,75 @@ export function collectAllLinkPaths() {
         }
 
         for (let [key, value] of Object.entries(data)) {
-            var valueArray = Array.from(value);
-            ret[key] = [...(ret[key] ?? []), ...valueArray];
+            const valueArray = Array.from(value);
+            linkFilePaths[key] = [...(linkFilePaths[key] ?? []), ...valueArray];
         }
     }
-    return ret;
+    linkFilePaths = resolveAllScopes(linkFilePaths);    
+    return linkFilePaths;
+}
+
+function forceToArray(arrayOrString) {
+    if (!arrayOrString) {
+        return [];
+    }
+    if (Array.isArray(arrayOrString)) {
+        return arrayOrString;
+    }
+    return [arrayOrString];
 }
 
 /**
  * @returns {Object.<string, string>} A map: [patchFilePath] => [array of files being patched]
  */
 export function collectAllPatchPaths() {
-
-    const ret = {};
+    if (!!patchFilePaths) {
+        return patchFilePaths;
+    }
+    
+    patchFilePaths = {};
+    const scopeData = getAllScopes();
+    
     for (let filePath of GetAllProjectFiles('resources', 'xl')) {        
         const patchData = readYamlAsJson(filePath)?.resource?.patch;
        
         if (!patchData) {
             continue;
         }
-        const scopeData = readYamlAsJson(filePath)?.resource?.scope ?? {};
-        
+
         for (let [key, value] of Object.entries(patchData)) {
-            let valueArray = Array.from(value);
-            valueArray = valueArray.flatMap(item => {
-                if (!scopeData.hasOwnProperty(item) || !Array.isArray(scopeData[item])) {
-                    return [item];
-                }               
-                return scopeData[item];
-            })
-            
-            ret[key] = [...(ret[key] ?? []), ...valueArray];
+            if (!!value.targets) {
+                patchFilePaths[key] = [...(patchFilePaths[key] ?? []), ... forceToArray(value.targets)];
+            } else if (Array.isArray(value)) {
+                patchFilePaths[key] = [...(patchFilePaths[key] ?? []), ... forceToArray(value)];
+            } 
         }        
     }
-    return ret;
+
+    patchFilePaths = resolveAllScopes(patchFilePaths);
+    return patchFilePaths;
+}
+
+/**
+ * @returns {Object.<string, string>} A map: [copyFilePath] => [array of destination files]
+ */
+export function collectAllCopyPaths() {
+    if (copyFilePaths !== null) {
+        return copyFilePaths;
+    }    
+    copyFilePaths = {};
+    for (let filePath of GetAllProjectFiles('resources', 'xl')) {        
+        const copyData = readYamlAsJson(filePath)?.resource?.copy;
+       
+        if (!copyData) {
+            continue;
+        }
+        
+        for (let [key, value] of Object.entries(copyData)) {
+            const valueArray = Array.from(value);
+            copyFilePaths[key] = [...(copyFilePaths[key] ?? []), ...valueArray];
+        }        
+    }
+    copyFilePaths = resolveAllScopes(copyFilePaths);
+    return copyFilePaths;
 }
