@@ -1,0 +1,29 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Heals the local player and resets their temporary combat state.",
+  "Version": "1",
+  "Data": {
+    "$type": "questCharacterManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterManagerParameters_NodeType",
+        "subtype": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterManagerParameters_HealPlayer",
+            "heal": 1,
+            "isPlayer": 1,
+            "removeBuffs": 1,
+            "removeDebuffs": 1,
+            "removeStatusEffects": 1,
+            "resetCyberdeckRAM": 1
+          }
+        }
+      }
+    }
+  }
+}

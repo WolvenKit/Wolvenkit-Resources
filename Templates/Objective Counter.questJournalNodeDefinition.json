@@ -1,0 +1,31 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Updates a journal quest objective counter.",
+  "Version": "1",
+  "Data": {
+    "$type": "questJournalNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questJournalQuestObjectiveCounter_NodeType",
+        "path": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "gameJournalPath",
+            "className": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            },
+            "editorPath": "",
+            "fileEntryIndex": -1,
+            "realPath": ""
+          }
+        }
+      }
+    }
+  }
+}

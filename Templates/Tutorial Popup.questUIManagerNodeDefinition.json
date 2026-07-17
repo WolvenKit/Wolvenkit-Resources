@@ -1,0 +1,62 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Shows an onscreen journal entry as a fullscreen tutorial popup.",
+  "Version": "1",
+  "Data": {
+    "$type": "questUIManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questTutorial_NodeType",
+        "subtype": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questShowPopup_NodeSubType",
+            "closeAtInput": 1,
+            "closeCurrentPopup": 0,
+            "hideInMenu": 1,
+            "ignoreDisabledTutorials": 1,
+            "lockPlayerMovement": 0,
+            "margin": {
+              "$type": "inkMargin",
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "top": 0
+            },
+            "open": 1,
+            "path": {
+              "HandleId": "2",
+              "Data": {
+                "$type": "gameJournalPath",
+                "className": {
+                  "$type": "CName",
+                  "$storage": "string",
+                  "$value": "gameJournalOnscreen"
+                },
+                "editorPath": "",
+                "fileEntryIndex": 1,
+                "realPath": ""
+              }
+            },
+            "pauseGame": 1,
+            "position": "LowerLeft",
+            "screenMode": "Fullscreen",
+            "video": {
+              "DepotPath": {
+                "$type": "ResourcePath",
+                "$storage": "uint64",
+                "$value": "0"
+              },
+              "Flags": "Soft"
+            },
+            "videoType": "Unknown"
+          }
+        }
+      }
+    }
+  }
+}

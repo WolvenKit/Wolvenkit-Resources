@@ -1,0 +1,63 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Executes a forced security area transition. Set the security area reference and desired transition state.",
+  "Version": "1",
+  "Data": {
+    "$type": "questEventManagerNodeDefinition",
+    "componentName": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "controller"
+    },
+    "event": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "QuestExecuteTransition",
+        "transition": {
+          "$type": "AreaTypeTransition",
+          "listenerID": 0,
+          "locked": 0,
+          "transitionHour": 0,
+          "transitionMode": "FORCED",
+          "transitionTo": "DISABLED"
+        }
+      }
+    },
+    "id": 65535,
+    "isObjectPlayer": 0,
+    "isUiEvent": 0,
+    "managerName": "SecurityAreaManager",
+    "objectRef": {
+      "$type": "gameEntityReference",
+      "dynamicEntityUniqueName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "names": [],
+      "reference": {
+        "$type": "NodeRef",
+        "$storage": "uint64",
+        "$value": "0"
+      },
+      "sceneActorContextName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "slotName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "type": "EntityRef"
+    },
+    "PSClassName": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "SecurityAreaControllerPS"
+    },
+    "sockets": []
+  }
+}

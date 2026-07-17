@@ -1,0 +1,20 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Adds a value to a fact.",
+  "Version": "1",
+  "Data": {
+    "$type": "questFactsDBManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questSetVar_NodeType",
+        "factName": "",
+        "setExactValue": 0,
+        "value": 1
+      }
+    }
+  }
+}

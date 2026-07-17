@@ -1,0 +1,49 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Sets the PreventionSystem wanted level. Choose the desired Heat_0 through Heat_5 value.",
+  "Version": "1",
+  "Data": {
+    "$type": "questEventManagerNodeDefinition",
+    "event": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "SetWantedLevel",
+        "forceGreyStars": 0,
+        "forceIgnoreSecurityAreas": 0,
+        "forcePlayerPositionAsLastCrimePoint": 0,
+        "resetGreyStars": 0,
+        "wantedLevel": "Heat_0"
+      }
+    },
+    "id": 65535,
+    "isObjectPlayer": 0,
+    "managerName": "PreventionSystem",
+    "objectRef": {
+      "$type": "gameEntityReference",
+      "dynamicEntityUniqueName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "names": [],
+      "reference": {
+        "$type": "NodeRef",
+        "$storage": "uint64",
+        "$value": "0"
+      },
+      "sceneActorContextName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "slotName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "type": "EntityRef"
+    },
+    "sockets": []
+  }
+}

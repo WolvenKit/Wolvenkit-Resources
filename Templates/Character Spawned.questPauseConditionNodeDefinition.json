@@ -1,0 +1,57 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Waits until the referenced character is spawned.",
+  "Version": "1",
+  "Data": {
+    "$type": "questPauseConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterSpawned_ConditionType",
+            "comparisonParams": {
+              "HandleId": "2",
+              "Data": {
+                "$type": "questComparisonParam",
+                "comparisonType": "Greater",
+                "count": 0,
+                "entireCommunity": 1
+              }
+            },
+            "objectRef": {
+              "$type": "gameEntityReference",
+              "dynamicEntityUniqueName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "names": [],
+              "reference": {
+                "$type": "NodeRef",
+                "$storage": "uint64",
+                "$value": "0"
+              },
+              "sceneActorContextName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "slotName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "type": "EntityRef"
+            }
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

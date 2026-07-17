@@ -1,0 +1,23 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Plays the configured controller rumble event for the local player.",
+  "Version": "1",
+  "Data": {
+    "$type": "questGameManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questRumble_NodeType",
+        "isPlayer": 1,
+        "rumbleEvent": {
+          "$type": "CName",
+          "$storage": "string",
+          "$value": "None"
+        }
+      }
+    }
+  }
+}

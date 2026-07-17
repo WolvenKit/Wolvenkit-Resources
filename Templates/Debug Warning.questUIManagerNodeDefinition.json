@@ -1,0 +1,26 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Shows a temporary warning message for debugging quest flow.",
+  "Version": "1",
+  "Data": {
+    "$type": "questUIManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questWarningMessage_NodeType",
+        "duration": 3,
+        "instant": 0,
+        "localizedMessage": {
+          "unk1": "0",
+          "value": ""
+        },
+        "message": "Example Debug",
+        "show": 1,
+        "type": "Neutral"
+      }
+    }
+  }
+}

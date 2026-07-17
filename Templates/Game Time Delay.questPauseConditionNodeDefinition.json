@@ -1,0 +1,27 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Waits for a duration measured in game time.",
+  "Version": "1",
+  "Data": {
+    "$type": "questPauseConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questTimeCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questGameTimeDelay_ConditionType",
+            "days": 0,
+            "hours": 0,
+            "minutes": 0,
+            "seconds": 1
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

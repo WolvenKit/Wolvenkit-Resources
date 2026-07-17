@@ -1,0 +1,31 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Plays the configured audio event on the local player.",
+  "Version": "1",
+  "Data": {
+    "$type": "questAudioNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questAudioEventNodeType",
+        "dynamicParams": [],
+        "event": {
+          "$type": "audioAudEventStruct",
+          "event": {
+            "$type": "CName",
+            "$storage": "string",
+            "$value": "None"
+          }
+        },
+        "events": [],
+        "isPlayer": 1,
+        "musicEvents": [],
+        "params": [],
+        "switches": []
+      }
+    }
+  }
+}

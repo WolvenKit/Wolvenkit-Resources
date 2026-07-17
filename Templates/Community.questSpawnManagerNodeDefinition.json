@@ -1,0 +1,22 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Creates a SpawnManager action for a community entry.",
+  "Version": "1",
+  "Data": {
+    "$type": "questSpawnManagerNodeDefinition",
+    "actions": [
+      {
+        "$type": "questSpawnManagerNodeActionEntry",
+        "type": {
+          "HandleId": "0",
+          "Data": {
+            "$type": "questCommunityTemplate_NodeType"
+          }
+        }
+      }
+    ],
+    "id": 65535,
+    "sockets": []
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Branches based on whether the local player has the configured item equipped.",
+  "Version": "1",
+  "Data": {
+    "$type": "questConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterEquippedItem_ConditionType",
+            "excludedTags": [],
+            "excludedTweakDBIDs": [],
+            "inverted": 0,
+            "isPlayer": 1,
+            "itemID": {
+              "$type": "TweakDBID",
+              "$storage": "uint64",
+              "$value": "0"
+            },
+            "itemTag": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            }
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

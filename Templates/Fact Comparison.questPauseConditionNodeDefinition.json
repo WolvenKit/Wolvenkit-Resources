@@ -1,0 +1,26 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Waits until a fact equals the configured value.",
+  "Version": "1",
+  "Data": {
+    "$type": "questPauseConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questFactsDBCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questVarComparison_ConditionType",
+            "comparisonType": "Equal",
+            "factName": "",
+            "value": 1
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

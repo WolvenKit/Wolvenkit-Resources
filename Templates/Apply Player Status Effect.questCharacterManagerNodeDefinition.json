@@ -1,0 +1,37 @@
+{
+  "FormatVersion": 1,
+  "Author": "WolvenKit",
+  "Description": "Applies the configured status effect to the local player.",
+  "Version": "1",
+  "Data": {
+    "$type": "questCharacterManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterManagerParameters_NodeType",
+        "subtype": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterManagerParameters_SetStatusEffect",
+            "isPlayer": 1,
+            "recordSelector": {
+              "HandleId": "2",
+              "Data": {
+                "$type": "questRecordSelector",
+                "isCharacter": 1
+              }
+            },
+            "set": 1,
+            "statusEffectID": {
+              "$type": "TweakDBID",
+              "$storage": "uint64",
+              "$value": "0"
+            }
+          }
+        }
+      }
+    }
+  }
+}
