@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Branches based on whether the player has at least one of the configured item.",
   "Version": "1",
   "Data": {

@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Modifies the local player's health by the configured percentage.",
   "Version": "1",
   "Data": {

@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Executes a forced security area transition. Set the security area reference and desired transition state.",
   "Version": "1",
   "Data": {

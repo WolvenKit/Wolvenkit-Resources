@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Sets the PreventionSystem wanted level. Choose the desired Heat_0 through Heat_5 value.",
   "Version": "1",
   "Data": {

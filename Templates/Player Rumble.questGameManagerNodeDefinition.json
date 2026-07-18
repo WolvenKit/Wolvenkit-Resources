@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Plays the configured controller rumble event for the local player.",
   "Version": "1",
   "Data": {

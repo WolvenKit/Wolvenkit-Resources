@@ -1,6 +1,6 @@
 {
   "FormatVersion": 1,
-  "Author": "WolvenKit",
+  "Author": "misterchedda",
   "Description": "Waits until a fact equals the configured value.",
   "Version": "1",
   "Data": {
