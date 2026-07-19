@@ -1,0 +1,42 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Unequips the configured item from the local player.",
+  "Version": "1",
+  "Data": {
+    "$type": "questEquipItemNodeDefinition",
+    "entityReference": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questObservableUniversalRef",
+        "mainPlayerObject": 0,
+        "refLocalPlayer": 1
+      }
+    },
+    "id": 65535,
+    "params": {
+      "HandleId": "1",
+      "Data": {
+        "$type": "questEquipItemParams",
+        "byItem": 1,
+        "equipDurationOverride": -1,
+        "equipTypes": "LastWeaponEquipped",
+        "isPlayer": 1,
+        "itemId": {
+          "$type": "TweakDBID",
+          "$storage": "uint64",
+          "$value": "0"
+        },
+        "slotId": {
+          "$type": "TweakDBID",
+          "$storage": "uint64",
+          "$value": "0"
+        },
+        "type": "Unequip",
+        "unequipDurationOverride": -1,
+        "unequipTypes": "AllItems"
+      }
+    },
+    "sockets": []
+  }
+}

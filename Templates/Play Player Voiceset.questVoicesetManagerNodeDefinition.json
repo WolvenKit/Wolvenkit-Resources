@@ -1,0 +1,29 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Plays the configured voiceset on the local player.",
+  "Version": "1",
+  "Data": {
+    "$type": "questVoicesetManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questPlayVoiceset_NodeType",
+        "params": [
+          {
+            "$type": "questPlayVoiceset_NodeTypeParams",
+            "isPlayer": 1,
+            "overridingVoiceoverContext": "Default_Vo_Context",
+            "voicesetName": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

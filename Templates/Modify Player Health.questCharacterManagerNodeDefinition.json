@@ -1,0 +1,26 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Modifies the local player's health by the configured percentage.",
+  "Version": "1",
+  "Data": {
+    "$type": "questCharacterManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterManagerCombat_NodeType",
+        "subtype": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterManagerCombat_ModifyHealth",
+            "isPlayer": 1,
+            "percent": 0,
+            "setExactValue": 0
+          }
+        }
+      }
+    }
+  }
+}

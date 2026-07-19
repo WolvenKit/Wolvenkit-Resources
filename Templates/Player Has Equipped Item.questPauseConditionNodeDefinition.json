@@ -1,0 +1,37 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Waits until the local player has the configured item equipped.",
+  "Version": "1",
+  "Data": {
+    "$type": "questPauseConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCharacterCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questCharacterEquippedItem_ConditionType",
+            "excludedTags": [],
+            "excludedTweakDBIDs": [],
+            "inverted": 0,
+            "isPlayer": 1,
+            "itemID": {
+              "$type": "TweakDBID",
+              "$storage": "uint64",
+              "$value": "0"
+            },
+            "itemTag": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            }
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Branches based on whether the player has at least one of the configured item.",
+  "Version": "1",
+  "Data": {
+    "$type": "questConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questObjectCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questInventory_ConditionType",
+            "comparisonType": "GreaterOrEqual",
+            "isPlayer": 1,
+            "itemID": {
+              "$type": "TweakDBID",
+              "$storage": "uint64",
+              "$value": "0"
+            },
+            "itemTag": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            },
+            "objectRef": {
+              "$type": "gameEntityReference",
+              "dynamicEntityUniqueName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "names": [],
+              "reference": {
+                "$type": "NodeRef",
+                "$storage": "uint64",
+                "$value": "0"
+              },
+              "sceneActorContextName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "slotName": {
+                "$type": "CName",
+                "$storage": "string",
+                "$value": "None"
+              },
+              "type": "EntityRef"
+            },
+            "quantity": 1
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

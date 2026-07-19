@@ -1,0 +1,32 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Updates the state of a journal entry.",
+  "Version": "1",
+  "Data": {
+    "$type": "questJournalNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questJournalEntry_NodeType",
+        "path": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "gameJournalPath",
+            "className": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            },
+            "editorPath": "",
+            "fileEntryIndex": -1,
+            "realPath": ""
+          }
+        },
+        "sendNotification": 1
+      }
+    }
+  }
+}
