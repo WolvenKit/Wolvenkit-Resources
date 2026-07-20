@@ -65,6 +65,7 @@ export function validateSceneFile(scene, _sceneSettings) {
   
   ValidatePropIdSequence(scene);
   ValidateNodeDestinations(scene);
+  ValidateSceneEventIds(scene);
   ValidateActorBehaviorsInSectionNodes(scene);
   ValidateScreenplayDialogLineItemIds(scene);
   ValidateScreenplayDialogLineSpeakers(scene);
@@ -600,6 +601,56 @@ function ValidateNodeDestinations(scene) {
         });
       });
     }
+  });
+}
+
+/**
+ * Validates that event IDs are unique across all scene graph nodes
+ * @param {*} scene
+ */
+function ValidateSceneEventIds(scene) {
+  if (!scene.sceneGraph?.Data?.graph) {
+    return;
+  }
+
+  const eventLocationsById = new Map();
+
+  scene.sceneGraph.Data.graph.forEach(nodeHandle => {
+    const node = nodeHandle?.Data;
+    if (!node?.events) return;
+
+    const nodeId = node.nodeId?.id ?? 'Unknown';
+    node.events.forEach((eventHandle, eventIndex) => {
+      const event = eventHandle?.Data;
+      const eventId = event?.id;
+      if (eventId?.$type !== 'scnSceneEventId' || eventId.id === undefined || eventId.id === null) {
+        return;
+      }
+
+      // Event IDs are 64-bit values and are serialized as strings to preserve precision.
+      const normalizedId = String(eventId.id);
+      if (!eventLocationsById.has(normalizedId)) {
+        eventLocationsById.set(normalizedId, []);
+      }
+
+      eventLocationsById.get(normalizedId).push({
+        nodeId,
+        eventIndex,
+        eventType: event.$type || 'Unknown'
+      });
+    });
+  });
+
+  eventLocationsById.forEach((locations, eventId) => {
+    if (locations.length < 2) return;
+
+    const locationDetails = locations
+      .map(location => `node ${location.nodeId}, event index ${location.eventIndex} (${location.eventType})`)
+      .join('; ');
+
+    Logger.Warning(
+      `Scene event ID validation failed: scnSceneEventId ${eventId} is used by ${locations.length} events: ${locationDetails}. Scene event IDs must be unique.`
+    );
   });
 }
 
