@@ -1061,8 +1061,8 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     // the depot path isn't numeric-only
     if (!/^\d+$/.test(meshDepotPath)) {
-      if ((componentPropertyKeyWithDepotPath === 'morphtarget' || componentPropertyKeyWithDepotPath === 'mesh') && !meshDepotPath.endsWith('.mesh') && !meshDepotPath.endsWith('.w2mesh')) {
-        addWarning(LOGLEVEL_WARN, `${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh). This can crash your game!`);
+      if ((componentPropertyKeyWithDepotPath === 'morphtarget' || componentPropertyKeyWithDepotPath === 'mesh') && !(meshDepotPath.endsWith('.mesh') || meshDepotPath.endsWith('.w2mesh'))) {
+        addWarning(LOGLEVEL_WARN, `${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .mesh or .w2mesh). This can crash your game!`);
       } else if (!meshDepotPath.endsWith(`.${componentPropertyKeyWithDepotPath}`)) {
         addWarning(LOGLEVEL_WARN, `${info}: ${componentPropertyKeyWithDepotPath} '${meshDepotPath}' seems to reference an invalid file extension (not .${componentPropertyKeyWithDepotPath}). This can crash your game!`);
       }
