@@ -35,11 +35,17 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: generate artifact
+      - name: generate script artifact
         run: |
           Compress-Archive -Path Scripts/* -DestinationPath docs/scripts.zip
           $fileHash = Get-FileHash docs/scripts.zip
           $fileHash.Hash | Out-File -FilePath docs/hash.txt
+
+      - name: generate template artifact
+        run: |
+          Compress-Archive -Path Templates/* -DestinationPath docs/templates.zip
+          $fileHash = Get-FileHash docs/templates.zip
+          $fileHash.Hash | Out-File -FilePath docs/templatehash.txt
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
