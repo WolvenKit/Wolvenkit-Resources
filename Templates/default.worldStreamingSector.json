@@ -1,0 +1,35 @@
+{
+  "FormatVersion": 1,
+  "Author": "sprt_",
+  "Description": "Empty sector with version and variantIndices changed to work out of the box.",
+  "Version": "1",
+  "Data": {
+    "$type": "worldStreamingSector",
+    "category": "Unknown",
+    "cookingPlatform": "PLATFORM_None",
+    "externInplaceResource": {
+      "DepotPath": {
+        "$type": "ResourcePath",
+        "$storage": "uint64",
+        "$value": "0"
+      },
+      "Flags": "Soft"
+    },
+    "level": 255,
+    "localInplaceResource": [],
+    "nodeData": {
+      "BufferId": "0",
+      "Flags": 0,
+      "Bytes": ""
+    },
+    "nodeRefs": [],
+    "nodes": [],
+    "persistentNodeIndex": 0,
+    "persistentNodes": null,
+    "variantIndices": [
+      0
+    ],
+    "variantNodes": null,
+    "version": 62
+  }
+}
