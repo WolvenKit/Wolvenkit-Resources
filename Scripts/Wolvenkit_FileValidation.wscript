@@ -963,9 +963,9 @@ const depotPathSubkeys = [ 'mesh', 'morphtarget', 'morphResource', 'facialSetup'
  */
 function entFile_appFile_validateComponent(component, _index, validateRecursively, info, matchingChunk = undefined) {
     let type = component.$type || '';
-    let name = (component.name?.$value || '').toLowerCase();
     const isDebugComponent = type.toLowerCase().includes('debug') ;
     const componentName = stringifyPotentialCName(component.name, info, (isRootEntity || isDebugComponent)) ?? '';
+    let name = componentName.toLowerCase();
 
     // Those components only exist for ArchiveXL's internal logic, like for body type flags
     if (componentName.includes(":")) {
@@ -990,10 +990,12 @@ function entFile_appFile_validateComponent(component, _index, validateRecursivel
 
     // allow empty paths for debug components
     const depotPathCanBeEmpty = isDebugComponent
-        || (componentName !== 'amm_prop_slot1' && componentName?.startsWith('amm_prop_slot')
-        || (name.includes('extra') && name.includes('component')));
+        || (name !== 'amm_prop_slot1' && name?.startsWith('amm_prop_slot'))
+        || component.meshAppearance === ''
+        || (name.includes('extra')  || name.includes('acm')) && name.includes('component');
 
-    if (!!componentName.trim() && (componentNamesInCurrentContext.filter(n => n === componentName) ?? []).length > 1 && (componentIdsInCurrentContext.filter(n => n === component.id) ?? []).length > 1) {
+    if (!!componentName.trim() && (componentNamesInCurrentContext.filter(n => n === componentName) ?? []).length > 1 
+        && (componentIdsInCurrentContext.filter(n => n === component.id) ?? []).length > 1) {
         addWarning(LOGLEVEL_INFO, `${info}: Duplicate of '${componentName}' with the ID '${component.id}', delete one`);
     }
     
