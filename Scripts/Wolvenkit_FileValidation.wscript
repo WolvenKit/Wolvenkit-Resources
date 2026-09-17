@@ -1995,6 +1995,7 @@ function workspotFile_SetIndexOrder(rootEntry) {
         }
 
         animSet.Data.id.id = currentId;
+        animSet.Data.list ??= [];
         for (let j = 0; j < animSet.Data.list.length; j++) {
             const childItem = animSet.Data.list[j];
             currentId += 1;
