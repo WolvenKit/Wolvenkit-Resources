@@ -45,7 +45,10 @@ export function validateEntityTypes(entityMap) {
             if (entityType === 'entEntity') {
                 ret.push(`${entityName}: ${filePath} is not a root entity!`);
             }
-            if (entityType.startsWith('Error')) {
+            if (!entityType) {
+                ret.push(`${entityName}: failed to read entity type from ${filePath}`);
+            } 
+            else if (entityType.startsWith('Error')) {
                 ret.push(`${entityName}: ${entityType}`);
             }            
         } catch (e) {
