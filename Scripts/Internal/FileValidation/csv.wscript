@@ -40,6 +40,9 @@ export function validateEntityTypes(entityMap) {
         if (filePath.endsWith(".app")) { 
             return;
         }
+        if (!filePath.endsWith(".ent")) {
+            ret.push(`${entityName}: ${filePath} should be an .app or .ent file!`);
+        }
         try {            
             const entityType = Entity.Get_Entity_Type(filePath)
             if (entityType === 'entEntity') {
