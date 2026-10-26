@@ -114,6 +114,21 @@ const deepCopy = (origin, target) => {
     }
 }
 
+function fnv1a64NodeRef(value) {
+	value = value.replace(/#/g, "");
+
+    let hash = 0xcbf29ce484222325n;
+    const prime = 0x100000001b3n;
+
+    for (let i = 0; i < value.length; i++) {
+        const code = value.charCodeAt(i);
+        const byte = code <= 0x7f ? code : 0x3f;
+        hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * prime);
+    }
+
+    return hash;
+}
+
 const insertNode = (sector, node) => {
 	let nodeData = getNewWorldNodeData()
 	let streamingRefPoint = node.streamingRefPoint || node.position
@@ -156,7 +171,7 @@ const insertNode = (sector, node) => {
 	
 	// NodeRef/global node ID
 	if (node.nodeRef !== undefined && node.nodeRef !== "") {
-		nodeData.globalNodeId.hash = wkit.HashString(node.nodeRef, "fnv1a64").toString()
+		nodeData.globalNodeId.hash = fnv1a64NodeRef(node.nodeRef).toString()
 		sector.Data.RootChunk.nodeRefs.push({
 			"$type": "NodeRef",
 			"$storage": "string",
