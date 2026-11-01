@@ -1,6 +1,6 @@
 // Imports an entitySpawner json export
 // @author keanuwheeze
-// @version 1.0.5
+// @version 1.0.6
 
 //////////////// Modify this //////////////////
 
@@ -10,7 +10,11 @@ const inputFilePathInRawFolder = "new_project_exported.json"
 
 import * as Logger from 'Logger.wscript';
 
-const version = "1.0.5"
+const version = "1.0.6"
+
+const DEFAULT_NODE_FLAGS = "FLAG_AllowForceStreamIn, FLAG_Building"
+const DEFAULT_STREAMING_PRIORITY = 50
+
 const header = {
   "Header": {
     "WolvenKitVersion": "8.14.1",
@@ -143,8 +147,11 @@ const insertNode = (sector, node) => {
 	// Streaming values
 	nodeData.secondaryRefPointDistance = node.secondaryRange
 	nodeData.streamingDistance = node.primaryRange
-	nodeData.streamingPriority = 50
-	
+
+	// Flags and priority
+	nodeData.nodeFlags = node.nodeFlags ?? DEFAULT_NODE_FLAGS
+	nodeData.streamingPriority = node.streamingPriority ?? DEFAULT_STREAMING_PRIORITY
+
 	// Streaming reference points
 	nodeData.secondaryRefPointPosition.X = streamingRefPoint.x
 	nodeData.secondaryRefPointPosition.Y = streamingRefPoint.y
