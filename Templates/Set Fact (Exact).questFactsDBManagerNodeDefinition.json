@@ -1,0 +1,20 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Sets a fact to an exact value.",
+  "Version": "1",
+  "Data": {
+    "$type": "questFactsDBManagerNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questSetVar_NodeType",
+        "factName": "",
+        "setExactValue": 1,
+        "value": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "FormatVersion": 1,
+  "Author": "sprt_",
+  "Description": "Empty quest phase resource with graph changed to work out of the box.",
+  "Version": "1",
+  "Data": {
+    "$type": "questQuestPhaseResource",
+    "cookingPlatform": "PLATFORM_None",
+    "graph": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questGraphDefinition",
+        "nodes": []
+      }
+    },
+    "inplacePhases": [],
+    "phasePrefabs": []
+  }
+}

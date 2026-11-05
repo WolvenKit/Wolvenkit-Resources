@@ -1,0 +1,80 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Makes the referenced character or community shoot at the player until stopped.",
+  "Version": "1",
+  "Data": {
+    "$type": "questCombatNodeDefinition",
+    "entityReference": {
+      "$type": "gameEntityReference",
+      "dynamicEntityUniqueName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "names": [],
+      "reference": {
+        "$type": "NodeRef",
+        "$storage": "uint64",
+        "$value": "0"
+      },
+      "sceneActorContextName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "slotName": {
+        "$type": "CName",
+        "$storage": "string",
+        "$value": "None"
+      },
+      "type": "EntityRef"
+    },
+    "function": {
+      "$type": "CName",
+      "$storage": "string",
+      "$value": "questCombatNodeParams_ShootAt"
+    },
+    "id": 65535,
+    "params": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questCombatNodeParams_ShootAt",
+        "duration": -1,
+        "immediately": 1,
+        "once": 0,
+        "targetOverrideNode": {
+          "$type": "NodeRef",
+          "$storage": "uint64",
+          "$value": "0"
+        },
+        "targetOverridePuppet": {
+          "$type": "gameEntityReference",
+          "dynamicEntityUniqueName": {
+            "$type": "CName",
+            "$storage": "string",
+            "$value": "None"
+          },
+          "names": [],
+          "reference": {
+            "$type": "NodeRef",
+            "$storage": "string",
+            "$value": "#player"
+          },
+          "sceneActorContextName": {
+            "$type": "CName",
+            "$storage": "string",
+            "$value": "None"
+          },
+          "slotName": {
+            "$type": "CName",
+            "$storage": "string",
+            "$value": "None"
+          },
+          "type": "EntityRef"
+        }
+      }
+    },
+    "sockets": []
+  }
+}

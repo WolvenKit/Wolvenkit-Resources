@@ -1,0 +1,95 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Waits until the local player is within five meters of a reference.",
+  "Version": "1",
+  "Data": {
+    "$type": "questPauseConditionNodeDefinition",
+    "condition": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questDistanceCondition",
+        "type": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "questDistanceComparison_ConditionType",
+            "comparisonType": "LessOrEqual",
+            "distanceDefinition1": {
+              "HandleId": "2",
+              "Data": {
+                "$type": "questObjectDistance",
+                "entityRef": {
+                  "HandleId": "3",
+                  "Data": {
+                    "$type": "questUniversalRef",
+                    "entityReference": {
+                      "$type": "gameEntityReference",
+                      "dynamicEntityUniqueName": {
+                        "$type": "CName",
+                        "$storage": "string",
+                        "$value": "None"
+                      },
+                      "names": [],
+                      "reference": {
+                        "$type": "NodeRef",
+                        "$storage": "uint64",
+                        "$value": "0"
+                      },
+                      "sceneActorContextName": {
+                        "$type": "CName",
+                        "$storage": "string",
+                        "$value": "None"
+                      },
+                      "slotName": {
+                        "$type": "CName",
+                        "$storage": "string",
+                        "$value": "None"
+                      },
+                      "type": "EntityRef"
+                    },
+                    "mainPlayerObject": 0,
+                    "refLocalPlayer": 1
+                  }
+                },
+                "nodeRef2": {
+                  "$type": "gameEntityReference",
+                  "dynamicEntityUniqueName": {
+                    "$type": "CName",
+                    "$storage": "string",
+                    "$value": "None"
+                  },
+                  "names": [],
+                  "reference": {
+                    "$type": "NodeRef",
+                    "$storage": "uint64",
+                    "$value": "0"
+                  },
+                  "sceneActorContextName": {
+                    "$type": "CName",
+                    "$storage": "string",
+                    "$value": "None"
+                  },
+                  "slotName": {
+                    "$type": "CName",
+                    "$storage": "string",
+                    "$value": "None"
+                  },
+                  "type": "EntityRef"
+                }
+              }
+            },
+            "distanceDefinition2": {
+              "HandleId": "4",
+              "Data": {
+                "$type": "questValueDistance",
+                "distanceValue": 5
+              }
+            }
+          }
+        }
+      }
+    },
+    "id": 65535,
+    "sockets": []
+  }
+}

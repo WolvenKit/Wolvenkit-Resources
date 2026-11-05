@@ -1,0 +1,33 @@
+{
+  "FormatVersion": 1,
+  "Author": "misterchedda",
+  "Description": "Changes the phase of a journal mappin.",
+  "Version": "1",
+  "Data": {
+    "$type": "questJournalNodeDefinition",
+    "id": 65535,
+    "sockets": [],
+    "type": {
+      "HandleId": "0",
+      "Data": {
+        "$type": "questJournalChangeMappinPhase_NodeType",
+        "notifyUI": 1,
+        "path": {
+          "HandleId": "1",
+          "Data": {
+            "$type": "gameJournalPath",
+            "className": {
+              "$type": "CName",
+              "$storage": "string",
+              "$value": "None"
+            },
+            "editorPath": "",
+            "fileEntryIndex": -1,
+            "realPath": ""
+          }
+        },
+        "phase": "DefaultPhase"
+      }
+    }
+  }
+}
