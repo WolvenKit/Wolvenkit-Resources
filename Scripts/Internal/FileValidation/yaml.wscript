@@ -307,6 +307,18 @@ function verifyCopyPaths() {
     }
 }
 
+const ArchiveXlPatchMeshes = [
+    "player_ma_beard.mesh",
+    "player_ma_brows.mesh",
+    "player_ma_hair.mesh",
+    "player_ma_hat_hair.mesh",
+    "player_ma_lashes.mesh",
+    "player_wa_brows.mesh",
+    "player_wa_hair.mesh",
+    "player_wa_hat_hair.mesh",
+    "player_wa_lashes.mesh",   
+];
+
 function verifyPatchPaths() {
     if (!patchFilePaths || patchFilePaths === {}) {
         return;
@@ -317,8 +329,9 @@ function verifyPatchPaths() {
     const patchMeshes = getValuesFlat(patchFilePaths);
     
     const duplicatePatchMeshes = Object.keys(patchFilePaths).filter((key) => forceToArray(patchFilePaths[key]).includes(key));
-    let filesNotFound = patchMeshes.filter(p =>
-        !projectFiles.find(str => str === p) && !wkit.FileExistsInArchive(p));
+    let filesNotFound = patchMeshes
+        .filter(p => !ArchiveXlPatchMeshes.includes(p))
+        .filter(p => !projectFiles.find(str => str === p) && !wkit.FileExistsInArchive(p));
 
     if (duplicatePatchMeshes.length > 0) {
         addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
