@@ -1662,7 +1662,7 @@ export function _validateMiFile(mi, debugInfo) {
         }
 
         Object.entries(tmp).forEach(([key, definedMaterial]) => {
-            validateMaterialKeyValuePair(key, definedMaterial, '', `Values[${i}]`, tmp["$type"]);
+            validateMaterialKeyValuePair(key, definedMaterial, `Values[${i}]`, tmp["$type"]);
         });
     }
 }
