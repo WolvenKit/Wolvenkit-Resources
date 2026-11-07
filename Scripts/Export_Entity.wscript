@@ -1,6 +1,6 @@
-﻿// Entity export script FOR VEHICLES dont use if you dont need all the anims and rig.
+﻿// Entity export script for import with the Wolvenkit Blender IO Suite
 // @author Simarilius, DZK & Seberoth
-// @version 1.1
+// @version 2.0
 // Exports ent files and all referenced files (recursively)
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
