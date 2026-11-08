@@ -1,4 +1,4 @@
-// @version 1.0
+// @version 1.1
 // @type hook
 // @hook_extension global
 
@@ -219,29 +219,50 @@ globalThis.onParsingError = function (jsonText) {
     
     let isPatched = false;
 
-    if (json["ExpectedType"] === "shadowsShadowCastingMode" && json["Value"]["$type"] === "Bool") {
-    	isPatched = true;
-    	
-    	json["Value"]["$type"] = "shadowsShadowCastingMode";
-    	if (json["Value"]["Value"] === 0) {
-    		json["Value"]["Value"] = "Never";
-    	} else {
-    		json["Value"]["Value"] = "Always";
-    	}
+    // shadowsShadowCastingMode
+    if (json["ExpectedType"] === "shadowsShadowCastingMode" && json["Value"]?.["$type"] === "Bool") {
+        isPatched = true;
+        json["Value"]["$type"] = "shadowsShadowCastingMode";
+        json["Value"]["Value"] = json["Value"]["Value"] === 0 ? "Never" : "Always";
     }
-    
-    if (!isPatched) {
-    	Logger.Debug(json);
-    }
-    
-    // Just an example
-    // if(json["EnumType"] === "ECookingPlatform") { 
-    // 	   isPatched = true;
-    //     json["StringValue"] = "PLATFORM_PC";
-    // }
 
+    // rRef ↔ raRef
+    if (json["ExpectedType"] === "raRef:inkWidgetLibraryResource" && 
+        json["Value"]?.["$type"] === "rRef:inkWidgetLibraryResource") {
+        isPatched = true;
+        json["Value"]["$type"] = "raRef:inkWidgetLibraryResource";
+    }
+    if (json["ExpectedType"] === "rRef:inkWidgetLibraryResource" && 
+        json["Value"]?.["$type"] === "raRef:inkWidgetLibraryResource") {
+        isPatched = true;
+        json["Value"]["$type"] = "rRef:inkWidgetLibraryResource";
+    }
+
+    // EngDemoContainer / DemolitionContainer
+    if (json["ExpectedType"] === "handle:EngDemoContainer" && 
+        json["Value"]?.["$type"] === "handle:DemolitionContainer") {
+        isPatched = true;
+    }
+
+    // HackingContainer / APChallengeContainer
+    if (json["ExpectedType"] === "handle:HackingContainer" && 
+        (json["Value"]?.["$type"] === "APChallengeContainer" || 
+         json["Value"]?.["$type"] === "handle:APChallengeContainer")) {
+        isPatched = true;
+    }
+
+    // Fallback for skill-check
+    if (!isPatched && json["PropertyName"] && 
+        json["PropertyName"].toLowerCase().includes("skillchecks")) {
+        isPatched = true;
+    }
+
+    if (!isPatched) {
+        Logger.Debug(json);
+    }
+    
     return {
-    	isPatched : isPatched,
+        isPatched: isPatched,
         jsonText: TypeHelper.JsonStringify(json)
     }
 }
