@@ -1,0 +1,28 @@
+{
+  "FormatVersion": 1,
+  "Author": "",
+  "Description": "",
+  "Version": "1.0",
+  "Data": {
+    "$type": "C2dArray",
+    "compiledData": [
+      [
+        "my_globally_unique_name",
+        "path/to/the/resource.file",
+        "false"
+      ]
+    ],
+    "compiledHeaders": [
+      "name",
+      "path",
+      "preload"
+    ],
+    "cookingPlatform": "PLATFORM_PC",
+    "data": [],
+    "headers": [
+      "name",
+      "path",
+      "preload"
+    ]
+  }
+}
