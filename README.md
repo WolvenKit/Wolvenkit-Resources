@@ -62,4 +62,17 @@ The rest of the section includes instructions on how to manually install and reg
 3. For updating, the list "Files" should hold the absolut paths of every file inside the mlsb directory, no matter how deeply it's nested. Mind the double slashes!  
 Alternatively, you can leave it empty.
 
+## World Builder fitted navigation
 
+Importer 1.0.8 accepts the optional `navigation` field in a normal World
+Builder export. Version 1 of the navigation payload contains one tile.
+Version 2 contains a list of tiles and links along shared tile edges.
+Each tile supplies vertices in RED world XYZ, clockwise triangles with
+zero-based vertex indices, and an additive layer from 1 to 255. The importer
+validates the navigation payload before writing project files.
+
+The importer writes one Navigation streaming sector with a navigation node
+and embedded Human tile resource for each fitted tile. The project's
+streaming block references the fitted sector once. Reimporting after removing
+the fit drops that reference. Previously generated sectors can be removed
+from the project before packing.
