@@ -76,3 +76,8 @@ and embedded Human tile resource for each fitted tile. The project's
 streaming block references the fitted sector once. Reimporting after removing
 the fit drops that reference. Previously generated sectors can be removed
 from the project before packing.
+
+Importer 1.0.9 also accepts exported Navigation Links. It binds one endpoint
+to fitted geometry and bakes a bidirectional Floor connection into that
+tile. Place the other endpoint on an existing Human navmesh and verify the
+route in game. Both endpoints must lie in the same or neighboring tiles.

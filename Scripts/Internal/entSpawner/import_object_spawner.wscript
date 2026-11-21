@@ -1,6 +1,6 @@
 // Imports an entitySpawner json export
 // @author keanuwheeze
-// @version 1.0.8
+// @version 1.0.9
 
 //////////////// Modify this //////////////////
 
@@ -10,7 +10,7 @@ const inputFilePathInRawFolder = "new_project_exported.json"
 
 import * as Logger from 'Logger.wscript';
 
-const version = "1.0.8"
+const version = "1.0.9"
 
 const DEFAULT_NODE_FLAGS = "FLAG_AllowForceStreamIn, FLAG_Building"
 const DEFAULT_STREAMING_PRIORITY = 50
@@ -366,8 +366,8 @@ function validateNavigation(surface) {
     return { anchor, layer, vertices: vertices.map(([x, y, z]) => [x, z, y]), faces };
 }
 
-function createFittedNavigationResource(surface) {
-    const { vertices, faces, anchor, layer } = validateNavigation(surface);
+function createFittedNavigationResource(surface, geometry, connections) {
+    const { vertices, faces, anchor, layer } = geometry;
     const [min, max] = boundsOf(vertices);
     const [tx, ty] = surface.coords ?? [Math.floor(min[0] / tileSize), Math.floor(min[2] / tileSize)];
     const tileMin = [tx * tileSize, min[1] - 1, ty * tileSize];
@@ -380,18 +380,21 @@ function createFittedNavigationResource(surface) {
         throw new Error("Fitted navigation vertices are outside the declared 32.4 m tile.");
     }
     const count = faces.length;
-    const links = count * 3 + 2 * (surface.portals?.length ?? 0);
+    const vertexCount = vertices.length + 2 * connections.length;
+    const polygonCount = count + connections.length;
+    const links = count * 3 + 2 * (surface.portals?.length ?? 0) + 4 * connections.length;
     const quantization = 10;
-    const buffer = binary(100 + 12 * vertices.length + 20 * count + 16 * links +
-        12 * count + 4 * count + 16 * (2 * count));
+    const buffer = binary(100 + 12 * vertexCount + 20 * polygonCount + 16 * links +
+        12 * count + 4 * count + 16 * (2 * count) + 40 * connections.length);
     for (const ch of "VAND") buffer.u8(ch.charCodeAt(0));
     // Version, tile coordinates, layer, user ID, polygon/vertex/link counts,
     // detail mesh/vertex/triangle counts, BV slots, off-mesh count and base.
-    for (const field of [8, tx, ty, layer, 0, count, vertices.length,
-        links, count, 0, count, 2 * count, 0, count]) buffer.i32(field);
+    for (const field of [8, tx, ty, layer, 0, polygonCount, vertexCount,
+        links, count, 0, count, 2 * count, connections.length, count]) buffer.i32(field);
     for (const field of [human.height, human.radius, human.climb,
         ...tileMin, ...tileMax, quantization]) buffer.f32(field);
     vertices.flat().forEach(buffer.f32);
+    for (const connection of connections) connection.vertices.forEach(buffer.f32);
     const neighbors = faceNeighbors(faces);
     for (const [face, edge, side] of surface.portals ?? []) {
         const axis = side === 0 || side === 4 ? 0 : 2;
@@ -413,6 +416,12 @@ function createFittedNavigationResource(surface) {
         buffer.u8(3);  // Triangle.
         buffer.u8(1);  // Ground area/type.
     }
+    for (let i = 0; i < connections.length; i++) {
+        buffer.i32(0);
+        [vertices.length + 2 * i, vertices.length + 2 * i + 1, 0, 0, 0, 0, 3].forEach(buffer.u16);
+        buffer.u8(2);
+        buffer.u8(0x40 | floorArea); // Off-mesh polygon, Floor area.
+    }
     buffer.zeros(16 * links);
     for (let i = 0; i < count; i++) {
         buffer.i32(0); // No extra detail vertices.
@@ -423,13 +432,23 @@ function createFittedNavigationResource(surface) {
     }
     for (let i = 0; i < count; i++) [0, 1, 2, 21].forEach(buffer.u8);
     writeBoundsTree(buffer, vertices, faces, tileMin, quantization);
+    for (const [i, connection] of connections.entries()) {
+        connection.vertices.forEach(buffer.f32);
+        buffer.f32(connection.radius);
+        buffer.u16(count + i);
+        buffer.u8(1); // Bidirectional.
+        buffer.u8(connection.side);
+        buffer.i32(Number(connection.id & 0xffffffffn));
+        buffer.i32(Number(connection.id >> 32n));
+    }
     const local = ([x, z, y]) => [x - anchor[0], y - anchor[1], z - anchor[2]];
     return {
         $type: "worldNavigationTileResource", cookingPlatform: "PLATFORM_PC", agentSize: "Human",
         localBoundingBox: box(local(tileMin), local(tileMax)),
         tilesData: [{
             $type: "worldNavigationTileData", tileX: tx, tileY: ty,
-            tileIndex: 0, bufferIndex: 0, agentSize: "Human", tileRef: "9223372036854775807"
+            tileIndex: 0, bufferIndex: 0, agentSize: "Human", tileRef: "9223372036854775807",
+            ...(connections.length && { offMeshConnections: floorConnectionData(connections) })
         }],
         tileBuffers: [buffer.buffer()]
     };
@@ -476,13 +495,109 @@ function fittedNavigationTiles(navigation) {
     return tiles;
 }
 
-const prepareFittedNavigation = (block, data) => {
+const floorArea = 10;
+
+function floorConnectionData(connections) {
+    return {
+        $type: "worldOffMeshConnectionsData",
+        areas: connections.map(() => floorArea),
+        directions: connections.map(() => 1),
+        flags: connections.map(() => 3),
+        ids: connections.map(connection => connection.id.toString()),
+        globalNodeIDs: connections.map(connection => ({
+            $type: "worldGlobalNodeID", hash: connection.id.toString()
+        })),
+        radii: connections.map(connection => connection.radius),
+        tagIntervals: connections.flatMap(() => [0, 0]),
+        tagsX: [],
+        userData: connections.map(connection => ({
+            HandleId: connection.handleId, Data: { $type: "worldOffMeshUserData" }
+        })),
+        verts: connections.flatMap(connection => connection.vertices)
+    };
+}
+
+function containsFittedPoint(surface, [x, y, z], radius) {
+    return surface.faces.some(face => {
+        const [a, b, c] = face.map(index => surface.vertices[index]);
+        const ab = [b[0] - a[0], b[1] - a[1]];
+        const ac = [c[0] - a[0], c[1] - a[1]];
+        const p = [x - a[0], y - a[1]];
+        const determinant = ab[0] * ac[1] - ab[1] * ac[0];
+        const u = (p[0] * ac[1] - p[1] * ac[0]) / determinant;
+        const v = (ab[0] * p[1] - ab[1] * p[0]) / determinant;
+        const ground = a[2] + u * (b[2] - a[2]) + v * (c[2] - a[2]);
+        return u >= -1e-6 && v >= -1e-6 && u + v <= 1 + 1e-6 && Math.abs(z - ground) <= radius;
+    });
+}
+
+function bindNavigationLinks(projectName, surfaces, links) {
+    const byTile = new Map(surfaces.map(surface => [surface, []]));
+    if (!Array.isArray(links) || links.length > 64) throw new Error("Expected an array of up to 64 Navigation Links.");
+    const sideByOffset = new Map([
+        ["1:0", 0], ["1:1", 1], ["0:1", 2], ["-1:1", 3], ["-1:0", 4],
+        ["-1:-1", 5], ["0:-1", 6], ["1:-1", 7], ["0:0", 255]
+    ]);
+    function coordinates(point) {
+        return point.slice(0, 2).map(value => Math.floor(value / tileSize));
+    }
+    function endpoint(value) {
+        if (!value || ![value.x, value.y, value.z].every(Number.isFinite)) {
+            throw new Error("Navigation Link endpoints must be world XYZ positions.");
+        }
+        return [value.x, value.y, value.z];
+    }
+    for (const [i, link] of links.entries()) {
+        let start = endpoint(link?.position);
+        let end = endpoint(link?.destination);
+        const radius = link?.radius;
+        if (!Number.isFinite(radius) || radius < .1 || radius > 2 ||
+            Math.hypot(...start.map((value, axis) => value - end[axis])) < .05) {
+            throw new Error(`Invalid endpoint radius or separation for Navigation Link '${link.name}'.`);
+        }
+        const findTile = point => {
+            const coords = coordinates(point);
+            return surfaces.find(surface => {
+                const tile = surface.coords ?? coordinates(surface.vertices[0]);
+                return coords.every((value, axis) => value === tile[axis]) && containsFittedPoint(surface, point, radius);
+            });
+        };
+        let surface = findTile(start);
+        if (!surface) {
+            [start, end] = [end, start];
+            surface = findTile(start);
+        }
+        if (!surface) throw new Error(`Place one endpoint of Navigation Link '${link.name}' on the fitted mesh.`);
+        const fromTile = surface.coords ?? coordinates(surface.vertices[0]);
+        const adjacentOffset = coordinates(end).map((value, axis) => value - fromTile[axis]).join(":");
+        const side = sideByOffset.get(adjacentOffset);
+        if (side === undefined) {
+            throw new Error(`Navigation Link '${link.name}' must reach the same or a neighboring tile.`);
+        }
+        const id = fnv1a64NodeRef(`${projectName}:floor-link:${start}:${end}`);
+        const connections = byTile.get(surface);
+        if (connections.some(connection => connection.id === id)) {
+            throw new Error(`Duplicate Navigation Link '${link.name}'.`);
+        }
+        connections.push({
+            id, radius, side, vertices: [start, end].flatMap(([x, y, z]) => [x, z, y]),
+            handleId: String(10000 + i)
+        });
+    }
+    return byTile;
+}
+
+const prepareFittedNavigation = (block, data, links) => {
 	const surfaces = fittedNavigationTiles(data.navigation)
 	const name = "_fitted_human_navigation"
 	if (data.sectors.some(sector => sector.name.toLowerCase() === name)) {
 		throw new Error(`Sector name ${name} is reserved for fitted navigation.`)
 	}
-	const tiles = surfaces.map(surface => ({ surface, resource: createFittedNavigationResource(surface) }))
+	const geometry = surfaces.map(validateNavigation)
+	const byTile = bindNavigationLinks(data.name, surfaces, links)
+	const tiles = surfaces.map((surface, index) => ({
+		surface, resource: createFittedNavigationResource(surface, geometry[index], byTile.get(surface))
+	}))
 	const [min, max] = boundsOf(surfaces.map(surface => surface.anchor))
 	const info = {
 		name,
@@ -619,10 +734,15 @@ export function RunEntitySpawnerImport(filePath = inputFilePathInRawFolder, call
 		}
 
 		let block = getNewBlock()
+		const navigationLinks = data.navigationLinks ?? []
 		let navigation
+		if (data.navigationLinks !== undefined && data.navigation === undefined) {
+			Logger.Error("Navigation Links require a fitted Navigation Area in the same export.")
+			return
+		}
 		if (data.navigation !== undefined) {
 			try {
-				navigation = prepareFittedNavigation(block, data)
+				navigation = prepareFittedNavigation(block, data, navigationLinks)
 			} catch (error) {
 				Logger.Error(`Invalid fitted navigation in ${filePath}: ${error.message}`)
 				return
