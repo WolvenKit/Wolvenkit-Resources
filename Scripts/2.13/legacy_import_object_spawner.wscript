@@ -2,6 +2,7 @@
 // USE ONLY FOR GAME VERSION < 2.5
 // @author keanuwheeze
 // @version 1.0.4
+// Requires Wolvenkit >= 8.14 and < 10.0
 
 //////////////// Modify this //////////////////
 

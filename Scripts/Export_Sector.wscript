@@ -1,7 +1,8 @@
 // Exports StreamingSector files and all referenced files (recursively)
+// USE ONLY FOR GAME VERSION >= 2.5
 // @author Simarilius, DZK, Seberoth & manavortex
-// @version 1.9
-// Requires 8.14 or higher
+// @version 2.5
+// Requires WolvenKit 10.0 or higher
 import * as Logger from 'Logger.wscript';
 import * as TypeHelper from 'TypeHelper.wscript';
 import * as Collision_Shapes from 'collision_shapes.wscript';
@@ -14,16 +15,16 @@ const suppressLogFileOutput = false;
 const verboseLogging = true;
 
 // If you dont want mats then set this to false
-const withmats=true;
+const withmats = true;
 
 // If you only want files that are new exporting set this to true
-const only_new=true
+const only_new = true;
 
 // If you want mesh colliders extracting then set this to true
-const mesh_colliders=false
+const mesh_colliders = false;
 
 // format for images to get exported to
-const imgFormat = 'png'
+const imgFormat = 'png';
 
 /**
  * Any sectors in the list below will be added to your project before exporting. List of sector files to add to your project, see wiki: https://tinyurl.com/cyberpunk2077worldsectors
@@ -59,10 +60,8 @@ let sectors = [
 /*
  * ===================================== Change below this line at own risk ========================================
  */
- 
- 
 
-const fileTemplate = '{"Header":{"WKitJsonVersion":"0.0.7","DataType":"CR2W"},"Data":{"Version":195,"BuildVersion":0,"RootChunk":{},"EmbeddedFiles":[]}}';
+const fileTemplate = '{"Header":{"WKitJsonVersion":"0.0.9","DataType":"CR2W"},"Data":{"Version":195,"BuildVersion":0,"RootChunk":{},"EmbeddedFiles":[]}}';
 
 let jsonExtensions = [".app", ".ent", ".mi", ".mt", ".streamingsector",".cfoliage"];
 let exportExtensions = [".mesh",".w2mesh",".physicalscene",".xbm"]; // need xbms for decals
@@ -190,10 +189,7 @@ function export_filename(filename){
             return filename;
         }
     }
-
 }
-
-
 function convertEmbedded(embeddedFile) {
     let data = TypeHelper.JsonParse(fileTemplate);
     data["Data"]["RootChunk"] = embeddedFile["Content"];
@@ -295,6 +291,3 @@ function ParseFile(fileName, parentFile) {
         Collision_Shapes.Export_Sector_Collisions(json);
         }
     }
-}
-
-//#endregion
