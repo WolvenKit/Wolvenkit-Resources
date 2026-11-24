@@ -325,16 +325,23 @@ function verifyPatchPaths() {
     }
     
     const projectFiles = getProjectFilesAndLinks();
-
     const patchMeshes = getValuesFlat(patchFilePaths);
     
-    const duplicatePatchMeshes = Object.keys(patchFilePaths).filter((key) => forceToArray(patchFilePaths[key]).includes(key));
+    const duplicateKeys = Object.keys(patchFilePaths).filter(key => patchMeshes.includes(key));
+    
+    const duplicatePatchMeshes = Object.keys(patchFilePaths)
+            .filter((key) => forceToArray(patchFilePaths[key]).includes(key));
+    
     let filesNotFound = patchMeshes
         .filter(p => !ArchiveXlPatchMeshes.includes(p))
         .filter(p => !projectFiles.find(str => str === p) && !wkit.FileExistsInArchive(p));
 
+    
     if (duplicatePatchMeshes.length > 0) {
         addWarning(LOGLEVEL_WARN, `The following meshes patch themselves:\n\t${duplicatePatchMeshes.join('\n\t')}`);
+    }
+    if (duplicateKeys.length > 0) {
+        addWarning(LOGLEVEL_WARN, `You can't patch meshes that then patch other meshes:\n\t${duplicateKeys.join('\n\t')}`);
     }
     if (filesNotFound.length > 0) {
         addWarning(LOGLEVEL_INFO, `You're trying to patch meshes that are not part of your project:\n\t${filesNotFound.join('\n\t')}`);
