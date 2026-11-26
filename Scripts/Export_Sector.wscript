@@ -291,3 +291,4 @@ function ParseFile(fileName, parentFile) {
         Collision_Shapes.Export_Sector_Collisions(json);
         }
     }
+}
